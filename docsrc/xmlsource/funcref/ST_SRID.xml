@@ -19,45 +19,41 @@
  -  with this program; if not, write to the Free Software Foundation, Inc.,
  -  51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  -
- -
 -->
-<refentry id="fn_st_srid">
+<refentry id="fn_ST_SRID">
   <refmeta>
-    <refentrytitle>st_srid</refentrytitle>
+    <refentrytitle>ST_SRID</refentrytitle>
     <refmiscinfo>geo</refmiscinfo>
   </refmeta>
   <refnamediv>
-    <refname>st_srid</refname>
-    <refpurpose>Returns the srid of a geometry.</refpurpose>
+    <refname>ST_SRID</refname>
+    <refpurpose>returns SRID of shape's spatial reference system or 0 for shape on plane.</refpurpose>
   </refnamediv>
   <refsynopsisdiv>
-    <funcsynopsis id="fsyn_st_srid">
-      <funcprototype id="fproto_st_srid">
-        <funcdef><function>st_srid</function></funcdef>
-	<paramdef>in <parameter>g</parameter> any</paramdef>
+    <funcsynopsis id="fsyn_ST_SRID">
+      <funcprototype id="fproto_ST_SRID">
+        <funcdef><function>ST_SRID</function></funcdef>
+  	    <paramdef>in <parameter>g</parameter> any</paramdef>
       </funcprototype>
     </funcsynopsis>
   </refsynopsisdiv>
-  <refsect1 id="desc_st_srid">
+  <refsect1 id="desc_ST_SRID">
     <title>Description</title>
-    <para>Returns the srid of a geometry.</para>
+    <para>Returns the SRID of a geometry.</para>
   </refsect1>
-  <refsect1 id="params_st_srid">
+  <refsect1 id="params_ST_SRID">
     <title>Parameters</title>
-    <refsect2><title>g</title>
-      <para>Geometry.</para>
-    </refsect2>
+    <refsect2><title>g</title><para>Geometry.</para></refsect2>
   </refsect1>
-  <refsect1 id="ret_st_srid"><title>Return Types</title>
+  <refsect1 id="ret_ST_SRID"><title>Return Types</title>
     <para>Returns int.</para>
   </refsect1>
-  <refsect1 id="examples_st_srid">
+  <refsect1 id="examples_ST_SRID">
     <title>Examples</title>
-    <example id="ex_st_srid"><title></title>
-      <para></para>
+    <example id="ex_ST_SRID"><title>Simple Use</title>
 <programlisting><![CDATA[
 SQL>SPARQL
-SELECT (bif:st_srid (?geo))
+SELECT (bif:ST_SRID (?geo))
 WHERE
   {
     ?m geo:geometry ?geo .
@@ -78,7 +74,7 @@ _______________________________
  4326
 No. of rows in result: 10
 
-SQL>select st_srid( st_point (10, 30));
+SQL>select ST_SRID( st_point (10, 30));
 callret
 INTEGER
 _______________________________
@@ -87,13 +83,14 @@ No. of rows in result: 1
 ]]></programlisting>
     </example>
   </refsect1>
-  <refsect1 id="seealso_st_srid">
+  <refsect1 id="seealso_ST_SRID">
     <title>See Also</title>
     <para><link linkend="fn_st_point"><function>st_point</function></link></para>
     <para><link linkend="fn_st_x"><function>st_x</function></link></para>
     <para><link linkend="fn_st_y"><function>st_y</function></link></para>
+    <para><link linkend="fn_ST_Z"><function>ST_Z</function></link></para>
     <para><link linkend="fn_st_distance"><function>st_distance</function></link></para>
-    <para><link linkend="fn_st_setsrid"><function>st_setsrid</function></link></para>
+    <para><link linkend="fn_ST_SetSRID"><function>ST_SetSRID</function></link></para>
     <para><link linkend="fn_st_astext"><function>st_astext</function></link></para>
     <para><link linkend="fn_st_geomfromtext"><function>st_geomfromtext</function></link></para>
     <para><link linkend="fn_st_intersects"><function>st_intersects</function></link></para>

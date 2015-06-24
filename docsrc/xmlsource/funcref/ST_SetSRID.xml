@@ -19,50 +19,43 @@
  -  with this program; if not, write to the Free Software Foundation, Inc.,
  -  51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  -
- -
 -->
-<refentry id="fn_st_setsrid">
+<refentry id="fn_ST_SetSRID">
   <refmeta>
-    <refentrytitle>st_setsrid</refentrytitle>
+    <refentrytitle>ST_SetSRID</refentrytitle>
     <refmiscinfo>geo</refmiscinfo>
   </refmeta>
   <refnamediv>
-    <refname>st_setsrid</refname>
-    <refpurpose>The geometry given as argument is modified to have the specified srid
-and the modified geometry is returned.</refpurpose>
+    <refname>ST_SetSRID</refname>
+    <refpurpose>replaces the SRID of a shape but does not transform the shape or its coordinates from old SRID to a new one.</refpurpose>
   </refnamediv>
   <refsynopsisdiv>
-    <funcsynopsis id="fsyn_st_setsrid">
-      <funcprototype id="fproto_st_setsrid">
-        <funcdef><function>st_setsrid</function></funcdef>
-	<paramdef>in <parameter>g</parameter> any</paramdef>
-	<paramdef>in <parameter>srid</parameter> int</paramdef>
+    <funcsynopsis id="fsyn_ST_SetSRID">
+      <funcprototype id="fproto_ST_SetSRID">
+        <funcdef><function>ST_SetSRID</function></funcdef>
+	      <paramdef>in <parameter>g</parameter> any</paramdef>
+	      <paramdef>in <parameter>SRID</parameter> int</paramdef>
       </funcprototype>
     </funcsynopsis>
   </refsynopsisdiv>
-  <refsect1 id="desc_st_setsrid">
+  <refsect1 id="desc_ST_SetSRID">
     <title>Description</title>
-    <para>The geometry given as argument is modified to have the specified srid and the modified
+    <para>The geometry given as argument is modified to have the specified SRID and the modified
 geometry is returned.</para>
  </refsect1>
-  <refsect1 id="params_st_setsrid">
+  <refsect1 id="params_ST_SetSRID">
     <title>Parameters</title>
-    <refsect2><title>g</title>
-      <para>The geometry to be modified.</para>
-    </refsect2>
-    <refsect2><title>srid</title>
-      <para>The specified srid.</para>
-    </refsect2>
+    <refsect2><title>g</title><para>The geometry to be modified.</para></refsect2>
+    <refsect2><title>SRID</title><para>The specified SRID.</para></refsect2>
   </refsect1>
-  <refsect1 id="ret_st_setsrid"><title>Return Types</title>
+  <refsect1 id="ret_ST_SetSRID"><title>Return Types</title>
     <para>Returns any.</para>
   </refsect1>
-  <refsect1 id="examples_st_setsrid">
+  <refsect1 id="examples_ST_SetSRID">
     <title>Examples</title>
-    <example id="ex_st_setsrid"><title></title>
-      <para></para>
+    <example id="ex_ST_SetSRID"><title>Simple Use</title>
 <programlisting><![CDATA[
-SQL>SELECT st_setsrid( st_point (10,2), 4335);
+SQL>SELECT ST_SetSRID( st_point (10,2), 4335);
 callret
 ANY
 _______________________________
@@ -71,13 +64,14 @@ No. of rows in result: 1
 ]]></programlisting>
     </example>
   </refsect1>
-  <refsect1 id="seealso_st_setsrid">
+  <refsect1 id="seealso_ST_SetSRID">
     <title>See Also</title>
     <para><link linkend="fn_st_point"><function>st_point</function></link></para>
     <para><link linkend="fn_st_x"><function>st_x</function></link></para>
     <para><link linkend="fn_st_y"><function>st_y</function></link></para>
+    <para><link linkend="fn_ST_Z"><function>ST_Z</function></link></para>
     <para><link linkend="fn_st_distance"><function>st_distance</function></link></para>
-    <para><link linkend="fn_st_srid"><function>st_srid</function></link></para>
+    <para><link linkend="fn_ST_SRID"><function>ST_SRID</function></link></para>
     <para><link linkend="fn_st_astext"><function>st_astext</function></link></para>
     <para><link linkend="fn_st_geomfromtext"><function>st_geomfromtext</function></link></para>
     <para><link linkend="fn_st_intersects"><function>st_intersects</function></link></para>
