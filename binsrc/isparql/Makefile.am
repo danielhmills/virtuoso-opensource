@@ -77,5 +77,3 @@ EXTRA_DIST = \
 	$(srcdir)/styles/*.css \
 	$(srcdir)/vad_version \
 	$(srcdir)/xslt/*.xsl
-
-FORCE:
