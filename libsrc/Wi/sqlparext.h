@@ -647,6 +647,7 @@ typedef struct sql_tree_s
 	    ST **	params;
 	    ST *	ret_param;
 	    caddr_t	type_name; /* for static methods */
+            caddr_t     serial; /* for unique generators e.g. rand() and uuid() */
 	  } call;
 	struct
 	  {

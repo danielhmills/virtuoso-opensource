@@ -742,7 +742,7 @@ sqlp_tree_check_sz (ptrlong type, sql_tree_t * tree)
 
       case CALL_STMT:
           len += sizeof (st_head.call);
-          len -= (2 * sizeof (ptrlong)); /* most are stored procedures w/o return type, static methods has 4th member */
+          len -= (3 * sizeof (ptrlong)); /* most are stored procedures w/o return type, static methods has 4th member */
           break;
 
       case ORDER_BY: /* XXX: same as INSERT_VALUES, we take shorter atm */
@@ -2390,6 +2390,10 @@ generic_check:
             dk_free_box (ret_val);
           return lit;
 not_a_constant_pure: ;
+        }
+      if (bmd->bmd_no_fold)
+        {
+          funcall_tree = t_listst (6, CALL_STMT, funcall_tree->_.call.name, funcall_tree->_.call.params, NULL, NULL, t_box_num (sqlp_bin_op_serial++));
         }
     }
   sqlp_check_arg (funcall_tree);
