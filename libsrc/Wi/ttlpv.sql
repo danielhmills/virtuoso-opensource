@@ -678,7 +678,7 @@ create procedure DB.DBA.RDF_LOAD_RDFXML_V (in strg varchar, in base varchar, in 
 }
 ;
 
-create procedure DB.DBA.ID_TO_IRI_VEC (in id iri_id)
+create procedure DB.DBA.ID_TO_IRI_VEC (in id any array)
 {
   vectored;
   declare name, pref varchar;
