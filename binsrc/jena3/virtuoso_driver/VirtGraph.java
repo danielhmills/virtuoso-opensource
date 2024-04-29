@@ -119,6 +119,17 @@ public class VirtGraph extends GraphBase {
         setMacroLib(ds.getMacroLib());
         setRuleSet(ds.getRuleSet());
         setFetchSize(ds.getFetchSize());
+        setQueryTimeout(ds.getQueryTimeout());
+        setBatchSize(ds.getBatchSize());
+        setSparqlPrefix(ds.getSparqlPrefix());
+        setInsertBNodeAsVirtuosoIRI(ds.getInsertBNodeAsVirtuosoIRI());
+        setResetBNodesDictAfterCall(ds.getResetBNodesDictAfterCall());
+        setResetBNodesDictAfterCommit(ds.getResetBNodesDictAfterCommit());
+        setUseAdvancedDelete(ds.getUseAdvancedDelete());
+        setInsertStringLiteralAsSimple(ds.getInsertStringLiteralAsSimple());
+        setConcurrencyMode(ds.getConcurrencyMode());
+        setReadFromAllGraphs(ds.getReadFromAllGraphs());
+        setSameAs(ds.getSameAs());
 
         try {
             virtuoso.jdbc4.Driver drv = new virtuoso.jdbc4.Driver();
