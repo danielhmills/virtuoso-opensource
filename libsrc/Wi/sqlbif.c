@@ -3753,6 +3753,8 @@ bif_replace (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
  */
 
   /* +1 for the final zero. */
+  if ((res_bytes < 0) || (res_bytes > 10000000))
+    sqlr_new_error ("22023", "SR083", "The expected result length is too large in call of replace()");
   res = dk_alloc_box (res_bytes + sizeof_char,
     (dtp_t)(sizeof_char == sizeof (wchar_t) ? DV_WIDE : DV_LONG_STRING));
   res_ptr = res;
