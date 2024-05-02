@@ -3083,11 +3083,11 @@ bif_repeat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
   query_instance_t *qi = (query_instance_t *)qst;
   caddr_t str = bif_string_or_wide_or_null_arg (qst, args, 0, "repeat");
-  long n_times = (long) bif_long_arg (qst, args, 1, "repeat");
-  long len;
+  size_t n_times = (size_t) bif_long_range_arg (qst, args, 1, "repeat", 0, 10000000);
+  size_t len;
   caddr_t res;
-  long totlen;
-  long int i, offset;
+  size_t totlen;
+  size_t i, offset;
   dtp_t dtp1 = DV_TYPE_OF (str);
   int sizeof_char = IS_WIDE_STRING_DTP (dtp1) ? sizeof (wchar_t) : sizeof (char);
   if (n_times < 0)
@@ -3099,8 +3099,10 @@ bif_repeat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 
   len = (box_length (str) / sizeof_char - 1);
   totlen = (len * n_times);
-  if ((totlen < 0) || (totlen > 10000000))
+
+  if (totlen > 10000000)
     sqlr_new_error ("22023", "SR083", "The expected result length is too large in call of repeat()");
+
   if (NULL == (res = dk_try_alloc_box ((totlen + 1) * sizeof_char , (dtp_t)(IS_WIDE_STRING_DTP (dtp1) ? DV_WIDE : DV_LONG_STRING))))
     qi_signal_if_trx_error (qi);
 
