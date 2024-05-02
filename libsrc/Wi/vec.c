@@ -318,13 +318,13 @@ dc_is_null (data_col_t * dc, int set)
 void
 dc_reserve_bytes (data_col_t * dc, int len)
 {
-  if (dc->dc_buf_fill + len >= dc->dc_buf_len)
+  if (dc->dc_buf_fill + len + DC_STR_MARGIN >= dc->dc_buf_len)
     {
       int l = 0;
-      if (len > 100000)
-	l = len;
-      else if (len > dc_str_buf_unit)
-	l = (len + 10) * 2;
+      if (len + DC_STR_MARGIN > 100000)
+	l = len + DC_STR_MARGIN;
+      else if (len + DC_STR_MARGIN > dc_str_buf_unit)
+	l = (len + DC_STR_MARGIN) * 2;
       else
 	l = dc_str_buf_unit;
       dc_get_buffer (dc, l);
@@ -339,13 +339,14 @@ dc_append_bytes (data_col_t * dc, db_buf_t bytes, int len, db_buf_t pref_bytes, 
 {
   len += pref_len;
   DC_CHECK_LEN (dc, dc->dc_n_values);
-  if (dc->dc_buf_fill + len >= dc->dc_buf_len)
+  /* make sure that a 16 byte read from 2 + the pointer fits in mapped memory for sse string ops  */
+  if (dc->dc_buf_fill + len + DC_STR_MARGIN >= dc->dc_buf_len)
     {
       int l = 0;
-      if (len > 100000)
-	l = len;
-      else if (len > dc_str_buf_unit)
-	l = (len + 10) * 2;
+      if (len + DC_STR_MARGIN > 100000)
+	l = len + DC_STR_MARGIN;
+      else if (len + DC_STR_MARGIN > dc_str_buf_unit)
+	l = (len + DC_STR_MARGIN) * 2;
       else
 	l = dc_str_buf_unit;
       dc_get_buffer (dc, l);
@@ -966,6 +967,8 @@ DBG_NAME (dc_get_buffer) (DBG_PARAMS data_col_t * dc, int bytes)
   END_DO_SET ();
   if (!new_buf)
     {
+      int nth;
+      bytes = mm_next_size (bytes + 48, &nth) - 8;
       new_buf = (db_buf_t) DBG_NAME (mp_alloc_box_ni) (DBG_ARGS dc->dc_mp, MAX (bytes, 0xfff8), DV_CUSTOM);
       mp_set_push (dc->dc_mp, &dc->dc_buffers, (void *) new_buf);
     }
@@ -1032,10 +1035,10 @@ dc_itc_append_any (it_cursor_t * itc, buffer_desc_t * buf, dbe_col_loc_t * cl, c
   VLI;
   if (DV_ANY != dc->dc_dtp)
     dc_heterogenous (dc);
-  if (dc->dc_buf_fill + vl1 + vl2 > dc->dc_buf_len)
+  if (dc->dc_buf_fill + vl1 + vl2 + DC_STR_MARGIN > dc->dc_buf_len)
     {
       int bytes;
-      bytes = MAX (dc->dc_buf_len, vl1 + vl2);
+      bytes = MAX (dc->dc_buf_len, vl1 + vl2 + DC_STR_MARGIN);
       dc_get_buffer (dc, bytes);
     }
   memcpy_16 (dc->dc_buffer + dc->dc_buf_fill, xx, vl1);

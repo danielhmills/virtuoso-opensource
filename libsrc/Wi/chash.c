@@ -1699,6 +1699,7 @@ setp_chash_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    } \
 	  cha->cha_distinct_count++;					\
 	  groups[inx + n - 1] = cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, -1, inx + n - 1, first_set, (dtp_t*)nulls); \
+          cha->cha_error |= cha_p_##n->cha_error; \
 	done_##n##f: ;
 
 	  GB_PRE (1);
@@ -2204,6 +2205,7 @@ setp_chash_distinct_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    { \
 	        cha->cha_distinct_count++;				\
 		cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, pos1_##n, inx + n - 1, first_set, (dtp_t*)nulls); \
+                cha->cha_error |= cha_p_##n->cha_error; \
 		dis_result (n); \
 	      goto done_##n##f; \
 	    } \
@@ -2216,6 +2218,7 @@ setp_chash_distinct_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    { \
 	      cha->cha_distinct_count++;				\
 	      cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, pos2_##n, inx + n - 1, first_set, (dtp_t*)nulls); \
+              cha->cha_error |= cha_p_##n->cha_error; \
 	      dis_result (n); \
 	      goto done_##n##f; \
 	    } \
@@ -2233,6 +2236,7 @@ setp_chash_distinct_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    } \
 	  cha->cha_distinct_count++;					\
 	  cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, -1, inx + n - 1, first_set, (dtp_t*)nulls); \
+          cha->cha_error |= cha_p_##n->cha_error; \
 	  dis_result (n); \
 	done_##n##f: ;
 
