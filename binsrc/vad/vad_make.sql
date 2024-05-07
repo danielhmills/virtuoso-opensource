@@ -745,6 +745,7 @@ create procedure "VAD"."DBA"."VAD_TEST_CREATE" (
     j := j + 1;
   }
   data := md5_final (ctx);
+  ctx := md5_init();
   "VAD"."DBA"."VAD_OUT_ROW" (fname, pos, 'MD5', data, ctx);
   return 1;
   error_fin:
