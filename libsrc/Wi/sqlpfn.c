@@ -2067,6 +2067,8 @@ sqlp_sqlxml (ST * tree)
       if (0 == BOX_ELEMENTS (tree->_.call.params))
 	yyerror ("Function XMLELEMENT should have at least one argument that is element name");
       arg = tree->_.call.params[0];
+      if (ST_COLUMN (arg, COL_DOTTED) && STAR == arg->_.col_ref.name)
+        yyerror ("A `*` is not allowed as input for SQLXML functions");
       if (ST_COLUMN (arg, COL_DOTTED))
 	tree->_.call.params[0] = (ST *) t_box_string (arg->_.col_ref.name);
       return;
@@ -2079,6 +2081,8 @@ sqlp_sqlxml (ST * tree)
       tree->_.call.params = new_params;
       DO_BOX (ST *, arg, inx, old_params)
 	{
+          if (ST_COLUMN (arg, COL_DOTTED) && STAR == arg->_.col_ref.name)
+            yyerror ("A `*` is not allowed as input for SQLXML functions");
 	  if (ST_P (arg, BOP_AS))
 	    {
 	      new_params[inx*2] = (ST *) t_box_string ((caddr_t) arg->_.as_exp.name);

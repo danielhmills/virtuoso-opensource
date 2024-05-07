@@ -12592,9 +12592,9 @@ bif_composite (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   {
     caddr_t arg = bif_arg (qst, args, inx, "composite");
     print_object (arg, &sesn, NULL, NULL);
+    if (sesn.dks_out_fill > 254)
+      sqlr_new_error ("22026", "FT001", "Length limit of composite exceeded.");
   }
-  if (sesn.dks_out_fill > 254)
-  sqlr_new_error ("22026", "FT001", "Length limit of composite exceeded.");
   len = sesn.dks_out_fill - init;
   box = (unsigned char *) dk_alloc_box (len + 2, DV_COMPOSITE);
   box[0] = DV_COMPOSITE;

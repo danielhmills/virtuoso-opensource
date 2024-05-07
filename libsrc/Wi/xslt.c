@@ -4708,7 +4708,7 @@ bif_gvector_deduplicate_sorted (caddr_t * qst, caddr_t * err_ret, state_slot_t *
 caddr_t
 bif_rowvector_sort_imp (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args, const char *funname, char algo, int block_elts, int key_ofs, int sort_asc)
 {
-  caddr_t *vect = (caddr_t *)bif_array_arg (qst, args, 0, funname);
+  caddr_t *vect = (caddr_t *)bif_array_of_pointer_arg (qst, args, 0, funname);
   int vect_elems = BOX_ELEMENTS (vect);
   int key_item_inx = bif_long_range_arg (qst, args, 1, funname, 0, 1024);
   int group_count;

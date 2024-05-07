@@ -9164,6 +9164,12 @@ ssl_server_set_certificate (SSL_CTX* ssl_ctx, char * cert_name, char * key_name,
   EVP_PKEY *pkey;
   X509 *x509;
 
+  if (!cert_name || !key_name)
+    {
+      log_error ("SSL: The certificate and private key are not specified");
+      return 0;
+    }
+
   /* TODO create internal OpenSSL engine for this */
   if (strstr (cert_name, "db:") == cert_name || strstr (key_name, "db:") == key_name)
     {
@@ -9514,7 +9520,7 @@ bif_http_listen_host (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   caddr_t host = http_host_normalize (bif_string_arg (qst, args, 0, "http_listen_host"), 0);
   ptrlong stop = bif_long_arg (qst, args, 1, "http_listen_host");
   caddr_t * https_opts = BOX_ELEMENTS (args) > 2 ?
-      (caddr_t *) bif_array_or_null_arg (qst, args, 2, "http_listen_host") : NULL;
+      (caddr_t *) bif_strict_array_or_null_arg (qst, args, 2, "http_listen_host") : NULL;
   dk_session_t *listening = NULL;
   int rc = 0;
   dk_session_t **place = NULL;
@@ -10571,7 +10577,8 @@ bif_http_escape (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
   dk_session_t * out = http_session_no_catch_arg (qst, args, 2, "http_escape");
   caddr_t text = bif_arg (qst, args, 0, "http_escape");
-  int box_len = text ? box_length (text) : 0;
+  int box_len;
+  dtp_t dtp = DV_TYPE_OF (text);
   int mode = (int) bif_long_arg (qst, args, 1, "http_escape");
   wcharset_t *src_charset;
   wcharset_t *tgt_charset = (((BOX_ELEMENTS (args) < 5) || bif_long_arg (qst, args, 4, "http_escape")) ? CHARSET_UTF8 : default_charset);
@@ -10582,20 +10589,23 @@ bif_http_escape (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
       sqlr_new_error ("22023", "HT058",
         "Incorrect escaping mode (%d) is specified in parameter 2 of http_escape()", mode);
     }
-  switch (DV_TYPE_OF (text))
+  switch (dtp)
     {
     case DV_STRING: case DV_BIN:
       src_charset = (((BOX_ELEMENTS (args) >= 4) && bif_long_arg (qst, args, 3, "http_escape")) ? CHARSET_UTF8 : default_charset);
+      box_len =  box_length (text);
       if (0 < box_len)
-        dks_esc_write (out, text, box_len - 1, tgt_charset, src_charset, mode);
+        dks_esc_write (out, text, box_len - (DV_BIN == dtp ? 0 : 1), tgt_charset, src_charset, mode);
       break;
     case DV_UNAME:
       if ((BOX_ELEMENTS (args) >= 4) && (0 == bif_long_arg (qst, args, 3, "http_escape")) && (CHARSET_UTF8 != default_charset))
         sqlr_new_error ("22023", "HT058",
           "First argument of http_escape() is UNAME but the encoding is explicitly specified as non-UTF-8");
+      box_len =  box_length (text);
       dks_esc_write (out, text, box_len - 1, tgt_charset, CHARSET_UTF8, mode);
       break;
     case DV_WIDE:
+      box_len =  box_length (text);
       dks_wide_esc_write (out, (wchar_t *)text, (box_len/sizeof (wchar_t)) - 1, tgt_charset, mode);
       break;
     }
