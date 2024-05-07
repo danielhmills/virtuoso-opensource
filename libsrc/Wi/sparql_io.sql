@@ -251,6 +251,10 @@ create procedure DB.DBA.SPARQL_REXEC_INT (
   declare req_uri, req_method, req_body, local_req_hdr, ret_body, ret_hdr any;
   declare ret_content_type, ret_known_content_type, ret_format varchar;
   -- dbg_obj_princ ('DB.DBA.SPARQL_REXEC_INT (', res_mode, res_make_obj, service, query, dflt_graph, named_graphs, req_hdr, maxrows, metas, bnode_dict, options, ')');
+  if (regexp_match ('^https?://.*', service, 0, 'i') is null)
+    signal ('22023', 'Only http(s) services are supported.');
+  if (not length (query))
+    signal ('22023', 'Query cannot be empty or null.');
   quest_pos := strchr (service, '?');
   req_body := string_output();
   if (quest_pos is not null)
