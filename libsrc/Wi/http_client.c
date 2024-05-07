@@ -2734,7 +2734,7 @@ bif_http_client_impl (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args, co
 {
   http_cli_ctx * ctx;
   const char* ua_id = http_client_id_string;
-  caddr_t ret = NULL;
+  volatile caddr_t ret = NULL;
   caddr_t _err_ret;
   int meth = HC_METHOD_GET;
   dk_set_t hdrs = NULL;
