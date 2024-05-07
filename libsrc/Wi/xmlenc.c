@@ -1064,6 +1064,9 @@ xenc_key_t * xenc_get_key_by_name (const char * name, int protect)
 {
   xenc_key_t ** key_ptr;
 
+  if (!name)
+    return 0;
+
   if (protect)
     mutex_enter (xenc_keys_mtx);
 

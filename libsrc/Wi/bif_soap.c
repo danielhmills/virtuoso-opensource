@@ -4309,7 +4309,7 @@ bif_soap_call (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   caddr_t szURL = bif_string_arg (qst, args, 1, szMe);
   caddr_t szMethodURI = bif_string_or_null_arg (qst, args, 2, szMe);
   caddr_t szMethodName = bif_string_arg (qst, args, 3, szMe);
-  caddr_t *params = (caddr_t *) bif_array_or_null_arg (qst, args, 4, szMe);
+  caddr_t *params = (caddr_t *) bif_strict_array_or_null_arg (qst, args, 4, szMe);
   volatile int soap_version = 1, dl_val = 0;
   dk_session_t *out = strses_allocate ();
   dk_session_t * volatile http_out;
@@ -5767,7 +5767,7 @@ bif_soap_call_new (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   ctx.sc_soap_out = strses_allocate();
   ctx.sc_method_uri = bif_string_or_null_arg (qst, args, 2, me);
   ctx.sc_method_name = bif_string_arg (qst, args, 3, me);
-  ctx.sc_params = (caddr_t *) bif_array_or_null_arg (qst, args, 4, me);
+  ctx.sc_params = (caddr_t *) bif_strict_array_or_null_arg (qst, args, 4, me);
 
   ctx.sc_http_client = http_cli_std_init (bif_string_arg (qst, args, 1, me), qst);
 
