@@ -87,7 +87,7 @@
           <tr>
             <th>Named Graph IRI<span class="redstar">*</span></th>
                         <td>
-    		                  <v:text name="rdf_graph_name" value="" default_value="-- 'http://' || cfg_item_value (virtuoso_ini_path (), 'URIQA', 'DefaultHost') || '/DAV' " xhtml_size="100"/>
+    		                  <v:text name="rdf_graph_name" value="" default_value="-- 'http://' || virtuoso_ini_item_value ('URIQA', 'DefaultHost') || '/DAV' " xhtml_size="100"/>
                         </td>
                       </tr>
           <tr>

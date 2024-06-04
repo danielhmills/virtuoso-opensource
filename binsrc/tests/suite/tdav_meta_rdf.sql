@@ -28,7 +28,7 @@ create procedure TDAV_RDF_QUAD_CHECK (in resname varchar, in propuri varchar, in
   result_names (status);
   declare uriqa_default_host, new_dav_graph, full_res_uri, propval varchar;
   declare crop, actual integer;
-  uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
   if (uriqa_default_host is null or uriqa_default_host = '')
     signal('OBLOM', 'No uriqa_default_host!');
   crop := 0;
@@ -113,7 +113,7 @@ create procedure TDAV_RDF_QUAD_CHECK44(in resname varchar, in propuri varchar, i
 {
     declare uriqa_default_host, new_dav_graph, full_res_uri varchar;
     declare rc integer;
-    uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+    uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
     if (uriqa_default_host is null or uriqa_default_host = '')
       signal('OBLOM', 'No uriqa_default_host!');
     new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);
@@ -130,7 +130,7 @@ create procedure TDAV_RDF_QUAD_CHECK44(in resname varchar, in propuri varchar, i
 create procedure TDAV_RDF_QUAD_CHECK4(in resname varchar, in propuri varchar, in encoded_propval varchar)
 {
     declare uriqa_default_host, new_dav_graph, full_res_uri varchar;
-    uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+    uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
     if (uriqa_default_host is null or uriqa_default_host = '')
       signal('OBLOM', 'No uriqa_default_host!');
     new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);
@@ -174,7 +174,7 @@ create procedure TDAV_RDF_QUAD_CHECK_COL4(in col_full_path varchar, in propuri v
 create procedure TDAV_RDF_QUAD_CHECK5(in resname varchar, in propuri varchar, in encoded_propval varchar)
 {
     declare uriqa_default_host, new_dav_graph, full_res_path varchar;
-    uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+    uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
     if (uriqa_default_host is null or uriqa_default_host = '')
       signal('OBLOM', 'No uriqa_default_host!');
     new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);
@@ -192,7 +192,7 @@ create procedure TDAV_RDF_QUAD_CHECK5(in resname varchar, in propuri varchar, in
 create procedure TDAV_RDF_QUAD_CHECK6(in resname varchar, in propuri varchar, in encoded_propval varchar)
 {
     declare uriqa_default_host, new_dav_graph, full_res_path varchar;
-    uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+    uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
     if (uriqa_default_host is null or uriqa_default_host = '')
       signal('OBLOM', 'No uriqa_default_host!');
     new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);
@@ -224,7 +224,7 @@ create procedure TDAV_RDF_QUAD_CHECK_COL6(in col_full_path varchar, in propuri v
 create procedure TDAV_RDF_QUAD_CHECK7(in resname varchar)
 {
   declare uriqa_default_host, new_dav_graph, full_res_uri varchar;
-  uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
   if (uriqa_default_host is null or uriqa_default_host = '')
     signal('OBLOM', 'No uriqa_default_host!');
   new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);
@@ -258,7 +258,7 @@ create procedure TDAV_RDF_QUAD_CHECK_COL7(in col_full_path varchar)
 create procedure TDAV_RDF_QUAD_CHECK8(in resname varchar)
 {
   declare uriqa_default_host, new_dav_graph, fullpath varchar;
-  uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
   if (uriqa_default_host is null or uriqa_default_host = '')
     signal('OBLOM', 'No uriqa_default_host!');
   new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);
@@ -272,7 +272,7 @@ create procedure TDAV_RDF_QUAD_CHECK8(in resname varchar)
 create procedure TDAV_RDF_QUAD_CHECK9(in resname varchar)
 {
   declare uriqa_default_host, new_dav_graph, fullpath varchar;
-  uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_default_host := virtuoso_ini_item_value ( 'URIQA','DefaultHost');
   if (uriqa_default_host is null or uriqa_default_host = '')
     signal('OBLOM', 'No uriqa_default_host!');
   new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);
@@ -304,7 +304,7 @@ create procedure TDAV_RDF_QUAD_CHECK_COL9(in col_full_path varchar)
 create procedure TDAV_RDF_QUAD_CHECK10(in resname varchar)
 {
   declare uriqa_default_host, new_dav_graph, fullpath varchar;
-  uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
   if (uriqa_default_host is null or uriqa_default_host = '')
     signal('OBLOM', 'No uriqa_default_host!');
   new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);
@@ -337,7 +337,7 @@ create procedure TDAV_RDF_QUAD_CHECK_COL10(in col_full_path varchar)
 create procedure TDAV_RDF_QUAD_CHECK11(in resname varchar, in propuri varchar, in encoded_propval varchar)
 {
   declare uriqa_default_host, new_dav_graph, fullpath varchar;
-  uriqa_default_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_default_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
   if (uriqa_default_host is null or uriqa_default_host = '')
     signal('OBLOM', 'No uriqa_default_host!');
   new_dav_graph := sprintf('http://%s/DAV/', uriqa_default_host);

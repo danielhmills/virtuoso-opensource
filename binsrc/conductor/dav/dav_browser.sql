@@ -1911,7 +1911,7 @@ create procedure WEBDAV.DBA.host_url (
   }
   else
   {
-    host := cfg_item_value (virtuoso_ini_path (), 'URIQA', 'DefaultHost');
+    host := virtuoso_ini_item_value ('URIQA', 'DefaultHost');
     if (host is null)
     {
       host := sys_stat ('st_host_name');
@@ -4633,7 +4633,7 @@ create procedure WEBDAV.DBA.send_mail_internal (
   declare _message varchar;
   declare _smtp_server any;
 
-  _smtp_server := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'DefaultMailServer');
+  _smtp_server := virtuoso_ini_item_value ('HTTPServer', 'DefaultMailServer');
   if (_smtp_server = 0)
     return;
 
@@ -5350,7 +5350,7 @@ create procedure WEBDAV.DBA.ssl2iri (
 
   if (iri not like 'http://%')
   {
-    noSsl := cfg_item_value (virtuoso_ini_path (), 'URIQA', 'DefaultHost');
+    noSsl := virtuoso_ini_item_value ('URIQA', 'DefaultHost');
     if (noSsl is not null)
     {
       V := rfc1808_parse_uri (iri);

@@ -972,7 +972,7 @@ create procedure "VAD"."DBA"."VAD_LIST" (in dir varchar := null, in fs_type int 
   nlist := vector ();
   vaddir := dir;
   if (vaddir is null and fs_type = 0)
-    vaddir := cfg_item_value (virtuoso_ini_path (), 'Parameters', 'VADInstallDir');
+    vaddir := virtuoso_ini_item_value ('Parameters', 'VADInstallDir');
 
   if (vaddir is null)
     return;
@@ -1155,7 +1155,7 @@ create procedure "VAD"."DBA"."VAD_RESOLVE_DEPENDENCY_TREE" (
 
   if (vadDir is null)
   {
-    vadDir := cfg_item_value (virtuoso_ini_path (), 'Parameters', 'VADInstallDir');
+    vadDir := virtuoso_ini_item_value ('Parameters', 'VADInstallDir');
   }
   vadDir := rtrim (vadDir, '/') || '/';
 

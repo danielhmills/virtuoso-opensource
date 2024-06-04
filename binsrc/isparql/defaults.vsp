@@ -26,10 +26,10 @@
 <?vsp
   http_rewrite ();
   declare default_dgu varchar;
-  default_dgu := cfg_item_value (virtuoso_ini_path(), 'SPARQL', 'DefaultGraph');
+  default_dgu := virtuoso_ini_item_value ('SPARQL', 'DefaultGraph');
   if (default_dgu is null)
   {
-    --default_dgu := cfg_item_value (virtuoso_ini_path(), 'URIQA', 'DefaultHost');
+    --default_dgu := virtuoso_ini_item_value ('URIQA', 'DefaultHost');
     --if (default_dgu is not null)
     --  default_dgu := 'http://' || default_dgu || '/dataspace';
     --else
@@ -37,12 +37,12 @@
   }
 
   declare def_qry varchar;
-  def_qry := cfg_item_value (virtuoso_ini_path (), 'SPARQL', 'DefaultQuery');
+  def_qry := virtuoso_ini_item_value ('SPARQL', 'DefaultQuery');
   if (def_qry is null)
     def_qry := 'SELECT * WHERE {?s ?p ?o}';
 
   declare fixed_sponge varchar;
-  fixed_sponge := cfg_item_value (virtuoso_ini_path(), 'SPARQL', 'EndpointFixedSponge');
+  fixed_sponge := virtuoso_ini_item_value ('SPARQL', 'EndpointFixedSponge');
   if (fixed_sponge is null) fixed_sponge := '';
 
   declare default_user, default_pass varchar;

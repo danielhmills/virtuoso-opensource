@@ -27,10 +27,10 @@
   declare cookie_str, cookie_vec any;
 
   debug := get_keyword ('debug', params, case (get_keyword ('query', params, '')) when '' then '1' else '' end);
-  def_qry := cfg_item_value (virtuoso_ini_path (), 'SPARQL', 'DefaultQuery');
+  def_qry := virtuoso_ini_item_value ('SPARQL', 'DefaultQuery');
   if (def_qry is null)
     def_qry := 'SELECT * WHERE {?s ?p ?o} LIMIT 10';
-  ini_dflt_graph := cfg_item_value (virtuoso_ini_path (), 'SPARQL', 'DefaultGraph');
+  ini_dflt_graph := virtuoso_ini_item_value ('SPARQL', 'DefaultGraph');
 
 ?><html xmlns="http://www.w3.org/1999/xhtml">
 	<head>

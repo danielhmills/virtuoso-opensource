@@ -555,7 +555,7 @@ function make_def_home (ch)
 	 <td CLASS="geninput"><input type="text" name="u_quota" size=9 value="<?=_u_quota?>">
 	 <?vsp
 	   declare globalf any;
-	   globalf := cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'DAVQuotaEnabled');
+	   globalf := virtuoso_ini_item_value ('HTTPServer', 'DAVQuotaEnabled');
 	   if (globalf is null or 0 = atoi (globalf))
              http ('<small><a href="#quota">*check is disabled</a></small>');
 	 ?>

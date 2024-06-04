@@ -146,21 +146,7 @@ This use case consists of several "subcases," each of which introduces a schema 
 
 create procedure "XP"."XP"."EXTRACT_PORT_FROM_INI" ( )
 {
-  declare sect, item, item_value varchar;
-  sect := 'HTTPServer';
-  declare nitems, j integer;
-  nitems := cfg_item_count(virtuoso_ini_path(), sect);
-
-  j := 0;
-  while (j < nitems)
-    {
-	item := cfg_item_name(virtuoso_ini_path(), sect, j);
-	item_value := cfg_item_value(virtuoso_ini_path(), sect, item);
-	if (equ(item,'ServerPort'))
-	  return  item_value;
-	j := j + 1;
-    }
-  return '6667';
+  return coalesce (virtuoso_ini_item_value ('HTTPServer', 'ServerPort'), '6667');
 }
 ;
 

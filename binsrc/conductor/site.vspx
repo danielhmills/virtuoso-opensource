@@ -81,7 +81,7 @@
                 </tr>
                 <tr>
                   <th>Default Mail Server</th>
-                  <td><?V coalesce(cfg_item_value(virtuoso_ini_path(), 'HTTPServer','DefaultMailServer'), 'No default server') ?></td>
+                  <td><?V coalesce(virtuoso_ini_item_value ('HTTPServer','DefaultMailServer'), 'No default server') ?></td>
                 </tr>
                 <tr>
                   <th>SMTP Server for Data Space Applications</th>
@@ -91,7 +91,7 @@
                   </td>
                 </tr>
                 <?vsp
-                  if (cfg_item_value(virtuoso_ini_path(), 'HTTPServer','DefaultMailServer') <> 0 )
+                  if (virtuoso_ini_item_value ('HTTPServer','DefaultMailServer') <> 0 )
                   {
                 ?>
                 <tr>
@@ -187,10 +187,10 @@
                             declare msg, aadr, smtp_server varchar;
                             msg := 'Subject: Test message from Data Space Applications Default Site\r\nContent-Type: text/html\r\n';
                             msg := msg || '<br/>\r\nYour SMTP server ';
-                            if (self.s_def.ufl_selected and cfg_item_value(virtuoso_ini_path(), 'HTTPServer','DefaultMailServer') <> 0)
+                            if (self.s_def.ufl_selected and virtuoso_ini_item_value ('HTTPServer','DefaultMailServer') <> 0)
                             {
-                              msg:= msg || cfg_item_value(virtuoso_ini_path(), 'HTTPServer','DefaultMailServer');
-                              smtp_server := cfg_item_value(virtuoso_ini_path(), 'HTTPServer','DefaultMailServer');
+                              msg:= msg || virtuoso_ini_item_value ('HTTPServer','DefaultMailServer');
+                              smtp_server := virtuoso_ini_item_value ('HTTPServer','DefaultMailServer');
                             }
                             else
                             {

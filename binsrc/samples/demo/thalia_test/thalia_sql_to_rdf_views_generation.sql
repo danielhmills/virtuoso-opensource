@@ -461,7 +461,7 @@ drop procedure DB.DBA.REMOVE_THALIA_RDF_DET;
 create procedure DB.DBA.THALIA_MAKE_RDF_DET()
 {
     declare uriqa_str varchar;
-    uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+    uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
     uriqa_str := 'http://' || uriqa_str || '/thalia';
     DB.DBA."RDFData_MAKE_DET_COL" ('/DAV/Thalia/RDFData/', uriqa_str, NULL);
     VHOST_REMOVE (lpath=>'/thalia/data/rdf');
@@ -478,7 +478,7 @@ create procedure DB.DBA.THALIA_DET_REF (in par varchar, in fmt varchar, in val v
 {
   declare res, iri any;
   declare uriqa_str varchar;
-  uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
   uriqa_str := 'http://' || uriqa_str || '/thalia';
   iri := uriqa_str || replace(val, '/', '_');
   res := sprintf ('iid (%d).rdf', iri_id_num (iri_to_id (iri)));
@@ -513,7 +513,7 @@ create procedure DB.DBA.LOAD_THALIA_ONTOLOGY_FROM_DAV()
 	declare content, urihost varchar;
 	select cast (RES_CONTENT as varchar) into content from WS.WS.SYS_DAV_RES where RES_FULL_PATH = '/DAV/Thalia/thalia.owl';
 	DB.DBA.RDF_LOAD_RDFXML (content, 'http://demo.openlinksw.com/schemas/thalia#', 'http://demo.openlinksw.com/schemas/ThaliaOntology/1.0/');
-	urihost := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+	urihost := virtuoso_ini_item_value ('URIQA','DefaultHost');
 	if (urihost = 'demo.openlinksw.com')
 	{
 		DB.DBA.VHOST_REMOVE (lpath=>'/schemas/thalia');

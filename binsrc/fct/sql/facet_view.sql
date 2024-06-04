@@ -1423,7 +1423,7 @@ http ('
    declare dav_pwd varchar;
    declare demo_dav_path, demo_xsl_uri varchar;
 
-   uriqa_str := cfg_item_value( virtuoso_ini_path(), 'URIQA','DefaultHost');
+   uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
 
    if (uriqa_str is null)
      {
@@ -2386,7 +2386,7 @@ create procedure
 fct_gen_opensearch_link ()
 {
   declare uriqa_str varchar;
-  uriqa_str := cfg_item_value( virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
 
   if (uriqa_str is null)
     {

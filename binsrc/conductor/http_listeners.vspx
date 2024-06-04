@@ -30,7 +30,7 @@
   <v:form name="frm_listeners" action="http_serv_mgmt.vspx" method="POST" type="simple">
 
   <v:data-set name="items" nrows="15" scrollable="1" width="80"
-              sql="select distinct HP_HOST, HP_LISTEN_HOST, (case HP_LISTEN_HOST when '*ini*' then 0 when '*sslini*' then 0 when (':' || cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'SSLPort')) then 0 else 1 end) as HP_NO_EDIT from DB.DBA.HTTP_PATH order by HP_HOST, HP_LISTEN_HOST">
+              sql="select distinct HP_HOST, HP_LISTEN_HOST, (case HP_LISTEN_HOST when '*ini*' then 0 when '*sslini*' then 0 when (':' || virtuoso_ini_item_value ('HTTPServer', 'SSLPort')) then 0 else 1 end) as HP_NO_EDIT from DB.DBA.HTTP_PATH order by HP_HOST, HP_LISTEN_HOST">
     <v:template name="header1" type="simple" name-to-remove="table" set-to-remove="bottom">
       <table class="main_page_area">
         <tr align="left">
@@ -57,11 +57,11 @@
                 host_toshow := '0.0.0.0';
                 if(subseq( rowset[0], 0, strchr(rowset[0],':') ) = '*ini*') {
                   httphost_toshow := '{Default Web Site}';
-                  port_toshow := cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'ServerPort');
+                  port_toshow := virtuoso_ini_item_value ('HTTPServer', 'ServerPort');
                 }
                 else {
                   httphost_toshow := '{Default SSL Web Site}';
-                  port_toshow := cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'SSLPort');
+                  port_toshow := virtuoso_ini_item_value ('HTTPServer', 'SSLPort');
                 }
               }
               else {

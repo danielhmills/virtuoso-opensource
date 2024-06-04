@@ -43,7 +43,7 @@ create procedure rq_s_2_create_dsn(){
 	if (isnull(_driver))
 	  signal('RQS2','Can''t find virtuoso driver.');
 	_dsn := 'Local Virtuoso Tutorial RQ-S-2';
-	_address := 'localhost:' || cfg_item_value (virtuoso_ini_path(),'Parameters', 'ServerPort');
+	_address := 'localhost:' || virtuoso_ini_item_value ('Parameters', 'ServerPort');
 	_userid := 'demo';
 	_pass := 'demo';
 

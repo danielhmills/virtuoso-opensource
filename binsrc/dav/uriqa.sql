@@ -36,10 +36,8 @@ create index URIQA_HANDLER_ORDER_NAME on WS.WS.URIQA_HANDLER (UH_ORDER, UH_NAME)
 
 create function WS.WS.URIQA_CFG_ITEM_VALUE (in param_name varchar, in is_list integer, in dflt_value varchar)
 {
-  declare ini_path varchar;
   declare string_val varchar;
   declare list_val any;
-  ini_path := virtuoso_ini_path ();
   string_val := virtuoso_ini_item_value ('URIQA', param_name);
   if (string_val is not null)
     {

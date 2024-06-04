@@ -116,7 +116,7 @@
 	         DB.DBA.YACUTIA_DAV_DELETE (path, 1, 0);
 	         DB.DBA.YACUTIA_DAV_COL_CREATE('/DAV/temp/', '110110000NN', 'dav', 'administrators');
 	         DB.DBA.YACUTIA_DAV_RES_UPLOAD (path, self.body_o, '', '110110000NN', 'dav', 'administrators', now(), now(), null);
-		 gr := sprintf ('http://%s/schemas/%s#', cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost'), self.base_url);
+		 gr := sprintf ('http://%s/schemas/%s#', virtuoso_ini_item_value ('URIQA','DefaultHost'), self.base_url);
 		 stat := '00000';
 		 msg := 'OK';
 		 sparql clear graph iri (?:gr);
@@ -309,7 +309,7 @@
 	  <?vsp
 	       declare defhost, stat, msg, data, meta, data2, meta2, qr, gr, fct_installed any;
 	       stat := '00000';
-	       defhost := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+	       defhost := virtuoso_ini_item_value ('URIQA','DefaultHost');
 	     gr := sprintf ('http://%s/%s#', defhost, self.base_url);
 	       if (exists (select 1 from VAD.DBA.VAD_REGISTRY where R_KEY like '/VAD/fct/%/resources/dav/%'))
 	         fct_installed := 1;
