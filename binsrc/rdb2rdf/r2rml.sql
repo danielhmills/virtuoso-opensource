@@ -1239,7 +1239,7 @@ create function R2RML_MAKE_QM_FROM_G (in g varchar, in tgt_graph varchar := null
   if (tgt_graph is not null)
     m.default_constg := iri_to_id (tgt_graph);
   if (qm_uri is null)
-    qm_uri := concat ('urn:qm:', bin2hex(xenc_digest(tgt_graph,'sha1')));
+    qm_uri := concat ('urn:qm:', bin2hex(xenc_digest(coalesce(tgt_graph,g),'sha1')));
   qm_iid := iri_to_id(qm_uri);
   m.R2RML_MAKE_QM (null, qm_iid);
   return string_output_string (m.codegen_ses);
