@@ -2882,7 +2882,8 @@ create procedure WEBDAV.DBA.det_api_key (
   in name varchar)
 {
   declare retValue any;
-
+  if (not table_exists ('OAUTH.DBA.APP_REG'))
+    return null;
   retValue := WEBDAV.DBA.exec ('select a_key from OAUTH..APP_REG where WEBDAV.DBA.service_name (a_name) = WEBDAV.DBA.service_name (?) and a_owner = 0', vector (name));
   if (WEBDAV.DBA.isVector (retValue) and length (retValue))
     return retValue[0][0];
@@ -5646,6 +5647,8 @@ create procedure WEBDAV.DBA.oauth_exist ()
 {
   declare retValue any;
 
+  if (not table_exists ('OAUTH.DBA.APP_REG'))
+    return 0;
   retValue := WEBDAV.DBA.exec ('select TOP 1 1 from OAUTH.DBA.APP_REG where A_TYPE = 1');
   if (WEBDAV.DBA.isVector (retValue) and (length (retValue) = 1))
     return 1;
@@ -5661,6 +5664,8 @@ create procedure WEBDAV.DBA.oauth_list ()
   declare retValue, items, tmp any;
 
   retValue := vector ();
+  if (not table_exists ('OAUTH..APP_REG'))
+    return retValue;
   items := WEBDAV.DBA.exec ('select A_NAME, A_DESCR from OAUTH.DBA.APP_REG where A_TYPE = 1 order by A_NAME');
   foreach (any item in items) do
   {
