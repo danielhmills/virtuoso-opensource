@@ -399,7 +399,7 @@ skip_failed_group: ;
 <?vsp
 
             declare default_dgu varchar;
-            default_dgu := cfg_item_value (virtuoso_ini_path(), 'URIQA', 'DefaultHost');
+            default_dgu := virtuoso_ini_item_value ('URIQA', 'DefaultHost');
             if (default_dgu is not null)
               default_dgu := 'http://' || default_dgu || '/sys';
 ?>

@@ -43,12 +43,14 @@
         <![CDATA[
           declare pos, mode int;
           declare ses, bh any;
+          declare vad_install_dir varchar;
 
-          if (self.src_folder is null)
-            self.src_folder := cfg_item_value (virtuoso_ini_path (), 'Parameters', 'VADInstallDir');
-
-          if (self.src_folder is null)
-            self.src_folder := '../vad/';
+          vad_install_dir := virtuoso_ini_item_value ('Parameters', 'VADInstallDir');
+          if (vad_install_dir is null)
+            vad_install_dir := '../vad/';
+          if (vad_install_dir not like '%/')
+            vad_install_dir := concat (vad_install_dir, '/');
+          self.src_folder := vad_install_dir;
 
           mode := atoi(get_keyword('choice_source', params, '-1'));
           if (mode = 0 and e.ve_is_post and e.ve_button is not null and e.ve_button.vc_name = 'upl_btn')
@@ -110,10 +112,13 @@
 
           <v:button name="sdef1" value="Default" action="simple">
             <v:on-post>
-              self.src_folder := cfg_item_value (virtuoso_ini_path (), 'Parameters', 'VADInstallDir');
-              if (self.src_folder is null)
-               self.src_folder := '../vad/';
-
+              declare vad_install_dir varchar;
+              vad_install_dir := virtuoso_ini_item_value ('Parameters', 'VADInstallDir');
+              if (vad_install_dir is null)
+                vad_install_dir := '../vad/';
+              if (vad_install_dir not like '%/')
+                vad_install_dir := concat (vad_install_dir, '/');
+              self.src_folder := vad_install_dir;
               self.src_folder_type := 0;
               self.vc_data_bind (e);
             </v:on-post>

@@ -1,5 +1,83 @@
 # NEWS
 
+## June 10, 2024, v7.2.13-rc:
+  * Virtuoso Engine
+	- Added safe logical_* bif names
+	- Fixed issues with clang 15 and newer compilers
+	- Fixed issues reported by link time optimizer (LTO)
+	- Fixed 'Read/Write wait on column page...' should be debug messages
+	- Fixed various missing BIF functions argument checks
+	- Fixed issue with cube/rollup 
+	- Fixed issue with bad date/time artithmetics
+	- Fixed issue getting client status during swapping or www maintenance
+	- Fixed issue collecting freetext stats during checkpoint
+	- Fixed issue on rehash if `dict_put` is used in select list
+    - Fixed issue with MaxMemPoolSize
+	- Fixed put MD5 context on connection global (fixes #1287)
+	- Fixed issue with hash in group by (fixes #1285)
+	- Fixed missing sz check (fixes #1283)
+	- Fixed length calculation in REPEAT (fixes #1282)
+	- Fixed offset overflow (fixes #1281)
+	- Fixed issue trying to normalize an invalid numeric (fixes #1279)
+	- Fixed unfolded bifs have to have serial to distinguish separate calls (fixes #1276)
+	- Fixed 64bit arith overflow (fixes #1270)
+	- Fixed missing check for star (fixes #1269)
+	- Fixed set dc type on grouping sets (Fixed #1268)
+	- Fixed check num cols in union branches when subq non-terminal is used (fixes #1267)
+	- Fixed check for control exp over non-terminal not-allowed/can't be handled (fixes #1266)
+	- Fixed ft exp & similar not allowed in control exp (fixes #1265)
+	- Fixed negative column offset (fixes #1264)
+	- Fixed test for comma exp not allowed in arith exp (fixes #1263)
+	- Fixed cost on void geo function (fixes #1262)
+	- Fixed memcopy buffer overflow (fixes #1259)
+	- Fixed missing stack overflow check (fixes #1258)
+	- Fixed alloc double dep on demand as as int (fixes #1257)
+	- Fixed vec input should be declared as boxed i.e. array (fixes #1254)
+	- Fixed ambiguous subq return (fixes #1253)
+	- Fixed issue with non-string copy (fixes #1252)
+	- Fixed missing check for const in predicate (fixed #1251)
+	- Fixed const in predicate can be removed by optimiser (fixed #1250)
+	- Fixed issue on any ssl w/h nulls (fixes #1249)
+	- Fixed issue with bad index op ref in table dft (fixes #1245)
+	- Fixed small issues with `sql_to_c.awk` script (fixes #1244)
+	- Fixed issue with join and order by on null result (fixes #1241)
+	- Fixed issue freeing n-way nic arrays
+    - Fixed issue building Windows binaries
+	- Fixed memory leak
+
+  * SPARQL
+	- Fixed missing checks for service and query arguments
+	- Fixed TSV output to use SPARQL 1.1 TSV specification
+	- Fixed issue importing bad IRI pattern
+	- Fixed issues with microdata parser
+	- Fixed geometry objects must be represented as strings (fixes #1274)
+
+  * Web Server and DAV
+    - Fixed issue reading large chunked data in SSE client
+    - Fixed issue with transaction boundary in DAV
+    - Fixed issue with stack var clobbered by setjump/longjump
+
+  * Faceted Browser
+	- Upgraded FCT build process to use vadpacker
+	- Fixed namespace of inference rules graphs
+	- Removed deprecated scripts
+
+  * Conductor
+    - Upgraded Conductor build process to use vadpacker
+    - Added optional alternative names for server X.509 certificate
+    - Fixed missing check for optional table
+    - Fixed issue when initialization of snapshot fails
+    - Fixed issue with wrong vad file path during vad install
+    - Fixed save CORs via WS wizard duplicate cors options
+    - Fixed preserve qualifier when updating trigger
+    - Fixed missing condition for sponger settings
+    - Fixed constrain site-name field to non-space characters only
+
+  * R2RML
+	- Upgraded RDB2RDF build process to use vadpacker
+	- Fixed issue calculating hash when target graph is null
+
+
 ## February 13, 2024, v7.2.12:
 
   * Virtuoso Engine

@@ -3917,6 +3917,7 @@
                             {
                                 DB.DBA.DAV_PROP_REMOVE_INT (dav_fullPath, item[0], null, null, 0, 0, 0);
                             }
+                            if (table_exists ('DB.DBA.SYNC_COLS_TYPES'))
                             WEBDAV.DBA.exec ('delete from DB.DBA.SYNC_COLS_TYPES where CT_COL_ID = ?', vector (DB.DBA.DAV_SEARCH_ID (dav_fullPath, 'C')));
                           }
                         }

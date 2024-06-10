@@ -457,7 +457,7 @@
                                       </v:text> MB
                                     </td>
                                   </tr>
-                                  <v:template type="simple" condition="atoi (coalesce (cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'DAVQuotaEnabled'), '0')) = 0">
+                                  <v:template type="simple" condition="atoi (coalesce (virtuoso_ini_item_value ('HTTPServer', 'DAVQuotaEnabled'), '0')) = 0">
                                     <tr><td/><td><span class="note">DAV quota not enforced due to virtuoso ini setting</span></td></tr>
                                   </v:template>
                                   <tr>

@@ -76,7 +76,7 @@
   _now := registry_get ('__scheduler_do_now__');
 
   declare scheduler_interval any;
-  scheduler_interval := cfg_item_value(virtuoso_ini_path(), 'Parameters', 'SchedulerInterval');
+  scheduler_interval := virtuoso_ini_item_value ('Parameters', 'SchedulerInterval');
   scheduler_interval := cast (scheduler_interval as integer);
   if (scheduler_interval = 0)
     {
@@ -200,7 +200,7 @@ next_s:
       <br>
       <div align="left"><a name="info"><b><i>Notes:</i></b></a></div>
       <small>
-      <li>Events created with an interval less than the INI SchedulerInterval <BR />setting (currently <?=cfg_item_value(virtuoso_ini_path(), 'Parameters', 'SchedulerInterval')?>) will not be executed again until that interval has elapsed.</li>
+      <li>Events created with an interval less than the INI SchedulerInterval <BR />setting (currently <?=virtuoso_ini_item_value ('Parameters', 'SchedulerInterval')?>) will not be executed again until that interval has elapsed.</li>
       </small>
 <?vsp adm_page_footer(); ?>
   </body>

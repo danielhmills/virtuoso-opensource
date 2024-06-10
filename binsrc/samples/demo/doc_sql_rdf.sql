@@ -10,7 +10,7 @@ GRANT SELECT ON "DB"."DBA"."document_search" TO "SPARQL";
 create function DB.DBA.DOC_ID_TO_IRI(in _prefix varchar,in _id varchar)
 {
   declare iri, uriqa_host any;
-  uriqa_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
   iri := 'http://' || uriqa_host || '/Doc/' || _prefix || '/' || _id || '#this';
   return sprintf ('http://%s/DAV/home/doc/RDFData/All/iid%%20(%d).rdf', uriqa_host, iri_id_num (iri_to_id (iri)));
 }
@@ -23,7 +23,7 @@ create function DB.DBA.DOC_IRI_TO_ID(in _iri varchar)
     if (parts is not null)
     {
         declare uriqa_host, iri any;
-        uriqa_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+        uriqa_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
         if (parts[0] = uriqa_host)
         {
             iri := id_to_iri(iri_id_from_num(parts[1]));
@@ -325,7 +325,7 @@ drop procedure DB.DBA.REMOVE_DOC_RDF_DET;
 create procedure DB.DBA.DOC_MAKE_RDF_DET()
 {
     declare uriqa_str varchar;
-    uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+    uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
     uriqa_str := 'http://' || uriqa_str || '/Doc';
     DB.DBA."RDFData_MAKE_DET_COL" ('/DAV/home/doc/RDFData/', uriqa_str, NULL);
     VHOST_REMOVE (lpath=>'/Doc/data/rdf');
@@ -342,7 +342,7 @@ create procedure DB.DBA.DOC_DET_REF (in par varchar, in fmt varchar, in val varc
 {
   declare res, iri any;
   declare uriqa_str varchar;
-  uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
   uriqa_str := 'http://' || uriqa_str || '/Doc';
   iri := uriqa_str || val;
   res := sprintf ('iid (%d).rdf', iri_id_num (iri_to_id (iri)));
@@ -393,7 +393,7 @@ create procedure DB.DBA.LOAD_DOC_ONTOLOGY_FROM_DAV()
   declare content1, urihost varchar;
   select cast (RES_CONTENT as varchar) into content1 from WS.WS.SYS_DAV_RES where RES_FULL_PATH = '/DAV/VAD/doc/sql/doc.owl';
   DB.DBA.RDF_LOAD_RDFXML (content1, 'http://demo.openlinksw.com/schemas/doc#', 'http://demo.openlinksw.com/schemas/DocOntology/1.0/');
-  urihost := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  urihost := virtuoso_ini_item_value ('URIQA','DefaultHost');
   if (urihost = 'demo.openlinksw.com')
   {
     DB.DBA.VHOST_REMOVE (lpath=>'/schemas/doc');
@@ -412,7 +412,7 @@ create procedure DB.DBA.LOAD_DOC_ONTOLOGY_FROM_DAV2()
   declare urihost varchar;
   sparql base <http://demo.openlinksw.com/schemas/doc#> load bif:concat ("http://", bif:registry_get("URIQADefaultHost"), "/DAV/VAD/doc/sql/doc.owl")
    into graph <http://demo.openlinksw.com/schemas/DocOntology/1.0/>;
-  urihost := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  urihost := virtuoso_ini_item_value ('URIQA','DefaultHost');
   if (urihost = 'demo.openlinksw.com')
   {
     DB.DBA.VHOST_REMOVE (lpath=>'/schemas/doc');

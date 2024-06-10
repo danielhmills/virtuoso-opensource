@@ -90,7 +90,7 @@
             if (self.content_proc_name = 'db.dba.fs_browse_proc')
             {
               declare root_path varchar;
-              root_path := cfg_item_value(virtuoso_ini_path(), 'HTTPServer','ServerRoot');
+              root_path := virtuoso_ini_item_value ('HTTPServer','ServerRoot');
               root_path := rtrim(root_path, '/');
               self.curpath := trim(self.curpath, '/');
               self.curpath := concat(root_path, '/', self.curpath);

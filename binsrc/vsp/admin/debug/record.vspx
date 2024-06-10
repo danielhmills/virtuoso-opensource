@@ -76,7 +76,7 @@
                 <v:script>
                   <![CDATA[
 declare expr, state, message, meta, result, server_root any;
-server_root := cfg_item_value(virtuoso_ini_path(), 'HTTPServer','ServerRoot');
+server_root := virtuoso_ini_item_value ('HTTPServer','ServerRoot');
 expr := sprintf('select sys_mkpath(\'%s/%s\')', server_root, control.ufl_value);
 expr := replace(expr, '\\', '/');
 state := '00000';
@@ -289,7 +289,7 @@ declare sql, state, message, meta, result any;
 declare sql_rows, rows, idx any;
 declare new_session, fname, server_root any;
 
-server_root := cfg_item_value(virtuoso_ini_path(), 'HTTPServer','ServerRoot');
+server_root := virtuoso_ini_item_value ('HTTPServer','ServerRoot');
 -- write out RUN command
 sql := 'select RES_NAME from WS.WS.SYS_DAV_RES where RES_FULL_PATH like \'/DAV/sys_http_recording/%\' order by RES_NAME';
 state := '00000';
@@ -391,7 +391,7 @@ registry_set('__save_http_history', '');
 registry_set('__block_http_history', '');
 
 -- move necessary script files to target directory
-server_root := cfg_item_value(virtuoso_ini_path(), 'HTTPServer','ServerRoot');
+server_root := virtuoso_ini_item_value ('HTTPServer','ServerRoot');
 
 content := http_debug_get_filecontent('filter.awk');
 to_fname := concat(server_root, '/', self.pdir, '/filter.awk');

@@ -31,7 +31,7 @@ If not set, '/fct/xslt/isparql_describe.xsl' is used.
    declare dav_pwd varchar;
    declare demo_dav_path, demo_xsl_uri varchar;
 
-   uriqa_str := cfg_item_value( virtuoso_ini_path(), 'URIQA','DefaultHost');
+   uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
 
    if (uriqa_str is null)
      {

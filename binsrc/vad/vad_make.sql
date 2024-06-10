@@ -1318,7 +1318,7 @@ failure:;
     -- from the checkpoint 
     declare trx, folder varchar;
     declare pos integer;
-    trx := coalesce (cfg_item_value(virtuoso_ini_path(), 'Database','TransactionFile'), '');
+    trx := coalesce (virtuoso_ini_item_value ('Database','TransactionFile'), '');
     folder := server_root ();
     trx := concat(rtrim(folder, '/'), '/', trx);
 
@@ -2400,7 +2400,7 @@ create procedure "VAD"."DBA"."VAD_AUTO_UPGRADE" ()
   declare pname, pver, pfull, pisdav, pdate any;
   declare vaddir any;
 
-  vaddir := cfg_item_value (virtuoso_ini_path (), 'Parameters', 'VADInstallDir'); --'../vad/';
+  vaddir := virtuoso_ini_item_value ('Parameters', 'VADInstallDir'); --'../vad/';
 
   if (vaddir is null)
     return;

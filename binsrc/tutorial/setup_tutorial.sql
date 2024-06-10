@@ -233,7 +233,7 @@ create procedure t_populate_sioc (in path varchar)
   declare data varchar;
   declare s,e integer;
   
-  graph := cfg_item_value (virtuoso_ini_path(), 'URIQA', 'DefaultHost');
+  graph := virtuoso_ini_item_value ('URIQA', 'DefaultHost');
   if (graph is null)
     return;
   graph := 'http://' || ltrim(graph,'/') || '/tutorial';
@@ -274,7 +274,7 @@ create procedure tut_generate_tomcat_url (in tut_name any, in lines any)
 
    while (ini_s is not NULL)
     {
-	ini_s := cfg_item_value(virtuoso_ini_path(), 'Parameters','JavaVMOption' || cast (idx as varchar));
+    ini_s := virtuoso_ini_item_value ('Parameters','JavaVMOption' || cast (idx as varchar));
 	if (strstr (ini_s, 'catalina.home'))
 	   {
 		pos := strstr (ini_s, '=');

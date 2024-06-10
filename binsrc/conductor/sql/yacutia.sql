@@ -1481,7 +1481,7 @@ create procedure "PUMP"."DBA"."GET_DSN" () returns varchar
   while ( nitems >= 0 ) {
     item := cfg_item_name(virtuoso_ini_path(), sect, nitems);
     if (equ(item,'ServerPort')) {
-      port := cfg_item_value(virtuoso_ini_path(), sect, item);
+      port := virtuoso_ini_item_value (sect, item);
       goto next;
     }
     nitems := nitems - 1;
@@ -4318,7 +4318,7 @@ create procedure www_tree (in path any)
 
        HP_NO_EDIT := case HOST when '*ini*' then 0 when '*sslini*' then 0 else 1 end;
        HP_NO_CTRL := case LHOST when '*ini*' then 0 when '*sslini*' then 0
-    when (':' || cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'SSLPort')) then 0
+    when (':' || virtuoso_ini_item_value ('HTTPServer', 'SSLPort')) then 0
     else 1 end;
 
        vhost := HOST;
@@ -4329,13 +4329,13 @@ create procedure www_tree (in path any)
        if (vhost = '*ini*')
    {
      vhost := '{Default Web Site}';
-     port := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'ServerPort');
+     port := virtuoso_ini_item_value ('HTTPServer', 'ServerPort');
      intf := '0.0.0.0';
    }
        else if (vhost = '*sslini*')
    {
            vhost := '{Default SSL Web Site}';
-     port := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLPort');
+     port := virtuoso_ini_item_value ('HTTPServer', 'SSLPort');
      if (port is null)
        port := '';
      intf := '0.0.0.0';
@@ -4347,9 +4347,9 @@ create procedure www_tree (in path any)
      if (intf = '' or intf = '*ini*' or intf = '*sslini*')
        {
 	   if (intf = '*ini*')
-	     port := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'ServerPort');
+	     port := virtuoso_ini_item_value ('HTTPServer', 'ServerPort');
 	   else if (intf = '*sslini*')
-	     port := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLPort');
+	     port := virtuoso_ini_item_value ('HTTPServer', 'SSLPort');
           intf := '0.0.0.0';
        }
    }
@@ -4779,7 +4779,7 @@ create procedure y_check_host (in host varchar, in listen varchar, in port varch
   declare inihost, ihost, iport varchar;
   declare pos int;
 
-  inihost := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'ServerPort');
+  inihost := virtuoso_ini_item_value ('HTTPServer', 'ServerPort');
 
   pos := strrchr (inihost, ':');
 

@@ -168,7 +168,7 @@
               {
                 self.curpath2 := get_keyword('start-path', self.vc_page.vc_event.ve_params);
                 declare root_path varchar;
-                root_path := cfg_item_value(virtuoso_ini_path(), 'HTTPServer','ServerRoot');
+                root_path := virtuoso_ini_item_value ('HTTPServer','ServerRoot');
                 root_path := rtrim(root_path, '/');
                 self.curpath2 := trim(self.curpath2, '/');
                 self.curpath2 := concat(root_path, '/', self.curpath2);

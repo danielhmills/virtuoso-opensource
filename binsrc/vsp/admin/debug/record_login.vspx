@@ -75,10 +75,10 @@
     </v:template>
   </v:login>
   <v:template name="template_placeholder" type="simple" condition="self.sid is not null">
-    <v:template type="simple" condition="'1' = cfg_item_value(virtuoso_ini_path(), 'HTTPServer','EnableRequestTrap')">
+    <v:template type="simple" condition="'1' = virtuoso_ini_item_value ('HTTPServer','EnableRequestTrap')">
       <v:placeholder/>
     </v:template>
-    <v:template type="simple" condition="(cfg_item_value(virtuoso_ini_path(), 'HTTPServer','EnableRequestTrap') is null) or (cfg_item_value(virtuoso_ini_path(), 'HTTPServer','EnableRequestTrap') <> '1')">
+    <v:template type="simple" condition="(virtuoso_ini_item_value ('HTTPServer','EnableRequestTrap') is null) or (virtuoso_ini_item_value ('HTTPServer','EnableRequestTrap') <> '1')">
       <h4>
         Please, set EnableRequestTrap = 1 in [HTTPServer] group in server startup .ini file and restart server.
         <br/>
