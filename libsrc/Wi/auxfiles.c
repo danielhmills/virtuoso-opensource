@@ -59,9 +59,9 @@ int32 http_threads;
 int32 ini_http_threads;
 int32 http_thread_sz;
 int32 http_keep_alive_timeout = 15;
-long http_max_keep_alives = 200;
-long http_max_cached_proxy_connections = 20;
-long http_proxy_connection_cache_timeout = 15;
+int32 http_max_keep_alives = 200;
+int32 http_max_cached_proxy_connections = 20;
+int32 http_proxy_connection_cache_timeout = 15;
 char * dav_root = 0;
 long vsp_in_dav_enabled = 0;
 long http_proxy_enabled = 0;
@@ -140,14 +140,14 @@ int32 c_dense_page_allocation = 0;
 int32 log_proc_overwrite = 1;
 int32 log_sql_code_init = 0;
 
-void _db_read_cfg (dbe_storage_t * dbs, char *mode);
+void _db_read_cfg (dbe_storage_t * dbs, const char *mode);
 dk_set_t _cfg_read_storages (caddr_t **temp_storage);
-void _dbs_read_cfg (dbe_storage_t * dbs, char *file);
+void _dbs_read_cfg (dbe_storage_t * dbs, const char *file);
 
 void (*cfg_replace_log)(char *str) = _cfg_replace_log;
 void (*cfg_set_checkpoint_interval)(int32) = _cfg_set_checkpoint_interval;
-void (*db_read_cfg) (caddr_t *it, char *mode) = (void (*) (caddr_t *it, char *mode))_db_read_cfg;
-void (*dbs_read_cfg) (caddr_t *it, char *mode) = (void (*) (caddr_t *it, char *mode)) _dbs_read_cfg;
+void (*db_read_cfg) (caddr_t *it, const char *mode) = (void (*) (caddr_t *it, const char *mode))_db_read_cfg;
+void (*dbs_read_cfg) (caddr_t *it, const char *mode) = (void (*) (caddr_t *it, const char *mode)) _dbs_read_cfg;
 dk_set_t (*dbs_read_storages) (caddr_t **temp_file) = _cfg_read_storages;
 
 
@@ -169,8 +169,8 @@ void
 srv_set_cfg(
     void (*replace_log)(char *str),
     void (*set_checkpoint_interval)(int32 f),
-    void (*read_cfg)(caddr_t * it, char *mode),
-    void (*s_read_cfg)(caddr_t * it, char *mode),
+    void (*read_cfg)(caddr_t * it, const char *mode),
+    void (*s_read_cfg)(caddr_t * it, const char *mode),
     dk_set_t (*read_storages)(caddr_t **temp_file)
     )
 {
@@ -459,7 +459,7 @@ cfg_parse_backup_dirs()
 
 
 void
-_db_read_cfg (dbe_storage_t * ignore, char *mode)
+_db_read_cfg (dbe_storage_t * ignore, const char *mode)
 {
   /* int trx_bufs; */
   /* char * trx_file; */
@@ -778,7 +778,7 @@ dbs_log_derived_name (dbe_storage_t * dbs, char * ext)
 
 
 void
-_dbs_read_cfg (dbe_storage_t * dbs, char *file)
+_dbs_read_cfg (dbe_storage_t * dbs, const char *file)
 {
   long max_cp = 0;
   /* int trx_bufs; */

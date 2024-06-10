@@ -2859,7 +2859,7 @@ create procedure WS.WS.VFS_ROBOTS_GET (
   if (not isvector (head) or length (head) = 0 or head[0] not like 'HTTP/1._ 200 %')
     goto en;
 
-  me := coalesce (cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'ClientIdString'), 'Mozilla/4.0 (compatible; OpenLink Virtuoso)');
+  me := coalesce (virtuoso_ini_item_value ('HTTPServer', 'ClientIdString'), 'Mozilla/4.0 (compatible; OpenLink Virtuoso)');
   robots := VFS_ROBOTS_PARSE (ret, me, delay_sec);
   if (delay_sec > site_delay_sec)
     site_delay_sec := delay_sec;

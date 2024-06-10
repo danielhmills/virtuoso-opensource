@@ -261,14 +261,14 @@
      }
 
 -- XXX: the default HTTPS listener should be listed when it's enabled
---  _hs := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLPort');
+--  _hs := virtuoso_ini_item_value ('HTTPServer', 'SSLPort');
 --  if (_hs)
 --    {
---      _hs_cert := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLCertificate');
---      _hs_key :=  cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLPrivateKey');
---      _hs_vrfy :=  cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'X509ClientVerify');
---      _hs_depth :=  cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'X509ClientVerifyDepth');
---      _hs_ca :=  cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'X509ClientVerifyCAFile');
+--      _hs_cert := virtuoso_ini_item_value ('HTTPServer', 'SSLCertificate');
+--      _hs_key :=  virtuoso_ini_item_value ('HTTPServer', 'SSLPrivateKey');
+--      _hs_vrfy :=  virtuoso_ini_item_value ('HTTPServer', 'X509ClientVerify');
+--      _hs_depth :=  virtuoso_ini_item_value ('HTTPServer', 'X509ClientVerifyDepth');
+--      _hs_ca :=  virtuoso_ini_item_value ('HTTPServer', 'X509ClientVerifyCAFile');
 --    }
 
   if ('' <> get_keyword ('ppath_bw', params, '')
@@ -1670,11 +1670,11 @@ Error: <small>The following procedures can't be published as they have the same 
     if (_lhost = def_ssl)
       {
         _security := 'SSL';
-        _hs_cert := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLCertificate');
-        _hs_key :=  cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLPrivateKey');
-        _hs_vrfy :=  cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'X509ClientVerify');
-        _hs_depth :=  cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'X509ClientVerifyDepth');
-        _hs_ca :=  cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'X509ClientVerifyCAFile');
+        _hs_cert := virtuoso_ini_item_value ('HTTPServer', 'SSLCertificate');
+        _hs_key :=  virtuoso_ini_item_value ('HTTPServer', 'SSLPrivateKey');
+        _hs_vrfy :=  virtuoso_ini_item_value ('HTTPServer', 'X509ClientVerify');
+        _hs_depth :=  virtuoso_ini_item_value ('HTTPServer', 'X509ClientVerifyDepth');
+        _hs_ca :=  virtuoso_ini_item_value ('HTTPServer', 'X509ClientVerifyCAFile');
         if (_hs_vrfy is not null)
           _auth_opt := vector ('https_cert',_hs_cert,'https_key',_hs_key,
 	      'https_cv_depth',_hs_depth,'https_cv',_hs_ca);

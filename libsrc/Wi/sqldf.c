@@ -1007,6 +1007,8 @@ sqlo_df (sqlo_t * so, ST * tree)
 	    got->ot_is_group_dummy = 1;
             got->ot_fref_ot = ot;
 	    ot->ot_group_dfe = sqlo_new_dfe (so, DFE_GROUP, NULL);
+            if (!dt->_.select_stmt.table_exp)
+              sqlc_new_error (so->so_sc->sc_cc, "37000", "SQ488", "Group by expression cannot be handled");
 	    ot->ot_group_dfe->_.setp.specs = dt->_.select_stmt.table_exp->_.table_exp.group_by;
 	    ot->ot_group_dfe->_.setp.top_cnt = sqlo_select_top_cnt (so, SEL_TOP (dt));
 	    ot->ot_group_dfe->_.setp.ot = got;
@@ -2223,6 +2225,8 @@ sqlo_place_exp (sqlo_t * so, df_elt_t * super, df_elt_t * dfe)
 
 	dfe->dfe_locus = pref_loc;
 	placed = dfe_latest_by_ot (so, n_deps, deps, 1);
+        if (!placed)
+          sqlc_new_error (so->so_sc->sc_cc, "37000", "SQ207", "Control expression cannot be handled.");
 	placed = dfe_skip_exp_dfes (placed, &dfe, 1);
         DO_BOX (op_table_t *, ot, inx, deps)
           {
@@ -2263,11 +2267,15 @@ sqlo_place_exp (sqlo_t * so, df_elt_t * super, df_elt_t * dfe)
 		  {
 		    sqlo_place_exp (so, elt_dfe, pred);
 		  }
-		else
+		else if ((DFE_BOP == pred->dfe_type) || (DFE_BOP_PRED == pred->dfe_type))
 		  {
 		    sqlo_place_exp (so, pred, pred->_.bin.left);
 		    sqlo_place_exp (so, pred, pred->_.bin.right);
 		  }
+                else if (DFE_TEXT_PRED == pred->dfe_type)
+                  sqlc_new_error (so->so_sc->sc_cc, "37000", "SQ081", "Free-text or index-friendly spatial predicate can not appear in CASE WHEN conditional control operator, please rephrase the query");
+		else
+		  sqlo_place_exp (so, elt_dfe, pred);
 	      }
 	    else
 		sqlo_place_exp (so, elt_dfe, pred);
@@ -7557,8 +7565,6 @@ inx_op_copy (sqlo_t * so, df_inx_op_t * dio,
   memcpy (copy, dio, sizeof (df_inx_op_t));
   if (dio->dio_table == org_tb_dfe)
     copy->dio_table = tb_dfe;
-  if (dio->dio_terms && !IS_BOX_POINTER(dio->dio_terms))
-    sqlc_new_error (so->so_sc->sc_cc, "42000", "SQI05", "Internal error in SQL compiler: non inx op in inx copy");
   else if (dio->dio_table)
     {
       copy->dio_table = sqlo_layout_copy_1 (so, dio->dio_table, NULL);
@@ -7566,6 +7572,8 @@ inx_op_copy (sqlo_t * so, df_inx_op_t * dio,
   else if (dio->dio_terms)
     {
       s_node_t *iter;
+      if (!IS_BOX_POINTER(dio->dio_terms))
+        sqlc_new_error (so->so_sc->sc_cc, "42000", "SQI05", "Internal error in SQL compiler: non inx op in inx copy");
       copy->dio_terms = t_set_copy (dio->dio_terms);
       DO_SET_WRITABLE (df_inx_op_t *, term, iter, &copy->dio_terms)
 	{

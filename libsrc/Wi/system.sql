@@ -4484,6 +4484,8 @@ create procedure REGEXP_REPLACE (in source_string any, in pattern any,
     return source_string;
   if (match_parameter is null)
     match_parameter := '';
+  if (position < 1)
+    position := 1;
   if (iswidestring (source_string) or iswidestring (pattern) or iswidestring (replace_string))
     {
       if (iswidestring (source_string))

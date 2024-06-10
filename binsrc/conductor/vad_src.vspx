@@ -43,7 +43,7 @@
       <v:on-init>
         <![CDATA[
           if (self.src_folder is null)
-            self.src_folder := cfg_item_value (virtuoso_ini_path (), 'Parameters', 'VADInstallDir');
+            self.src_folder := virtuoso_ini_item_value ('Parameters', 'VADInstallDir');
 
           if (self.src_folder is null)
             self.src_folder := '../vad/';

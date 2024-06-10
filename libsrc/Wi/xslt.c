@@ -3556,7 +3556,7 @@ bif_dict_duplicate (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   id_hash_iterator_t *orig_hit = bif_dict_iterator_arg (qst, args, 0, "dict_duplicate", 0);
   id_hash_t *new_ht = (id_hash_t *)box_dict_hashtable_copy_hook ((caddr_t)(orig_hit->hit_hash));
   id_hash_iterator_t *new_hit = (id_hash_iterator_t *)box_dv_dict_iterator ((caddr_t)new_ht);
-#ifndef NDEBUG
+#ifdef DEBUG
   printf ("Dict duplicate: from %p to %p\n", orig_hit->hit_hash, new_ht);
 #endif
   return (caddr_t)new_hit;
@@ -4708,7 +4708,7 @@ bif_gvector_deduplicate_sorted (caddr_t * qst, caddr_t * err_ret, state_slot_t *
 caddr_t
 bif_rowvector_sort_imp (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args, const char *funname, char algo, int block_elts, int key_ofs, int sort_asc)
 {
-  caddr_t *vect = (caddr_t *)bif_array_arg (qst, args, 0, funname);
+  caddr_t *vect = (caddr_t *)bif_array_of_pointer_arg (qst, args, 0, funname);
   int vect_elems = BOX_ELEMENTS (vect);
   int key_item_inx = bif_long_range_arg (qst, args, 1, funname, 0, 1024);
   int group_count;
@@ -5329,7 +5329,7 @@ xslt_init (void)
 
   bif_define ("dict_new", bif_dict_new);
   bif_define ("dict_duplicate", bif_dict_duplicate);
-  bif_define ("dict_put", bif_dict_put);
+  bif_define_ex ("dict_put", bif_dict_put,  BMD_RET_TYPE, &bt_integer, BMD_NO_CLUSTER, BMD_DONE);
   bif_define ("dict_get", bif_dict_get);
   bif_define_ex ("dict_contains_key", bif_dict_contains_key, BMD_RET_TYPE, &bt_integer, BMD_DONE);
   bif_define ("dict_remove", bif_dict_remove);

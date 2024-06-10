@@ -1715,10 +1715,10 @@ nic_free (name_id_cache_t * nic)
           mutex_free (&nic->nic_in_mtx[inx]);
           mutex_free (&nic->nic_ni_mtx[inx]);
         }
-      dk_free ( nic->nic_ni_mtx, sizeof (dk_mutex_t) * nic->nic_n_ways );
-      dk_free ( nic->nic_in_mtx, sizeof (dk_mutex_t) * nic->nic_n_ways );
-      dk_free ( nic->nic_in_array, sizeof (caddr_t) * nic->nic_n_ways );
-      dk_free ( nic->nic_ni_array, sizeof (caddr_t) * nic->nic_n_ways );
+      dk_free_box ((box_t) nic->nic_ni_mtx);
+      dk_free_box ((box_t) nic->nic_in_mtx);
+      dk_free_box ((box_t) nic->nic_in_array);
+      dk_free_box ((box_t) nic->nic_ni_array);
     }
 
   mutex_free (nic->nic_mtx);
@@ -4457,9 +4457,9 @@ rdf_core_init (void)
 {
   jso_init ();
   rdf_mapping_jso_init ();
-  jso__quad_map.jsocd_validation_cbk = jso__quad_map_jsocd_validation_cbk;
-  jso__qm_value.jsocd_validation_cbk = jso__qm_value_jsocd_validation_cbk;
-  jso__qm_format.jsocd_validation_cbk = jso__qm_format_jsocd_validation_cbk;
+  jso__quad_map.jsocd_validation_cbk = (jso_validation_cbk_t*)jso__quad_map_jsocd_validation_cbk;
+  jso__qm_value.jsocd_validation_cbk = (jso_validation_cbk_t*)jso__qm_value_jsocd_validation_cbk;
+  jso__qm_format.jsocd_validation_cbk = (jso_validation_cbk_t*)jso__qm_format_jsocd_validation_cbk;
   if (iri_seqs_used < 1)
     iri_seqs_used = 1;
   if (iri_seqs_used > N_IRI_SEQS)

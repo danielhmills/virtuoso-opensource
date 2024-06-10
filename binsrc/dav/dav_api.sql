@@ -2893,13 +2893,11 @@ create procedure DAV_RES_UPLOAD_STRSES_INT_INNER (
         return rc;
     }
 
-    set isolation='committed';
     if ( auth_uid <> http_nobody_uid() and
         (http_dav_uid () <> coalesce (connection_get ('DAVBillingUserID'), -12)) and
         exists (select top 1 1 from SYS_USERS where U_ID = auth_uid and U_ACCOUNT_DISABLED = 1 ))
       return -42;
 
-    set isolation='serializable';
     if (det is not null)
     {
       DAV_SEARCH_ID_OR_DET (par, 'R', det, detcol_id, detcol_path, unreached_path);

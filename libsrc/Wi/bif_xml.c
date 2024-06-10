@@ -4264,6 +4264,8 @@ bif_xte_nodebld_final_impl (caddr_t * qst, state_slot_t ** args, int plain_retur
 caddr_t
 bif_xte_nodebld_acc (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
+  if (1 > BOX_ELEMENTS(args))
+    sqlr_new_error ("22003", "SRXXX", "Too few arguments for xte_nodebld_acc");
   return bif_xte_nodebld_acc_impl (qst, args, 0, ((caddr_t **)(QST_GET_ADDR (qst, args[0]))));
 }
 
@@ -4271,6 +4273,8 @@ bif_xte_nodebld_acc (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 caddr_t
 bif_xte_nodebld_xmlagg_acc (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
+  if (1 > BOX_ELEMENTS(args))
+    sqlr_new_error ("22003", "SRXXX", "Too few arguments for xte_nodebld_xmlagg_acc");
   return bif_xte_nodebld_acc_impl (qst, args, 1, ((caddr_t **)(QST_GET_ADDR (qst, args[0]))));
 }
 
@@ -4350,7 +4354,7 @@ bif_int_vectorbld_acc (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
       caddr_t arg = QST_GET (qst, args[arg_inx]);
       if (DV_DB_NULL == DV_TYPE_OF (arg))
 	continue;
-      dst[0] = unbox_iri_int64 (arg);
+      dst[0] = (void *)(ptrlong)unbox_iri_int64 (arg);
       dst++;
     }
   /* Now we know what's the precise value of new_filled_count */

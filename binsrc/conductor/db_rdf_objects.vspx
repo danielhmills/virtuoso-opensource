@@ -80,7 +80,7 @@
       <tr>
             <th>Base URL</th>
 	      <td>
-              <?vsp http ('http://' || cfg_item_value (virtuoso_ini_path (), 'URIQA', 'DefaultHost') || '/'); ?>
+              <?vsp http ('http://' || virtuoso_ini_item_value ('URIQA', 'DefaultHost') || '/'); ?>
               <input type="text" name="base_start" value="<?V self.base_start ?>"/>
             </td>
           </tr>

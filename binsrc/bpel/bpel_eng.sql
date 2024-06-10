@@ -2862,7 +2862,7 @@ create procedure BPEL..default_smtp_server ()
   declare mail_server varchar;
   mail_server := BPEL..get_conf_param ('MailServer');
   if (mail_server is null)
-    return cfg_item_value(virtuoso_ini_path(), 'HTTPServer', 'DefaultMailServer');
+    return virtuoso_ini_item_value ('HTTPServer', 'DefaultMailServer');
   return mail_server;
 }
 ;

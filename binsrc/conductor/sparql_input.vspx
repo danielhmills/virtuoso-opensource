@@ -119,7 +119,7 @@
                           <th>Default Graph IRI</th>
                           <td>
                             <!--v:data-list name="default_graph" sql="select DB.DBA.RDF_QNAME_OF_IID(G) as graph_uri from (select distinct G from RDF_QUAD) quad" key-column="graph_uri" value-column="graph_uri" xhtml_id="default_graph" xhtml_style="width: 320px;" /-->
-                            <v:text name="default_graph" value="" xhtml_size="70" xhtml_id="default_graph" default_value="--coalesce (cfg_item_value (virtuoso_ini_path (), 'SPARQL', 'DefaultGraph'), '')" />
+                            <v:text name="default_graph" value="" xhtml_size="70" xhtml_id="default_graph" default_value="--coalesce (virtuoso_ini_item_value ('SPARQL', 'DefaultGraph'), '')" />
                           </td>
                         </tr>
                         <tr>

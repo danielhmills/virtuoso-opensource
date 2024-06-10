@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="ASCII"?>
+<!DOCTYPE sticker SYSTEM "vad_sticker.dtd">
+<sticker version="1.0.010505A" xml:lang="en-UK">
+    <caption>
+	<name package="SPARQL Demo">
+	    <prop name="Title" value="SPARQL Demo"/>
+	    <prop name="Developer" value="OpenLink Software"/>
+	    <prop name="Copyright" value="(C) 1998-2024 OpenLink Software"/>
+	    <prop name="Download" value="http://virtuoso.openlinksw.com"/>
+	</name>
+	<version package="$VERSION$">
+	    <prop name="Release Date" value="$PACKDATE$" />
+	    <prop name="Build" value="Release, optimized"/>
+	</version>
+    </caption>
+    <dependencies>
+    </dependencies>
+    <procedures uninstallation="supported">
+	<sql purpose="pre-install"></sql>
+	<sql purpose="post-install"></sql>
+    </procedures>
+    <ddls>
+	<sql purpose="pre-install">
+	<![CDATA[
+	    if (lt (sys_stat ('st_dbms_ver'), '$NEED_VERSION$'))
+	    {
+	     result ('ERROR', 'The SPARQL Demo package requires server version $NEED_VERSION$ or greater');
+	     signal ('FATAL', 'The SPARQL Demo package requires server version $NEED_VERSION$ or greater');
+	    }
+	]]></sql>
+	<sql purpose="post-install">
+	<![CDATA[
+	    "DB"."DBA"."VAD_LOAD_SQL_FILE"('$BASE_PATH$/sparql_demo/data/manifest-rdf-list.sql', 1, 'report', $ISDAV$);
+	    "DB"."DBA"."VAD_LOAD_SQL_FILE"('$BASE_PATH$/sparql_demo/data/rdf-list.sql', 1, 'report', $ISDAV$);
+	    "DB"."DBA"."VAD_LOAD_SQL_FILE"('$BASE_PATH$/sparql_demo/data/rq-list.sql', 1, 'report', $ISDAV$);
+	    "DB"."DBA"."VAD_LOAD_SQL_FILE"('$BASE_PATH$/sparql_demo/data/ttl-list.sql', 1, 'report', $ISDAV$);
+
+	    "DB"."DBA"."VAD_LOAD_SQL_FILE"('$BASE_PATH$/sparql_demo/setup.sql', 1, 'report', $ISDAV$);
+	    "DB"."DBA"."VAD_LOAD_SQL_FILE"('$BASE_PATH$/sparql_demo/setup_demo_db.sql', 1, 'report', $ISDAV$);
+	    "DB"."DBA"."VAD_LOAD_SQL_FILE"('$BASE_PATH$/sparql_demo/setup_queries.sql', 1, 'report', $ISDAV$);
+	]]></sql>
+	<sql purpose="pre-uninstall"></sql>
+    </ddls>
+    <resources>
+	<file type="$TYPE$" source_uri="*.sql" target_uri="sparql_demo/" />
+	<file type="$TYPE$" source_uri="*.vsp" target_uri="sparql_demo/" />
+	<file type="$TYPE$" source_uri="*.css" target_uri="sparql_demo/" />
+	<file type="$TYPE$" source_uri="*.js" target_uri="sparql_demo/" />
+	<file type="$TYPE$" source_uri="syntax/*.js" target_uri="sparql_demo/" />
+	<file type="$TYPE$" source_uri="images/*.gif" target_uri="sparql_demo/" />
+	<file type="$TYPE$" source_uri="images/*.jpg" target_uri="sparql_demo/" />
+	<file type="$TYPE$" source_uri="images/*.png" target_uri="sparql_demo/" />
+
+	<!-- Demo data -->
+	<file type="$TYPE$" source_uri="data/**/*" target_uri="sparql_demo/" />
+
+	<!-- OAT Toolkit -->
+	<file type="$TYPE$" source_uri="../../oat/toolkit/*.js" target_uri="sparql_demo/toolkit/$f$" />
+	<file type="$TYPE$" source_uri="../../oat/styles/*" target_uri="sparql_demo/toolkit/styles/$f$" />
+	<file type="$TYPE$" source_uri="../../oat/xslt/*" target_uri="sparql_demo/toolkit/xslt/$f$" />
+	<file type="$TYPE$" source_uri="../../oat/images/*" target_uri="sparql_demo/toolkit/images/$f$" />
+	<file type="$TYPE$" source_uri="../../oat/images/markers/*" target_uri="sparql_demo/toolkit/images/markers/$f$" />
+    </resources>
+    <registry>
+    </registry>
+</sticker>

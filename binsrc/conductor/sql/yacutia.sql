@@ -1481,7 +1481,7 @@ create procedure "PUMP"."DBA"."GET_DSN" () returns varchar
   while ( nitems >= 0 ) {
     item := cfg_item_name(virtuoso_ini_path(), sect, nitems);
     if (equ(item,'ServerPort')) {
-      port := cfg_item_value(virtuoso_ini_path(), sect, item);
+      port := virtuoso_ini_item_value (sect, item);
       goto next;
     }
     nitems := nitems - 1;
@@ -4318,7 +4318,7 @@ create procedure www_tree (in path any)
 
        HP_NO_EDIT := case HOST when '*ini*' then 0 when '*sslini*' then 0 else 1 end;
        HP_NO_CTRL := case LHOST when '*ini*' then 0 when '*sslini*' then 0
-    when (':' || cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'SSLPort')) then 0
+    when (':' || virtuoso_ini_item_value ('HTTPServer', 'SSLPort')) then 0
     else 1 end;
 
        vhost := HOST;
@@ -4329,13 +4329,13 @@ create procedure www_tree (in path any)
        if (vhost = '*ini*')
    {
      vhost := '{Default Web Site}';
-     port := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'ServerPort');
+     port := virtuoso_ini_item_value ('HTTPServer', 'ServerPort');
      intf := '0.0.0.0';
    }
        else if (vhost = '*sslini*')
    {
            vhost := '{Default SSL Web Site}';
-     port := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLPort');
+     port := virtuoso_ini_item_value ('HTTPServer', 'SSLPort');
      if (port is null)
        port := '';
      intf := '0.0.0.0';
@@ -4347,9 +4347,9 @@ create procedure www_tree (in path any)
      if (intf = '' or intf = '*ini*' or intf = '*sslini*')
        {
 	   if (intf = '*ini*')
-	     port := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'ServerPort');
+	     port := virtuoso_ini_item_value ('HTTPServer', 'ServerPort');
 	   else if (intf = '*sslini*')
-	     port := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'SSLPort');
+	     port := virtuoso_ini_item_value ('HTTPServer', 'SSLPort');
           intf := '0.0.0.0';
        }
    }
@@ -4779,7 +4779,7 @@ create procedure y_check_host (in host varchar, in listen varchar, in port varch
   declare inihost, ihost, iport varchar;
   declare pos int;
 
-  inihost := cfg_item_value (virtuoso_ini_path (), 'HTTPServer', 'ServerPort');
+  inihost := virtuoso_ini_item_value ('HTTPServer', 'ServerPort');
 
   pos := strrchr (inihost, ':');
 
@@ -6279,10 +6279,17 @@ create procedure DB.DBA.LOCAL_CA_RENEW (in ca_key_name varchar := 'id_rsa', in d
 }
 ;
 
-create procedure DB.DBA.HTTPS_MAKE_HOST_KEY (in cname varchar)
+create procedure DB.DBA.HTTPS_MAKE_HOST_KEY (in cname varchar, in alt_names varchar := null)
 {
-  declare kname varchar;
+  declare kname, san varchar;
   declare serial int;
+  declare alt_hosts any;
+  alt_hosts := string_split (alt_names);
+  san := 'DNS:'||cname;
+  foreach (varchar cn in alt_hosts) do
+    {
+      san := concat (san, ', DNS:', cn);
+    }
   serial := deserialize (hex2bin('F700' || subseq (bin2hex (xenc_digest (uuid(), 'sha256')), 0, 14)));
   kname := 'https_key_' || replace (cname, '.', '_');
   xenc_key_RSA_create (kname, 2048);
@@ -6293,7 +6300,7 @@ create procedure DB.DBA.HTTPS_MAKE_HOST_KEY (in cname varchar)
         'extendedKeyUsage', 'serverAuth',
         'basicConstraints', 'critical,CA:FALSE',
         'authorityKeyIdentifier', 'keyid,issuer:always',
-        'subjectAltName', 'DNS:'||cname
+        'subjectAltName', san
         ));
   USER_KEY_STORE (user, kname, 'X.509', 2, '', cast (xenc_pkcs12_export (kname, cname || ' key', '') as varchar));
   return kname;

@@ -34,7 +34,7 @@ create procedure LOAD_ASPX_DAV ()
   if (rc < 0)
     return rc;
   DAV_COL_CREATE ('/DAV/VirtSample/bin/', '110100100N', 'dav', 'dav', 'dav', admin_pwd);
-  sql_port := cfg_item_value (virtuoso_ini_path(),'Parameters', 'ServerPort');
+  sql_port := virtuoso_ini_item_value ('Parameters', 'ServerPort');
   l := length(src); i := 0;
   while (i < l)
     {

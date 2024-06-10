@@ -253,7 +253,7 @@ if ('' <> action_info)
 	http('</TABLE><BR />');
 }
 	http('<TABLE BORDER="0" CELLPADDING="2" CELLSPACING="0">');
-		if (0 = cfg_item_value (virtuoso_ini_path(),'HTTPServer','NewsServerPort'))
+		if (0 = virtuoso_ini_item_value ('HTTPServer','NewsServerPort'))
                   {
 
 

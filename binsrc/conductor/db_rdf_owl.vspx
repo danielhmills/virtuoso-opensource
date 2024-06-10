@@ -140,7 +140,7 @@
 	     if (self.cr_vd_cb.ufl_selected)
 	       arr := sql_split_text (self.vds);
 	     res := make_array (1 + length (arr), 'any');
-	     gr := sprintf ('http://%s/schemas/%s#', cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost'), self.base_url);
+	     gr := sprintf ('http://%s/schemas/%s#', virtuoso_ini_item_value ('URIQA','DefaultHost'), self.base_url);
 	     stat := '00000';
 	     msg := 'OK';
 	     exec ('DB.DBA.TTLP (?, \'\', ?)', stat, msg, vector (self.body_v, gr), 0, meta, data);

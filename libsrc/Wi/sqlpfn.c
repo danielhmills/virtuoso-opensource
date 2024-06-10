@@ -742,7 +742,7 @@ sqlp_tree_check_sz (ptrlong type, sql_tree_t * tree)
 
       case CALL_STMT:
           len += sizeof (st_head.call);
-          len -= (2 * sizeof (ptrlong)); /* most are stored procedures w/o return type, static methods has 4th member */
+          len -= (3 * sizeof (ptrlong)); /* most are stored procedures w/o return type, static methods has 4th member */
           break;
 
       case ORDER_BY: /* XXX: same as INSERT_VALUES, we take shorter atm */
@@ -1994,7 +1994,7 @@ sqlp_contains_opts (ST * tree)
 	{
 	  if (inx < 2)
 	    continue;
-	  if (ST_COLUMN (arg, COL_DOTTED))
+	  if (ST_COLUMN (arg, COL_DOTTED) && STAR != arg->_.col_ref.name)
 	    {
 	      caddr_t name = arg->_.col_ref.name;
 	      if (0 == stricmp (name, "offband")
@@ -2067,6 +2067,8 @@ sqlp_sqlxml (ST * tree)
       if (0 == BOX_ELEMENTS (tree->_.call.params))
 	yyerror ("Function XMLELEMENT should have at least one argument that is element name");
       arg = tree->_.call.params[0];
+      if (ST_COLUMN (arg, COL_DOTTED) && STAR == arg->_.col_ref.name)
+        yyerror ("A `*` is not allowed as input for SQLXML functions");
       if (ST_COLUMN (arg, COL_DOTTED))
 	tree->_.call.params[0] = (ST *) t_box_string (arg->_.col_ref.name);
       return;
@@ -2079,6 +2081,8 @@ sqlp_sqlxml (ST * tree)
       tree->_.call.params = new_params;
       DO_BOX (ST *, arg, inx, old_params)
 	{
+          if (ST_COLUMN (arg, COL_DOTTED) && STAR == arg->_.col_ref.name)
+            yyerror ("A `*` is not allowed as input for SQLXML functions");
 	  if (ST_P (arg, BOP_AS))
 	    {
 	      new_params[inx*2] = (ST *) t_box_string ((caddr_t) arg->_.as_exp.name);
@@ -2391,6 +2395,10 @@ generic_check:
           return lit;
 not_a_constant_pure: ;
         }
+      if (bmd->bmd_no_fold)
+        {
+          funcall_tree = t_listst (6, CALL_STMT, funcall_tree->_.call.name, funcall_tree->_.call.params, NULL, NULL, t_box_num (sqlp_bin_op_serial++));
+        }
     }
   sqlp_check_arg (funcall_tree);
   return funcall_tree;
@@ -2437,13 +2445,24 @@ sqlp_in_exp (ST * left, dk_set_t  right, int is_not)
     }
   else
     {
-      ST * res =
-	t_listst (3, CALL_STMT, uname_one_of_these,
-		t_list_to_array (t_CONS (left, right)));
+      caddr_t * args = t_list_to_array (t_CONS (left, right));
+      int is_const_in = 1;
+      ST * res = t_listst (3, CALL_STMT, uname_one_of_these, args);
+      res = t_listst (5, BOP_LT, t_box_num (0), res, NULL, 0);
       if (is_not)
-	return (t_listst (3, BOP_EQ, t_box_num (0), res));
-      else
-	return (t_listst (3, BOP_LT, t_box_num (0), res));
+        res->type = BOP_EQ;
+      DO_BOX (ST *, exp, inx, args)
+        {
+          if (DV_ARRAY_OF_POINTER == DV_TYPE_OF (exp) && !(BIN_EXP_P(exp) && IS_ARITM_BOP(exp->type)))
+            {
+              is_const_in = 0;
+              break;
+            }
+        }
+      END_DO_BOX;
+      if (is_const_in) /* avoid IN of constants to be eliminated in plan */
+        res->_.bin_exp.serial = t_box_num (sqlp_bin_op_serial++);
+      return res;
     }
 }
 

@@ -3083,11 +3083,11 @@ bif_repeat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
   query_instance_t *qi = (query_instance_t *)qst;
   caddr_t str = bif_string_or_wide_or_null_arg (qst, args, 0, "repeat");
-  long n_times = (long) bif_long_arg (qst, args, 1, "repeat");
-  long len;
+  size_t n_times = (size_t) bif_long_range_arg (qst, args, 1, "repeat", 0, 10000000);
+  size_t len;
   caddr_t res;
-  long totlen;
-  long int i, offset;
+  size_t totlen;
+  size_t i, offset;
   dtp_t dtp1 = DV_TYPE_OF (str);
   int sizeof_char = IS_WIDE_STRING_DTP (dtp1) ? sizeof (wchar_t) : sizeof (char);
   if (n_times < 0)
@@ -3099,8 +3099,10 @@ bif_repeat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 
   len = (box_length (str) / sizeof_char - 1);
   totlen = (len * n_times);
-  if ((totlen < 0) || (totlen > 10000000))
+
+  if (totlen > 10000000)
     sqlr_new_error ("22023", "SR083", "The expected result length is too large in call of repeat()");
+
   if (NULL == (res = dk_try_alloc_box ((totlen + 1) * sizeof_char , (dtp_t)(IS_WIDE_STRING_DTP (dtp1) ? DV_WIDE : DV_LONG_STRING))))
     qi_signal_if_trx_error (qi);
 
@@ -3753,6 +3755,8 @@ bif_replace (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
  */
 
   /* +1 for the final zero. */
+  if ((res_bytes < 0) || (res_bytes > 10000000))
+    sqlr_new_error ("22023", "SR083", "The expected result length is too large in call of replace()");
   res = dk_alloc_box (res_bytes + sizeof_char,
     (dtp_t)(sizeof_char == sizeof (wchar_t) ? DV_WIDE : DV_LONG_STRING));
   res_ptr = res;
@@ -9338,8 +9342,8 @@ bif_position (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   const char *me = "position";
   caddr_t item = bif_arg (qst, args, 0, me);
   caddr_t arr = (caddr_t) bif_array_arg (qst, args, 1, me);
-  long int start = (long) ((n_args > 2) ? bif_long_arg (qst, args, 2, me) - 1 : 0);
-  long every_nth = (long) ((n_args > 3) ? bif_long_arg (qst, args, 3, me) : 1);
+  int start = (int) ((n_args > 2) ? bif_long_arg (qst, args, 2, me) - 1 : 0);
+  int every_nth = (int) ((n_args > 3) ? bif_long_arg (qst, args, 3, me) : 1);
   dtp_t vectype = DV_TYPE_OF (arr);
   int boxlen = (is_string_type (vectype) ? box_length (arr) - 1 : box_length (arr));
   int len = (boxlen / get_itemsize_of_vector (vectype));
@@ -11753,7 +11757,7 @@ bif_name_part (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   int len = (int) strlen (name);
   char temp[MAX_QUAL_NAME_LEN];
   const char *part1, *part2, *part3;
-  memcpy (temp, name, len + 1);
+  strncpy (temp, name, MIN((len + 1), (MAX_QUAL_NAME_LEN - 1)));
   xx = &temp[0];
   part1 = part_tok (&xx);
   part2 = part_tok (&xx);
@@ -12588,9 +12592,9 @@ bif_composite (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   {
     caddr_t arg = bif_arg (qst, args, inx, "composite");
     print_object (arg, &sesn, NULL, NULL);
+    if (sesn.dks_out_fill > 254)
+      sqlr_new_error ("22026", "FT001", "Length limit of composite exceeded.");
   }
-  if (sesn.dks_out_fill > 254)
-  sqlr_new_error ("22026", "FT001", "Length limit of composite exceeded.");
   len = sesn.dks_out_fill - init;
   box = (unsigned char *) dk_alloc_box (len + 2, DV_COMPOSITE);
   box[0] = DV_COMPOSITE;
@@ -17166,10 +17170,10 @@ sql_bif_init (void)
   bif_define_ex ("__min_notnull"	, bif_min_notnull	, BMD_RET_TYPE, &bt_any_box		, BMD_MIN_ARGCOUNT, 0				, BMD_IS_PURE, BMD_DONE);
   bif_define_ex ("either"		, bif_either		, BMD_RET_TYPE, &bt_any_box		, BMD_MIN_ARGCOUNT, 3, BMD_MAX_ARGCOUNT, 3	, BMD_IS_PURE, BMD_DONE);
   bif_define_ex ("ifnull"		, bif_ifnull		, BMD_RET_TYPE, &bt_any		, BMD_MIN_ARGCOUNT, 2, BMD_MAX_ARGCOUNT, 2	, BMD_IS_PURE, BMD_DONE);
-  bif_define_ex ("__and"		, bif_and		, BMD_RET_TYPE, &bt_integer	, BMD_MIN_ARGCOUNT, 0				, BMD_IS_PURE, BMD_DONE);
-  bif_define_ex ("__or"			, bif_or		, BMD_RET_TYPE, &bt_integer	, BMD_MIN_ARGCOUNT, 0				, BMD_IS_PURE, BMD_DONE);
+  bif_define_ex ("__and"		, bif_and, BMD_ALIAS, "logical_and", BMD_RET_TYPE, &bt_integer	, BMD_MIN_ARGCOUNT, 0				, BMD_IS_PURE, BMD_DONE);
+  bif_define_ex ("__or"			, bif_or, BMD_ALIAS, "logical_or", BMD_RET_TYPE, &bt_integer	, BMD_MIN_ARGCOUNT, 0				, BMD_IS_PURE, BMD_DONE);
   bif_define_ex ("__transparent_or"	, bif_transparent_or	, BMD_RET_TYPE, &bt_any		, BMD_MIN_ARGCOUNT, 0				, BMD_IS_PURE, BMD_DONE);
-  bif_define_ex ("__not"		, bif_not		, BMD_RET_TYPE, &bt_integer	, BMD_MIN_ARGCOUNT, 1, BMD_MAX_ARGCOUNT, 1	, BMD_IS_PURE, BMD_DONE);
+  bif_define_ex ("__not"		, bif_not, BMD_ALIAS, "logical_not", BMD_RET_TYPE, &bt_integer	, BMD_MIN_ARGCOUNT, 1, BMD_MAX_ARGCOUNT, 1	, BMD_IS_PURE, BMD_DONE);
 
 /* Comparison functions */
   bif_define_ex ("lt"			, bif_lt	, BMD_RET_TYPE, &bt_integer	, BMD_MIN_ARGCOUNT, 2, BMD_MAX_ARGCOUNT, 2	, BMD_IS_PURE, BMD_DONE);

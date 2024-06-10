@@ -51,6 +51,7 @@ create procedure dbp_ldd_set_ns_decl ()
     dbp_domain || '/resource/', 				'dbpedia-'  || dbp_lang,
     dbp_domain || '/resource/' || dbp_category || ':',		'category-' || dbp_lang,
     dbp_domain || '/resource/' || dbp_template || ':', 		'template-' || dbp_lang,
+    dbp_domain || '/datatype/', 				'type-'     || dbp_lang,
 
     'http://dbpedia.org/datatype/',				'dbd',
     'http://dbpedia.org/ontology/',				'dbo',
@@ -85,6 +86,8 @@ create procedure dbp_ldd_set_ns_decl ()
     'http://www.w3.org/ns/prov#',				'prov',
     'http://xmlns.com/foaf/0.1/',				'foaf',
     'http://yago-knowledge.org/resource/',			'yago-res',
+    'http://purl.org/linguistics/gold/',                       'gold',
+    'http://open.vocab.org/terms/', 				'ov',
 
     'http://commons.wikimedia.org/wiki/',			'wiki-commons',
     'http://www.wikidata.org/entity/',				'wikidata',
@@ -441,6 +444,7 @@ create procedure dbp_ldd_subject (in _S any, in _G varchar, in lines any := null
       if (length (data) and data[0][0] is not null and data[0][0] <> 0)
 	best_str := data[0][0];
     }
+  best_str := charset_recode (best_str, 'UTF-8', '_WIDE_');
   return best_str;
 }
 ;

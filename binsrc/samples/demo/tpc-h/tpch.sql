@@ -406,7 +406,7 @@ tpch_check_status ()
     declare stmt, state, msg, res varchar;
 
     stmt := sprintf ('sparql select count (*) from <http://%s/tpch> where {?s ?p ?o}',
-		     cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost'));
+             virtuoso_ini_item_value ('URIQA','DefaultHost'));
 
     if (exec (stmt, state, msg, vector (), 1, NULL, res) = 0)
      {
@@ -929,7 +929,7 @@ create procedure up_isparql (in q_num integer, in q_text any)
 
    file_name := sprintf ('tpch/Q%02d', q_num);
 
-   uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+   uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
 
    if (uriqa_str is null)
      {
@@ -1662,7 +1662,7 @@ DB.DBA.URLREWRITE_CREATE_RULELIST (
           ));
 
 DB.DBA."RDFData_MAKE_DET_COL" ('/DAV/home/demo/tpch/rdf/',
-	'http://' || cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost') || '/tpch', NULL);
+    'http://' || virtuoso_ini_item_value ('URIQA','DefaultHost') || '/tpch', NULL);
 
 DB.DBA.VHOST_REMOVE (lpath=>'/tpch/data/rdf');
 DB.DBA.VHOST_DEFINE (lpath=>'/tpch/data/rdf', ppath=>'/DAV/home/demo/tpch/rdf/All/', is_dav=>1, vsp_user=>'dba');
@@ -1671,7 +1671,7 @@ create procedure DB.DBA.TPCH_DET_REF (in par varchar, in fmt varchar, in val var
 {
   declare res, iri any;
   declare uriqa_str varchar;
-  uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
   iri := 'http://' || uriqa_str || val || '#this';
   res := sprintf ('iid (%d).rdf', iri_id_num (iri_to_id (iri)));
   return sprintf (fmt, res);

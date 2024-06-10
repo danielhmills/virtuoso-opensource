@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="ASCII"?>
+<!DOCTYPE sticker SYSTEM "vad_sticker.dtd">
+<sticker version="1.0.010505A" xml:lang="en-UK">
+    <caption>
+	<name package="bpel4ws">
+	    <prop name="Title" value="BPEL4WS"/>
+	    <prop name="Developer" value="OpenLink Software"/>
+	    <prop name="Copyright" value="(C) 1998-2024 OpenLink Software"/>
+	    <prop name="Download" value="http://virtuoso.openlinksw.com/"/>
+	</name>
+	<version package="$VERSION$">
+	    <prop name="Release Date" value="$PACKDATE$"/>
+	    <prop name="Build" value="Release, optimized"/>
+	</version>
+    </caption>
+    <dependencies>
+    </dependencies>
+    <procedures uninstallation="supported">
+	<sql purpose="pre-install">
+	    <![CDATA[
+            if (lt (sys_stat ('st_dbms_ver'), '$NEED_VERSION$'))
+            {
+                result ('ERROR', 'The BPEL package requires server version $NEED_VERSION$ or greater');
+                signal ('FATAL', 'The BPEL package requires server version $NEED_VERSION$ or greater');
+            }
+	    ]]>
+	</sql>
+        <sql purpose="post-install">
+        ;
+        </sql>
+	<sql purpose="post-install">
+	;
+	</sql>
+    </procedures>
+    <ddls>
+	<sql purpose="post-install">
+	    <![CDATA[
+	    DB.DBA.USER_CREATE ('BPEL', uuid(), vector ('DISABLED', 1));
+	    EXEC ('grant all privileges to BPEL');
+	    EXEC ('grant execute on DB.DBA.WSRMSequence to BPEL');
+	    EXEC ('grant execute on DB.DBA.WSRMSequenceTerminate to BPEL');
+	    EXEC ('grant execute on DB.DBA.WSRMAckRequested to BPEL');
+	    user_set_qualifier ('BPEL', 'BPEL');
+	    VHOST_REMOVE (vhost=>'*ini*',lhost=>'*ini*',lpath=>'/BPEL');
+	    vhost_define (vhost=>'*ini*',lhost=>'*ini*',lpath=>'/BPEL',ppath=>'/SOAP/',soap_user=>'BPEL');
+	    VHOST_REMOVE (vhost=>'*ini*',lhost=>'*ini*',lpath=>'/BPELGUI');
+	    vhost_define (vhost=>'*ini*', lhost=>'*ini*', lpath=>'/BPELGUI/', ppath=>'$BASE_PATH$/bpel4ws/1.0/', vsp_user=>'BPEL', def_page=>'main_tabs.vspx', is_dav=>$ISDAV$);
+	    VHOST_REMOVE (lpath=>'/BPELDemo');
+	    vhost_define (lpath=>'/BPELDemo', ppath=>'$BASE_PATH$/bpeldemo/', vsp_user=>'dba', def_page=>'index.vsp', is_dav=>$ISDAV$);
+	    registry_set('_bpel4ws_path_', '$BASE_PATH$/bpel4ws/1.0/');
+	    registry_set('_bpel4ws_version_', '$VERSION$');
+	    registry_set('_bpel4ws_build_', '$PACKDATE$');
+	    registry_set('__external_xsql_xslt', '1');
+	    set_qualifier ('DB');
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/bpel_ddl.sql', 0, 'report', $ISDAV$);
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/bpel_eng.sql', 1, 'report', $ISDAV$);
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/xsql.sql', 1, 'report', $ISDAV$);
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/filesystem.sql', 1, 'report', $ISDAV$);
+	    EXEC ('create procedure BPEL.BPEL.res_base_uri () { return \'virt://WS.WS.SYS_DAV_RES.RES_FULL_PATH.RES_CONTENT:$BASE_PATH$/\'; }' );
+	    set_qualifier ('BPEL');
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/bpel_intrp.sql', 1, 'report', $ISDAV$);
+	    set_qualifier ('DB');
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/install.sql', 1, 'report', $ISDAV$);
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/process.sql', 1, 'report', $ISDAV$);
+	    BPEL.BPEL.java_init ();
+	    result ('00000', 'GUI is accesible via http://host:port/BPELGUI');
+	    result ('00000', 'Quick Start is available from http://host:port/BPELGUI/start.vsp');
+	    ]]>
+	</sql>
+	<sql purpose='pre-uninstall'>
+	    <![CDATA[
+	    set_qualifier ('DB');
+	    VHOST_REMOVE (vhost=>'*ini*',lhost=>'*ini*',lpath=>'/BPEL');
+	    VHOST_REMOVE (vhost=>'*ini*',lhost=>'*ini*',lpath=>'/BPELGUI');
+	    VHOST_REMOVE (vhost=>'*ini*',lhost=>'*ini*',lpath=>'/BPELDemo');
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/drop_prc.sql', 1, 'report', $ISDAV$);
+	    DB.DBA.VAD_LOAD_SQL_FILE('$BASE_PATH$/bpel4ws/1.0/drop.sql', 1, 'report', $ISDAV$);
+	    ]]>
+	</sql>
+	<sql purpose='post-uninstall'>
+	</sql>
+    </ddls>
+    <resources>
+	<!-- Application -->
+        <file type="$TYPE$" source_uri="*.css" target_uri="bpel4ws/1.0/" />
+        <file type="$TYPE$" source_uri="*.gif" target_uri="bpel4ws/1.0/" />
+        <file type="$TYPE$" source_uri="*.jpg" target_uri="bpel4ws/1.0/" />
+        <file type="$TYPE$" source_uri="*.sql" target_uri="bpel4ws/1.0/" />
+        <file type="$TYPE$" source_uri="*.vsp" target_uri="bpel4ws/1.0/" />
+        <file type="$TYPE$" source_uri="*.vspx" target_uri="bpel4ws/1.0/" />
+        <file type="$TYPE$" source_uri="*.xsd" target_uri="bpel4ws/1.0/" />
+        <file type="$TYPE$" source_uri="*.xsl" target_uri="bpel4ws/1.0/" />
+
+	<!-- Help -->
+	<file type="$TYPE$" source_uri="help/*" target_uri="bpel4ws/1.0/" />
+
+	<!-- Icons -->
+	<file type="$TYPE$" source_uri="i/*" target_uri="bpel4ws/1.0/" />
+
+	<!-- Samples -->
+	<file type="$TYPE$" source_uri="tests/index.*"      	target_uri="bpeldemo/$f$" />
+
+	<file type="$TYPE$" source_uri="tests/echo/echo.*"      target_uri="bpeldemo/echo/$f$" />
+	<file type="$TYPE$" source_uri="tests/echo/bpel.xml"    target_uri="bpeldemo/echo/$f$" />
+	<file type="$TYPE$" source_uri="tests/echo/options.xml" target_uri="bpeldemo/echo/$f$" />
+
+	<file TYPE="$TYPE$" source_uri="tests/fi/fi.*"          target_uri="bpeldemo/fi/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/fi/fi_wsdl.vsp"   target_uri="bpeldemo/fi/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/fi/service.vsp"   target_uri="bpeldemo/fi/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/fi/bpel.xml"      target_uri="bpeldemo/fi/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/fi/options.xml"   target_uri="bpeldemo/fi/$f$" />
+
+	<file TYPE="$TYPE$" source_uri="tests/LoanFlow/*"       target_uri="bpeldemo/LoanFlow/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/interop/site/SecLoan/*"        target_uri="bpeldemo/SecLoan/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/interop/site/RMLoan/*"         target_uri="bpeldemo/RMLoan/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/interop/site/SecRMLoan/*"      target_uri="bpeldemo/SecRMLoan/$f$" />
+
+	<file TYPE="$TYPE$" source_uri="tests/sqlexec/*"      target_uri="bpeldemo/sqlexec/$f$" />
+
+	<file TYPE="$TYPE$" source_uri="tests/interop/UseCases/*" target_uri="bpeldemo/UseCases/$f$" />
+
+	<file TYPE="$TYPE$" source_uri="tests/processXSLT/*"       target_uri="bpeldemo/processXSLT/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/processXSQL/*"       target_uri="bpeldemo/processXSQL/$f$" />
+	<file TYPE="$TYPE$" source_uri="tests/processXQuery/*"     target_uri="bpeldemo/processXQuery/$f$" />
+
+	<file TYPE="$TYPE$" source_uri="tests/fault1/java_exec_bpel.xml"  target_uri="bpeldemo/java_exec/bpel.xml" />
+	<file TYPE="$TYPE$" source_uri="tests/fault1/java_exec.xml"       target_uri="bpeldemo/java_exec/options.xml" />
+	<file TYPE="$TYPE$" source_uri="tests/fault1/java_exec_desc.xml"  target_uri="bpeldemo/java_exec/java_exec.xml" />
+	<file TYPE="$TYPE$" source_uri="tests/fault1/java*"               target_uri="bpeldemo/java_exec/$f$" />
+
+	<file TYPE="$TYPE$" source_uri="tests/fault1/clr_exec_bpel.xml"  target_uri="bpeldemo/clr_exec/bpel.xml" />
+	<file TYPE="$TYPE$" source_uri="tests/fault1/clr_exec.xml"       target_uri="bpeldemo/clr_exec/options.xml" />
+	<file TYPE="$TYPE$" source_uri="tests/fault1/clr_exec_desc.xml"  target_uri="bpeldemo/clr_exec/clr_exec.xml" />
+	<file TYPE="$TYPE$" source_uri="tests/fault1/clr*"               target_uri="bpeldemo/clr_exec/$f$" />
+    </resources>
+    <registry>
+    </registry>
+</sticker>

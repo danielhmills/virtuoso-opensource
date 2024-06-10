@@ -1,5 +1,6 @@
 *.vad
 vad
+data
 make_isparql_vad.log
 make_isparql_vad.xml
 sparql_dawg.tar

@@ -1541,8 +1541,8 @@ err_end:
 HC_RET
 http_cli_read_sse_content (http_cli_ctx * ctx)
 {
-  char line [4096];
-  int icnk = 0, chunked = ctx->hcctx_is_chunked;
+  char line [DKSES_OUT_BUFFER_LENGTH];
+  int remaining_chunk_size = 0, chunked = ctx->hcctx_is_chunked;
   int readed = 0, rc = HC_RET_OK;
   dk_session_t * ses = ctx->hcctx_http_out, * data = strses_allocate (), * res = strses_allocate ();
 
@@ -1555,20 +1555,37 @@ http_cli_read_sse_content (http_cli_ctx * ctx)
           readed = dks_read_line (ses, line, sizeof (line));
           if (chunked)
             {
-              if (1 != sscanf (line,"%x", (unsigned *)(&icnk)))
+              if (1 != sscanf (line,"%x", (unsigned *)(&remaining_chunk_size)))
                 break;
-              if (!icnk && readed) /*last chunk*/
+              if (!remaining_chunk_size && readed) /*last chunk*/
                 {
                   readed = dks_read_line (ses, line, sizeof (line));
                   break;
                 }
-              while (icnk > 0)
+              while (remaining_chunk_size > 0)
                 {
-                  readed = MIN (icnk, sizeof (line));
-                  readed = dks_read_line (ses, line, sizeof (line));
-                  if (HC_RET_OK != (rc = http_cli_sse_evt_hook (ctx, data, line, readed)))
+                  char c;
+                  int chars_read, to_read;
+                  to_read = MIN (remaining_chunk_size, (sizeof (line) - 1));
+                  chars_read = 0;
+                  do
+                    {
+                      c = session_buffered_read_char(ses);
+                      to_read--;
+                      remaining_chunk_size--;
+                      line[chars_read++] = c;
+                    }
+                  while (0x0a != c && to_read > 0);
+                  if (0x0a != c)
+                    {
+                      session_buffered_write (data, line, chars_read);
+                      if (remaining_chunk_size > 0)
+                        continue;
+                      else
+                        break;
+                    }
+                  if (HC_RET_OK != (rc = http_cli_sse_evt_hook (ctx, data, line, chars_read)))
                     goto err_ret;
-                  icnk -= readed;
                 }
               readed = dks_read_line (ses, line, sizeof (line)); /* lb after chunk */
             }
@@ -2734,7 +2751,7 @@ bif_http_client_impl (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args, co
 {
   http_cli_ctx * ctx;
   const char* ua_id = http_client_id_string;
-  caddr_t ret = NULL;
+  volatile caddr_t ret = NULL;
   caddr_t _err_ret;
   int meth = HC_METHOD_GET;
   dk_set_t hdrs = NULL;

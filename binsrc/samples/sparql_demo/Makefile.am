@@ -23,8 +23,38 @@ if WITH_SPARQLDEMO_VAD
 nodist_vad_DATA = sparql_demo_dav.vad
 endif
 
+NEED_VERSION    = 07.20.3226
+STICKER         = sparql_demo_sticker.xml
+VERBOSE         = #--verbose
+VERSION         = `cat vad_version`
+
+DAV_FLAGS       = $(VERBOSE) \
+                --var="BASE_PATH=/DAV/VAD" \
+                --var="ISDAV=1" \
+                --var="NEED_VERSION=$(NEED_VERSION)" \
+                --var="TYPE=dav" \
+                --var="VERSION=$(VERSION)"
+
+sparql_demo_dav.vad: $(EXTRA_DIST) Makefile data
+	$(PYTHON) $(top_srcdir)/binsrc/vadpacker/vadpacker.py \
+		-o $(builddir)/sparql_demo_dav.vad \
+		$(DAV_FLAGS) \
+		$(srcdir)/$(STICKER)
+
+.PHONY: data
+data:
+	$(RM) -r data sparql_dawg
+	tar xfz $(top_srcdir)/binsrc/tests/rdf/demo_data/sparql_dawg.tar.gz
+	tar xfz $(top_srcdir)/binsrc/tests/rdf/demo_data/sparql_extensions.tar.gz
+	mv sparql_dawg data
+
+# ----------------------------------------------------------------------
+#
+#  Cleanup
+#
+# ----------------------------------------------------------------------
 CLEANFILES = \
-	make_sparql_demo_vad.log \
+	*.log \
 	make_sparql_demo_vad.xml \
 	sparql_demo_dav.vad \
 	virtuoso.db \
@@ -35,11 +65,8 @@ CLEANFILES = \
 	virtuoso.tdb \
 	virtuoso.trx
 
-sparql_demo_dav.vad: $(EXTRA_DIST)
-	PATH="$(TOP)/binsrc/virtuoso:$(TOP)/binsrc/tests:.:$$PATH" PORT=$(PORT) HOME="$(TOP)" HOST=localhost $(SHELL) ./make_vad.sh
-
 clean-local:
-	-rm -rf vad
+	-rm -rf vad data
 
 # ----------------------------------------------------------------------
 #
@@ -47,13 +74,14 @@ clean-local:
 #
 # ----------------------------------------------------------------------
 EXTRA_DIST = \
-	*.css \
-	*.js \
-	*.sql \
-	*.vsp \
-	images/*.gif \
-	images/*.jpg \
-	images/*.png \
-	make_vad.sh \
-	syntax/*.js \
-	vad_version
+	$(srcdir)/$(STICKER) \
+	$(srcdir)/*.css \
+	$(srcdir)/*.js \
+	$(srcdir)/*.sql \
+	$(srcdir)/*.vsp \
+	$(srcdir)/images/*.gif \
+	$(srcdir)/images/*.jpg \
+	$(srcdir)/images/*.png \
+	$(srcdir)/Makefile.am \
+	$(srcdir)/syntax/*.js \
+	$(srcdir)/vad_version

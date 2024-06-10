@@ -25,7 +25,7 @@ drop quad map virtrdf:TutorialNorthwindDemo .
 create function DB.DBA.TUT_NORTHWIND_ID_TO_IRI(in _prefix varchar,in _id varchar)
 {
   declare iri, uriqa_host any;
-  uriqa_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
   iri := 'http://' || uriqa_host || '/tutorial/Northwind/resource/' || _prefix || '/' || _id;
   return sprintf ('http://%s/DAV/VAD/tutorial/rdfview/rd_v_1/RDFData/All/iid%%20(%d).rdf', uriqa_host, iri_id_num (iri_to_id (iri)));
 }
@@ -38,7 +38,7 @@ create function DB.DBA.TUT_NORTHWIND_IRI_TO_ID(in _iri varchar)
     if (parts is not null)
     {
         declare uriqa_host, iri any;
-        uriqa_host := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+        uriqa_host := virtuoso_ini_item_value ('URIQA','DefaultHost');
         if (parts[0] = uriqa_host)
         {
             iri := id_to_iri(iri_id_from_num(parts[1]));
@@ -815,7 +815,7 @@ drop procedure DB.DBA.REMOVE_TUT_DEMO_RDF_DET;
 create procedure DB.DBA.TUT_NORTHWIND_MAKE_RDF_DET()
 {
     declare uriqa_str varchar;
-    uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+    uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
     uriqa_str := 'http://' || uriqa_str || '/tutorial/Northwind';
     DB.DBA."RDFData_MAKE_DET_COL" ('/DAV/VAD/tutorial/rdfview/rd_v_1/RDFData/', uriqa_str, NULL);
     VHOST_REMOVE (lpath=>'/tutorial/Northwind/data/rdf');
@@ -832,7 +832,7 @@ drop procedure DB.DBA.TUT_NORTHWIND_MAKE_RDF_DET;
 --{
 --  declare res, iri any;
 --  declare uriqa_str varchar;
---  uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+--  uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
 --  uriqa_str := 'http://' || uriqa_str || '/tutorial/Northwind';
 --  iri := uriqa_str || val;
 --  res := sprintf ('iid (%d).rdf', iri_id_num (iri_to_id (iri)));

@@ -326,7 +326,7 @@ drop procedure DB.DBA.REMOVE_TPCH_RDF_DET;
 create procedure DB.DBA.TPCH_MAKE_RDF_DET()
 {
     declare uriqa_str varchar;
-    uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+    uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
     uriqa_str := 'http://' || uriqa_str || '/tpch';
     DB.DBA."RDFData_MAKE_DET_COL" ('/DAV/home/demo/tpch/RDFData/', uriqa_str, NULL);
     VHOST_REMOVE (lpath=>'/tpch/data/rdf');
@@ -342,7 +342,7 @@ create procedure DB.DBA.TPCH_DET_REF (in par varchar, in fmt varchar, in val var
 {
   declare res, iri any;
   declare uriqa_str varchar;
-  uriqa_str := cfg_item_value(virtuoso_ini_path(), 'URIQA','DefaultHost');
+  uriqa_str := virtuoso_ini_item_value ('URIQA','DefaultHost');
   uriqa_str := 'http://' || uriqa_str || '/tpch';
   iri := uriqa_str || val;
   res := sprintf ('iid (%d).rdf', iri_id_num (iri_to_id (iri)));

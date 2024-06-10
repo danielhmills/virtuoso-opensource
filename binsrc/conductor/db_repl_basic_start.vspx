@@ -47,11 +47,12 @@
           http_header(sprintf('Location: db_repl_basic_create.vspx?sid=%s&realm=%s\r\n',self.sid ,self.realm));
           http_flush();
 
-          declare continue handler for SQLSTATE '*' {
+          declare exit handler for SQLSTATE '*' {
             ROLLBACK WORK;
             self.repl_basic_running := 0;
             self.repl_basic_result_str := concat(__SQL_STATE,__SQL_MESSAGE);
             COMMIT WORK;
+            return;
           };
 
           declare s_ver, res, dbms_name varchar;

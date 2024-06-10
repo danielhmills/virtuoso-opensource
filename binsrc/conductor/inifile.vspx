@@ -109,7 +109,7 @@
                   for (j := 0; j < self.items; j := j + 1)
                   {
                     item := cfg_item_name (virtuoso_ini_path(), self.sect, j);
-                    item_value := cfg_item_value (virtuoso_ini_path(), self.sect, item);
+                    item_value := virtuoso_ini_item_value (self.sect, item);
                     http ('<tr>');
                     if ((self.sect = 'Parameters') and (item in ('AllowOSCalls', 'SafeExecutables', 'DbaExecutables', 'DirsAllowed', 'DirsDenied')))
                     {
@@ -154,7 +154,7 @@
                               if (new_item <> item)
                                 cfg_write (virtuoso_ini_path(), self.sect, item, '');
 
-                              item_value := cfg_item_value (virtuoso_ini_path(), self.sect, item);
+                              item_value := virtuoso_ini_item_value (self.sect, item);
                               if (new_item_value <> item_value)
                                 cfg_write (virtuoso_ini_path(), self.sect, new_item, new_item_value);
                             }

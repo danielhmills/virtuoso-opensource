@@ -1567,6 +1567,8 @@ sqlo_geo_count (df_elt_t * tb_dfe, df_elt_t * pred)
   int prec_literal = 0;
   double prec = 0;
   geo_t * geo = NULL;
+  if (BOX_ELEMENTS_0(args) < 1)
+    return 0;
   if (BOX_ELEMENTS (args) > 2)
     prec = sqlo_double_literal (args[2], &prec_literal);
   else
@@ -1756,7 +1758,7 @@ sqlo_text_count (dbe_table_t * tb, caddr_t str, caddr_t ext_fti)
   char tn[1000];
   char * tns = &tn[0];
   tb_sample_t * place;
-  if (2 == cl_run_local_only)
+  if (2 == cl_run_local_only || wi_inst.wi_is_checkpoint_pending)
     return -1;
   snprintf (tn, sizeof (tn), "%s:%s", tb->tb_name, str);
   mutex_enter (text_count_mtx);
@@ -3396,7 +3398,7 @@ rq_sample (df_elt_t * dfe, rq_cols_t * rq, index_choice_t * ic)
 	  lower[fill] = rqp->rqp_lower;
 	  upper[fill] = rqp->rqp_upper;
 	  if (-2 == n_in_items)
-	    n_in_items = THR_ATTR (THREAD_CURRENT_THREAD, TA_N_IN_ITEMS);
+	    n_in_items = (ptrlong) THR_ATTR (THREAD_CURRENT_THREAD, TA_N_IN_ITEMS);
 	  if (-1 == n_in_items && 1 == rqp->rqp_lower->_.bin.is_in_list && !non_index_in)
 	    non_index_in = rqp->rqp_lower;
 	  fill++;

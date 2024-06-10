@@ -43,7 +43,7 @@
 <body>
 <H3>SOAP service test page</H3>
 <?vsp
-   if (atoi (cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'ServerThreads')) < 2)
+   if (atoi (virtuoso_ini_item_value ('HTTPServer', 'ServerThreads')) < 2)
      {
        http ('<H3>This example needs at least 2 HTTP server threads configured.</H3>');
      }

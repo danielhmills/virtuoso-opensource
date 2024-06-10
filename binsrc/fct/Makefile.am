@@ -27,6 +27,30 @@ if WITH_FCT_VAD
 nodist_vad_DATA = fct_dav.vad
 endif
 
+NEED_VERSION	= 07.20.3226
+STICKER		= fct_sticker.xml
+VERBOSE		= #--verbose
+VERSION		= `cat vad_version`
+
+DAV_FLAGS       = $(VERBOSE) \
+                --prefix "$(srcdir)"    \
+                --var="BASE_PATH=/DAV/VAD" \
+                --var="ISDAV=1" \
+                --var="NEED_VERSION=$(NEED_VERSION)" \
+                --var="TYPE=dav" \
+                --var="VERSION=$(VERSION)"
+
+fct_dav.vad: $(EXTRA_DIST) Makefile
+	$(PYTHON) $(top_srcdir)/binsrc/vadpacker/vadpacker.py \
+		-o $(builddir)/fct_dav.vad \
+		$(DAV_FLAGS) \
+		$(srcdir)/$(STICKER)
+
+# ----------------------------------------------------------------------
+#
+#  Cleanup
+#
+# ----------------------------------------------------------------------
 CLEANFILES =  \
 	*.log \
 	*.vad \
@@ -40,11 +64,9 @@ CLEANFILES =  \
         vad_dav.xml \
         vad_fs.xml
 
-fct_dav.vad: $(EXTRA_DIST)
-	PATH="$(TOP)/binsrc/virtuoso:$(TOP)/binsrc/tests:.:$$PATH" PORT=$(PORT) HOME="$(TOP)" HOST=localhost $(SHELL) ./make_vad.sh
-
 clean-local:
-	-rm -rf vad
+	-$(RM) -rf vad
+	-$(RM) -f oat
 
 # ----------------------------------------------------------------------
 #
@@ -52,29 +74,25 @@ clean-local:
 #
 # ----------------------------------------------------------------------
 EXTRA_DIST = \
+	$(srcdir)/$(STICKER) \
 	$(srcdir)/*.html \
-	$(srcdir)/*.js \
-	$(srcdir)/*.owl \
-	$(srcdir)/*.sql \
 	$(srcdir)/*.txt \
 	$(srcdir)/*.vsp \
-	$(srcdir)/*.xsl \
 	$(srcdir)/conductor/*.js \
 	$(srcdir)/conductor/*.sql \
 	$(srcdir)/conductor/*.vspx \
+	$(srcdir)/css/*.css \
 	$(srcdir)/images/*.gif \
 	$(srcdir)/images/*.png \
 	$(srcdir)/images/*.svg \
-	$(srcdir)/make_vad.sh \
-	$(srcdir)/rdfdesc/*.sql \
+	$(srcdir)/js/*.js \
+	$(srcdir)/owl/*.owl \
 	$(srcdir)/rdfdesc/*.vsp \
-	$(srcdir)/s/*.js \
-	$(srcdir)/styles/*.css \
+	$(srcdir)/sql/*.sql \
+	$(srcdir)/xslt/*.xsl \
 	$(srcdir)/vad_version \
 	$(srcdir)/VirtTripleLoader/.classpath \
 	$(srcdir)/VirtTripleLoader/.project \
 	$(srcdir)/VirtTripleLoader/src/virtTripleLoaderInit/*.java \
-	$(srcdir)/www/*.css \
 	$(srcdir)/www/*.html \
-	$(srcdir)/www/*.sql \
 	$(srcdir)/www/*.vsp

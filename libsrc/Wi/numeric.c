@@ -1607,7 +1607,8 @@ numeric_from_string (numeric_t n, const char *s)
 	}
     }
 
-  rc = _numeric_normalize (n);
+  if (NUMERIC_STS_SUCCESS == error)
+    rc = _numeric_normalize (n);
 
   if (neg && !num_is_zero (n))
     n->n_neg = 1;

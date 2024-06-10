@@ -56,6 +56,8 @@ typedef struct cut_env_s
 
 static char errmsg_buf[1000];
 
+char *strdup(const char *s);
+
 void readtextfile (const char *src_name, char **bufptr, size_t *lenptr, char **err_ret)
 {
   FILE *f = fopen (src_name, "rt");

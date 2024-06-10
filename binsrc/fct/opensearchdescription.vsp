@@ -23,7 +23,7 @@
   declare uriqa_str varchar;
   declare favicon_path, search_image_path any;
 
-  uriqa_str := cfg_item_value (virtuoso_ini_path(), 'URIQA', 'DefaultHost');
+  uriqa_str := virtuoso_ini_item_value ('URIQA', 'DefaultHost');
 
   if (uriqa_str is null)
     {

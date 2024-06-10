@@ -38,6 +38,7 @@
       <v:variable persist="0" name="sch" type="varchar" default="''"/>
       <v:variable persist="0" name="name" type="varchar" default="''"/>
       <v:variable persist="0" name="trig_name" type="varchar" default="''"/>
+      <v:variable persist="0" name="trig_sch" type="varchar" default="null"/>
       <v:variable persist="0" name="m_create" type="integer" default="0"/>
       <v:variable persist="temp" name="err_msg" type="varchar" default="''"/>
       <v:variable persist="temp" name="row_count" type="integer" default="0"/>
@@ -406,7 +407,7 @@
                        <tr align="center">
                          <td>
                           <v:button action="simple" name="crtrig_cancel" value="Cancel" >
-          <v:on-post><![CDATA[ self.m_create := 0; self.trig_name := '';
+          <v:on-post><![CDATA[ self.m_create := 0; self.trig_name := ''; self.trig_sch := 'DB';
         self.crtrig_temp2.vc_data_bind (e);
         ]]></v:on-post>
                           </v:button>
@@ -419,13 +420,16 @@
                               stat := '00000';
                               commit work;
                               __set_user_id (connection_get ('vspx_user'), 1);
+                              set_qualifier (coalesce (self.trig_sch, 'DB'));
                               exec (self.crtrig_textfield.ufl_value, stat, msg);
                               __set_user_id (user);
+                              set_qualifier ('DB');
                               if (stat = '00000') {
                                 self.m_create := 0;
                                 self.trig_name := '';
-        self.ds_trig.vc_data_bind(e);
-        self.crtrig_temp2.vc_data_bind (e);
+                                self.trig_sch := 'DB';
+                                self.ds_trig.vc_data_bind(e);
+                                self.crtrig_temp2.vc_data_bind (e);
                               }
             else
               {
@@ -444,7 +448,7 @@
                 <tr>
                   <td colspan="4">
                     <v:data-set name="ds_trig" nrows="1024" scrollable="0" cursor-type="static" edit="0" initial-enable="1"
-                        sql="select T_NAME, coalesce(T_TEXT,T_MORE) as T_TEXT from SYS_TRIGGERS where T_TABLE = :self.name" >
+                        sql="select T_NAME, coalesce(T_TEXT,T_MORE) as T_TEXT, T_SCH from SYS_TRIGGERS where T_TABLE = :self.name" >
                       <v:template name="temp_ds_trig_header" type="simple" name-to-remove="table" set-to-remove="bottom">
                         <table>
                           <tr class="listing_header_row">
@@ -454,8 +458,9 @@
                                 <v:button action="simple" name="crntrig" value="New Trigger" style="url">
                                  <v:on-post><![CDATA[
                                    self.m_create := 1;
-           self.trig_name := '';
-           self.crtrig_temp2.vc_data_bind (e);
+                                     self.trig_name := '';
+                                     self.trig_sch := self.cat;
+                                     self.crtrig_temp2.vc_data_bind (e);
                                  ]]></v:on-post>
                                 </v:button>
                             </th>
@@ -481,7 +486,8 @@
                                      self.trig_name := (control.vc_parent as vspx_row_template).te_rowset[0];
                                      self.m_create := 1;
              self.crtrig_temp2.vc_data_bind (e);
-                                     self.crtrig_textfield.ufl_value := (control.vc_parent as vspx_row_template).te_rowset[1];
+                                      self.crtrig_textfield.ufl_value := (control.vc_parent as vspx_row_template).te_rowset[1];
+                                      self.trig_sch := (control.vc_parent as vspx_row_template).te_rowset[2];
                                   ]]></v:on-post>
                                 </v:button>
         <v:button name="trig_delete" value="Drop" style="url" action="simple" url="databases_drop.vspx">

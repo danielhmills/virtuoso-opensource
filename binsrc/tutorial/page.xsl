@@ -831,13 +831,13 @@
 
   if (dav_vsp = '1')
   {
-    if (cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'EnabledDavVSP') <> dav_vsp)
+    if (virtuoso_ini_item_value ('HTTPServer', 'EnabledDavVSP') <> dav_vsp)
       error := 'Warning: WebDAV VSP Page Execution is currently disabled. Please enable in order to use this service.  Go to the Config file for the demo database (the file "demo.ini") and edit the section-key: EnabledDavVSP = 0 by uncommenting and then changing the 0 to 1.';
   }
 
   if (http_thr is not null and atoi(http_thr) > 1)
   {
-    if (atoi (cfg_item_value (virtuoso_ini_path(), 'HTTPServer', 'ServerThreads')) < atoi (http_thr))
+    if (atoi (virtuoso_ini_item_value ('HTTPServer', 'ServerThreads')) < atoi (http_thr))
     {
       error := sprintf ('Warning: This example needs at least %s HTTP server threads configured.', http_thr);
     }

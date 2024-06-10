@@ -2513,46 +2513,39 @@ mdigest5 (caddr_t str)
   return res;
 }
 
-caddr_t
-md5ctx_to_string (MD5_CTX * pctx)
+static caddr_t
+md5ctx_to_string (caddr_t * qst, MD5_CTX * pctx)
 {
   int inx;
   caddr_t res;
-  res = dk_alloc_box (sizeof (MD5_CTX) * 2 + 1, DV_SHORT_STRING);
-  for (inx = 0; inx < sizeof (MD5_CTX); inx++)
-    {
-      unsigned c = (unsigned) ((char *) pctx)[inx];
-      res[inx * 2] = __tohex[0xf & (c >> 4)];
-      res[inx * 2 + 1] = __tohex[c & 0xf];
-    }
-  res[sizeof (MD5_CTX) * 2] = '\0';
+  client_connection_t * cli = ((query_instance_t *)qst)->qi_client;
+  caddr_t tmp[sizeof (MD5_CTX) + BOX_AUTO_OVERHEAD], box;
+  BOX_AUTO_TYPED(caddr_t, box, tmp, sizeof (MD5_CTX), DV_BIN);
+  memcpy (box, pctx, sizeof (MD5_CTX));
+  res = box_sprintf (64, "md5-ctx-%lx", box);
+  connection_set (cli, res, box);
   return res;
 }
 
 
-int
-string_to_md5ctx (MD5_CTX * pctx, caddr_t str)
+static int
+string_to_md5ctx (caddr_t * qst, MD5_CTX * pctx, caddr_t str)
 {
   int inx;
-  if (box_length (str) < sizeof (MD5_CTX) * 2)
-    sqlr_new_error ("42000", "SR435",
-	"Attempt to deserialize too short md5 context.");
-
-  for (inx = 0; inx < sizeof (MD5_CTX); inx++)
+  client_connection_t * cli = ((query_instance_t *)qst)->qi_client;
+  caddr_t key, ctx;
+  int ok = 0;
+  if ((ok = id_hash_get_and_remove (cli->cli_globals, (caddr_t) &str, (caddr_t)(&key), (caddr_t)(&ctx))))
     {
-      int l1 = -1, l2 = -1;
-      char *p;
-      p = strchr (__tohex, str[inx * 2]);
-      if (NULL != p)
-	l1 = (int) (p - __tohex);
-      p = strchr (__tohex, str[inx * 2 + 1]);
-      if (NULL != p)
-	l2 = (int) (p - __tohex);
-      if (l1 < 0 || l2 < 0)
-	sqlr_new_error ("42000", "SR436",
-	    "Attempt to deserialize incorrect md5 context.");
-      ((char *) pctx)[inx] = (l1 << 4) + l2;
+      if (box_length(ctx) == sizeof(MD5_CTX))
+        memcpy(pctx, ctx, sizeof(MD5_CTX));
+      else
+        ok = 0;
+      dk_free_box(key);
+      dk_free_box(ctx);
     }
+  if (!ok)
+    sqlr_new_error ("42000", "SR435", "Attempt to access non-existing or used md5 context.");
   return 0;
 }
 
@@ -2562,7 +2555,7 @@ bif_md5_init (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   MD5_CTX ctx;
   memset (&ctx, 0, sizeof (MD5_CTX));
   MD5_Init (&ctx);
-  return md5ctx_to_string (&ctx);
+  return md5ctx_to_string (qst, &ctx);
 }
 
 void
@@ -2584,7 +2577,7 @@ bif_md5_update (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   else
     str = (caddr_t)bif_strses_arg (qst, args, 1, "md5_update");
 
-  string_to_md5ctx (&ctx, sctx);
+  string_to_md5ctx (qst, &ctx, sctx);
   if (DV_STRING == dtp || DV_RDF == dtp)
     MD5_Update (&ctx, (unsigned char *) str, box_length (str) - 1);
   else
@@ -2594,7 +2587,7 @@ bif_md5_update (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
       strses_file_map (ses, md5_update_map, (caddr_t) & ctx);
       MD5_Update (&ctx, (unsigned char *) ses->dks_out_buffer, ses->dks_out_fill);
     }
-  return md5ctx_to_string (&ctx);
+  return md5ctx_to_string (qst, &ctx);
 }
 
 static caddr_t
@@ -2606,7 +2599,7 @@ bif_md5_final (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   unsigned char digest[MD5_SIZE];
   caddr_t sctx = bif_string_arg (qst, args, 0, "md5_final");
   int make_it_hex = 1;
-  string_to_md5ctx (&ctx, sctx);
+  string_to_md5ctx (qst, &ctx, sctx);
   if (BOX_ELEMENTS (args) > 1)
     make_it_hex = (int) bif_long_arg (qst, args, 1, "md5_final");
   if (make_it_hex)

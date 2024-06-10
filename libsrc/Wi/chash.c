@@ -1667,6 +1667,7 @@ setp_chash_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    { \
 	        cha->cha_distinct_count++;				\
 		groups[inx + n - 1] = cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, pos1_##n, inx + n - 1, first_set, (dtp_t*)nulls); \
+                cha->cha_error |= cha_p_##n->cha_error; \
 	      goto done_##n##f; \
 	    } \
 	  if (h_##n == *ent && cmp (cha, ent, key_vecs, inx + n - 1, (dtp_t*)nulls)) \
@@ -1679,6 +1680,7 @@ setp_chash_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    { \
 	      cha->cha_distinct_count++;				\
 	      groups[inx + n - 1] = cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, pos2_##n, inx + n - 1, first_set, (dtp_t*)nulls); \
+              cha->cha_error |= cha_p_##n->cha_error; \
 	      goto done_##n##f; \
 	    } \
 	  if (h_##n == *ent && cmp (cha, ent, key_vecs, inx + n - 1, (dtp_t*)nulls)) \
@@ -1697,6 +1699,7 @@ setp_chash_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    } \
 	  cha->cha_distinct_count++;					\
 	  groups[inx + n - 1] = cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, -1, inx + n - 1, first_set, (dtp_t*)nulls); \
+          cha->cha_error |= cha_p_##n->cha_error; \
 	done_##n##f: ;
 
 	  GB_PRE (1);
@@ -2120,6 +2123,8 @@ setp_chash_group (setp_node_t * setp, caddr_t * inst)
       cha = tree->it_hi->hi_chash;
     }
   setp_chash_run (setp, inst, tree);
+  if (cha->cha_error)
+    sqlr_new_error ("42000",  "GBLIM",  "Partitioned hash table key can not have length over 8k");
   if (setp->setp_is_streaming
       && cha->cha_distinct_count * 100 > (dc_batch_sz * cha_stream_gb_flush_pct) && setp_stream_breakable (setp, inst))
     longjmp_splice (THREAD_CURRENT_THREAD->thr_reset_ctx, RST_GB_ENOUGH);
@@ -2200,6 +2205,7 @@ setp_chash_distinct_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    { \
 	        cha->cha_distinct_count++;				\
 		cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, pos1_##n, inx + n - 1, first_set, (dtp_t*)nulls); \
+                cha->cha_error |= cha_p_##n->cha_error; \
 		dis_result (n); \
 	      goto done_##n##f; \
 	    } \
@@ -2212,6 +2218,7 @@ setp_chash_distinct_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    { \
 	      cha->cha_distinct_count++;				\
 	      cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, pos2_##n, inx + n - 1, first_set, (dtp_t*)nulls); \
+              cha->cha_error |= cha_p_##n->cha_error; \
 	      dis_result (n); \
 	      goto done_##n##f; \
 	    } \
@@ -2229,6 +2236,7 @@ setp_chash_distinct_run (setp_node_t * setp, caddr_t * inst, index_tree_t * it)
 	    } \
 	  cha->cha_distinct_count++;					\
 	  cha_add_gb (setp, inst, key_vecs, cha_p_##n, h_##n, -1, inx + n - 1, first_set, (dtp_t*)nulls); \
+          cha->cha_error |= cha_p_##n->cha_error; \
 	  dis_result (n); \
 	done_##n##f: ;
 

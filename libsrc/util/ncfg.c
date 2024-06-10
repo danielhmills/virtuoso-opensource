@@ -989,7 +989,7 @@ _cfg_digestprintf (MD5_CTX *pMd5, FILE *fd, const char *fmt, ...)
   int retValue;
 
   va_start (ap, fmt);
-  vsprintf (buf, fmt, ap);
+  vsnprintf (buf, sizeof(buf), fmt, ap);
   length = strlen (buf);
   retValue = fwrite (buf, 1, length, fd) == length ? 0 : -1;
   MD5_Update (pMd5, (unsigned char *) buf, (unsigned int) length);

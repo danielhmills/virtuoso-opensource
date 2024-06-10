@@ -654,7 +654,7 @@ bif_regexp_parse_impl (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args, i
   dk_set_t ret_revlist = NULL;
 
   utf8_mode = utf8_mode2 = 0;
-  offset = (int) bif_long_arg (qst, args, 2, fname);
+  offset = (int) bif_long_range_arg (qst, args, 2, fname, 0, INT32_MAX);
   str = bif_regexp_str_arg (qst, args, 1, fname, REGEXP_BF, &utf8_mode, &str_to_free, err_ret);
   if (*err_ret) goto done;
 

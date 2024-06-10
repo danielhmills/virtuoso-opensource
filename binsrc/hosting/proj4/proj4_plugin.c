@@ -117,7 +117,7 @@ virt_proj4_find_pj_by_srid_or_string (caddr_t * qst, caddr_t *err_ret, int srid,
     rwlock_unlock (srid_to_pj_htable->ht_rwlock);
   parms = dk_alloc_list (2);
   parms[0] = box_dv_uname_string (":0");
-  parms[1] = boxed_srid;
+  parms[1] = box_copy(boxed_srid);
   err = qr_exec (
     ((query_instance_t *)qst)->qi_client, srid_to_proj4_string_qr, CALLER_LOCAL, NULL, NULL, &lc, parms, NULL, 1);
   dk_free_box ((caddr_t)parms);

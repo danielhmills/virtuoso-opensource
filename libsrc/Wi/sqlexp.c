@@ -667,6 +667,8 @@ sqlc_coalesce_exp (sql_comp_t * sc, ST * tree, dk_set_t * code)
   df_elt_t *dfe = sc->sc_so ? sqlo_df (sc->sc_so, tree) : NULL;
 
   res->ssl_is_callret = 1;
+  if (sc->sc_grouping)
+    ssl_set_dc_type (res);
   for (inx = 0; inx < n_exps; inx++)
     {
       jmp_label_t ok = sqlc_new_label (sc);
@@ -1356,7 +1358,7 @@ cv_subq_ret (sql_comp_t * sc, instruction_t * ins)
 {
   query_t * qr = ins->_.subq.query;
   select_node_t * sel = qr->qr_select_node;
-  if (!sel)
+  if (!sel || !qr->qr_select_node->sel_out_slots[0])
     return NULL;
   qr->qr_select_node->sel_vec_role = SEL_VEC_SCALAR;
   qr->qr_select_node->sel_out_slots[0]->ssl_sqt.sqt_non_null = 0;
@@ -2664,7 +2666,7 @@ sqlg_agg_ins (sql_comp_t * sc, ST * tree, dk_set_t * code,
     case AMMSC_MAX:
       {
 	state_slot_t *best = ssl_new_inst_variable (sc->sc_cc, AMMSC_MAX == tree->_.fn_ref.fn_code ? "best" : "min", DV_UNKNOWN);
-	cv_agg (fun_ref_code, tree->_.fn_ref.fn_code, best, arg, set_no, tree->_.fn_ref.all_distinct, sc);
+	cv_agg (fun_ref_code, tree->_.fn_ref.fn_code, best, arg, set_no, (void*)(ptrlong)tree->_.fn_ref.all_distinct, sc);
 	dk_set_push (&sc->sc_fun_ref_temps, (void *) best);
 	best->ssl_qr_global = 1;
 	sc->sc_fun_ref_defaults = NCONC (sc->sc_fun_ref_defaults, CONS (dk_alloc_box (0, DV_DB_NULL), NULL));
@@ -2693,12 +2695,12 @@ sqlg_agg_ins (sql_comp_t * sc, ST * tree, dk_set_t * code,
 	sc->sc_fun_ref_default_ssls = NCONC (sc->sc_fun_ref_default_ssls, CONS (sum, NULL));
 	if (!is_constant_arg)
 	  {
-	    cv_agg (fun_ref_code, AMMSC_SUM, sum, arg, set_no, tree->_.fn_ref.all_distinct, sc);
+	    cv_agg (fun_ref_code, AMMSC_SUM, sum, arg, set_no, (void*)(ptrlong)tree->_.fn_ref.all_distinct, sc);
 	  }
 	else
 	  {
 	    if (arg->ssl_dtp != DV_DB_NULL)
-	      cv_agg (fun_ref_code, AMMSC_SUM, sum, arg, set_no, tree->_.fn_ref.all_distinct, sc);
+	      cv_agg (fun_ref_code, AMMSC_SUM, sum, arg, set_no, (void*)(ptrlong)tree->_.fn_ref.all_distinct, sc);
 	  }
 	result = sum;
 	break;

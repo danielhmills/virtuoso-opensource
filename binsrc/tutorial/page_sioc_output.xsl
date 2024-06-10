@@ -37,7 +37,7 @@
 <xsl:template match="tutorial">
 <?vsp
       declare _path,_domain varchar;
-      _domain := cfg_item_value (virtuoso_ini_path(), 'URIQA', 'DefaultHost');
+  _domain := virtuoso_ini_item_value ('URIQA', 'DefaultHost');
       if (_domain is null)
       {
         http_request_status (sprintf ('HTTP/1.1 500 %s', 'SIOC RDF output cannot be constructed without URIQA DefaultHost set. Please contact the site administrator and report the problem.'));

@@ -1,8 +1,427 @@
+2024-06-10  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated version to 7.2.13
+
+	Merge branch 'feature/vos-fixes' into develop/7
+
+	Updated version to 7.2.13-rc
+
+	Updated Changelog
+
+	Updated NEWS.md
+
+2024-06-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated version to 7.2.13 engine 3240
+
+2024-06-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue reading large chunked data in SSE client
+
+2024-06-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated Conductor VAD version
+
+2024-06-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed missing check for optional table
+
+	Fixed issue when initialization of snapshot fails
+
+	Fixed issue with wrong vad file path during vad install
+
+	Fixed save CORs via WS wizard duplicate cors options
+
+2024-06-06  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed preserve qualifier when updating trigger
+
+2024-06-06  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated copyright
+
+2024-06-04  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed use virtuoso_ini_item_value where appropriate
+
+2024-06-04  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue calculating hash when target graph is null
+
+2024-05-23  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed warning of invalid escape sequence
+
+2024-05-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed typo and small cleanups
+
+2024-05-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed missing checks for service and query arguments
+
+2024-05-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issue with stack var clobbered by setjump/longjump
+
+2024-05-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed MD5 context should be kept on connection global and not reused
+
+	This fixes #1287
+
+2024-05-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge branch 'feature/fuzzer-fixes' into develop/7
+
+2024-05-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Added testsuite entries for recently fixed issues
+
+2024-05-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed use vsnprintf
+
+2024-05-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed various missing BIF functions argument checks
+
+	This closes #1286, closes #1288, closes #1289, closes #1290, closes #1291,
+	closes #1292, closes #1293, closes #1294, closes #1295
+
+2024-05-02  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed compiler warning
+
+	Added new test
+
+2024-05-02  Mitko Iliev  <imitko@openlinksw.com>
+
+	Backport from v8
+
+	For string buffers, round to next large size, see that there is 16 bytes
+	of margin after the last for sse string ops so no ref to unmapped at
+	end of strings
+
+2024-05-02  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with hash in group by (fixes #1285)
+
+2024-05-02  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed length calculation in REPEAT (fixes #1282)
+
+2024-05-01  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge branch 'feature/fuzzer-fixes' into develop/7
+
+2024-04-30  Mitko Iliev  <imitko@openlinksw.com>
+
+	Added new tests for recent cases
+
+	Fixed missing copy of parameter value (fixes #1284)
+
+	Fixed missing sz check (fixes #1283)
+
+	Fixed make sure position is 1-based
+
+	Fixed offset overflow (fixes #1281)
+
+	Fixed issue trying to normalize an invalid numeric (fixes #1279)
+
+2024-04-29  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge branch 'feature/2024_04_29_fix_jena3_4' into develop/7
+
+	Rebuild Jena 3/4 providers
+
+2024-04-29  Sergey Malinin  <smalinin@openlinksw.com>
+
+	Fixed missing properties during initialization of a new Model
+
+	VirtDataSet methods getDefaultModel()/getNamedModel() doesn't apply all
+	properties(like queryTimeout and etc) to the newly created Model
+
+2024-04-09  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed vec input should be declared as boxed i.e. array (Fixes #1254)
+
+2024-04-04  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed unfolded bifs have to have serial to distinguish separate calls (fixes #1276)
+
+2024-04-02  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with transaction boundary
+
+	Fixed memory leak
+
+2024-03-28  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Upgraded sparql_demo build process to use vadpacker
+
+	Removed deprecated script
+
+	Upgraded bpel build process to use vadpacker
+
+2024-03-26  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed missing condition for sponger settings
+
+2024-03-25  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Disabled unused filesystem vad packages
+
+	Updated DBpedia VAD version
+
+	Fixed encoding
+
+2024-03-25  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Added new prefixes
+
+	    gold: <http://purl.org/linguistics/gold/>
+	    ov:   <http://open.vocab.org/terms/>
+
+2024-03-25  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed set default for dbp_decode_iri to ON
+
+	Added initial support for /datatype
+
+2024-03-25  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed installation scripts to remove need for dbpedia_init.sql
+
+	The dbpedia_pl.sql now contains the relevant PL code from
+	dbpedia_init.sql.
+
+	The dbpedia_del.sql removes all the old and sometimes confusing rewrite
+	rules etc., that added an unnecessary layer of complexety.
+
+	Moved the /void rules and vdirs to dbpedia_local.sql.
+
+2024-03-25  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Upgraded DBpedia build process to use vadpacker
+
+	Upgraded iSPARQL build process to use vadpacker
+
+	Upgraded Conductor build process to use vadpacker
+
+	Upgraded RDB2RDF build process to use vadpacker
+
+	Small cleanup for FCT vad building
+
+	Upgraded to vadpacker v1.8
+
+2024-03-25  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with MaxMemPoolSize
+
+	Allow MaxMemPoolSize to be 0 (unlimited) or from 400M (default)
+	to INT64_MAX
+
+2024-03-25  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue freeing n-way nic arrays
+
+	    The n-way nic arrays are allocated a bin box, should free as such.
+
+2024-03-22  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed 'Read/Write wait on column page...' should be debug messages
+
+	Merge branch 'feature/fuzzer-fixes' into develop/7
+
+2024-03-22  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed geometry objects must be represented as strings (Fixes #1274)
+
+	Added new tests for recent cases
+
+	Fixed 64bit arith overflow (Fixes #1270)
+
+	Fixed missing check for star (Fixes #1269)
+
+	Fixed set dc type on grouping sets (Fixed #1268)
+
+	Fixed check num cols in union branches when subq non-terminal is used (Fixes #1267)
+
+	Fixed check for control exp over non-terminal not-allowed/can't be handled (Fixes #1266)
+
+	Fixed ft exp & similar not allowed in control exp (Fixes #1265)
+
+	Fixed negative column offset (Fixes #1264)
+
+	Fixed test for comma exp not allowed in arith exp (Fixes #1263)
+
+	Fixed cost on void geo function (Fixes #1262)
+
+	Fixed memcopy buffer overflow (Fixes #1259)
+
+2024-03-22  Mitko Iliev  <imitko@openlinksw.com>
+
+	Added stack overflow ck (Fixes #1258)
+
+	Also resolves #1271, resolves #1272
+
+2024-03-22  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed alloc double dep on demand as as int (Fixes #1257)
+
+	Fixed ambiguous subq return (Fixes #1253)
+
+2024-03-20  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with non-string copy (Fixes #1252)
+
+	Fixed non iri_id and non such as iri should be error
+
+	Added cumulative patch for cube/rollup and bad dt artithmetics
+
+	Added new tests for recent cases
+
+	Fixed missing check for const in predicate (fixed #1251)
+
+2024-03-15  Mitko Iliev  <imitko@openlinksw.com>
+
+	Added new tests for recent cases
+
+	Fixed const in predicate can be removed by optimiser (fixed #1250)
+
+2024-03-14  Mitko Iliev  <imitko@openlinksw.com>
+
+	Added test for vec param cast any/str/null
+
+	Fixed issue on any ssl w/h nulls (fixes #1249)
+
+2024-03-12  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issues with clang 15 and newer compilers
+
+	Clang now throws an error on several constructions that previously
+	only returned a warning, such as:
+
+	  * incompatible function pointer types
+	  * incompatible integer to pointer conversion
+
+	This causes problems when building on the latest macOS XCode release as
+	well as the upcoming new Ubuntu 24.04
+
+2024-03-11  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed TSV output to use SPARQL 1.1 TSV specification
+
+	See: https://www.w3.org/TR/2013/REC-sparql11-results-csv-tsv-20130321/#tsv-table
+
+2024-03-08  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Removed unused argument artifact
+
+	Fixed issues reported by link time optimizer (LTO)
+
+2024-03-04  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge branch 'feature/vos-fixes' into develop/7
+
+	Added missing tsuite entries
+
+	Updated Conductor VAD version
+
+2024-03-04  Tim Haynes  <thaynes@openlinksw.com>
+
+	Conductor: Inclusion.Engine Sites: constrain site-name field to non-space characters only
+
+2024-03-04  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with join and order by on null result (fixes #1241)
+
+	Keep set control node together with outer sequence end node in both
+	left and right outer join
+
+2024-03-04  Mitko Iliev  <imitko@openlinksw.com>
+
+	Merged back safe logical_* bif names from v8
+
+	Fixed issue importing bad IRI pattern
+
+	Fixed issues with microdata parser
+
+	Fixed debug printf only in DEBUG modeF
+
+	Added optional alternative names for server X.509 certificate
+
+	Fixed issue getting client status during swapping or www maintenance
+
+	Fixed issue collecting ft stats during checkpoint
+
+2024-02-29  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated FCT vad version
+
+	Removed deprecated scripts
+
+	Fixed namespace of inference rules graphs
+
+	Fixed check for python executable
+
+	Upgraded FCT build process to use vadpacker
+
+	Added vadpacker tool
+
+2024-02-20  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue on rehash if dict_put is used in select list
+
+2024-02-15  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issue with basename on older machines
+
+	Fixed allow building against openssl 3.2.x
+
+2024-02-15  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed small issues with sql_to_c.awk script (fixes #1244)
+
+	* Added version to header
+	* Fixed include lines
+	* Fixed warnings on unknown regexp operator
+	* Updated documentation that GNU awk versions 3.11 up to and including
+	  5.3.0 have been validated
+
+2024-02-15  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issue with bad index op ref in table dft (fixes #1245)
+
+	Moved check for dio_terms into the correct block.
+
+	This fixes an issue introduced by commit
+	fb0cf1cdd1ec20e226d8f0eb41710eaf8093437b
+
+2024-02-14  Sergey Malinin  <smalinin@openlinksw.com>
+
+	Fixed issue building Windows binaries
+
+2024-02-14  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated version to 7.2.13-dev to mark the start of a new development cycle
+
 2024-02-13  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge tag 'v7.2.12' into develop/7
+
+	Tagged for release
+
+2024-02-13  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge branch 'release/7.2.12' into stable/7
 
 	Updated ChangeLog
 
 	Updated version to 7.2.12 engine 3239
+
+	Updated NEWS.md
 
 	Updated NEWS.md
 
