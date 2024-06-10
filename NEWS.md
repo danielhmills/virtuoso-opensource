@@ -1,6 +1,6 @@
 # NEWS
 
-## June 10, 2024, v7.2.13-rc:
+## June 10, 2024, v7.2.13:
   * Virtuoso Engine
 	- Added safe logical_* bif names
 	- Fixed issues with clang 15 and newer compilers
