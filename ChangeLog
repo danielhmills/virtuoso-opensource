@@ -1,5 +1,13 @@
 2024-06-10  Patrick van Kleef  <pkleef@openlinksw.com>
 
+	Updated version to 7.2.13
+
+	Merge branch 'feature/vos-fixes' into develop/7
+
+	Updated version to 7.2.13-rc
+
+	Updated Changelog
+
 	Updated NEWS.md
 
 2024-06-07  Patrick van Kleef  <pkleef@openlinksw.com>
