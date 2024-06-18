@@ -3390,6 +3390,7 @@ bif_trim (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   return res;
 }
 
+#define DV_STRING_MAYBE_UTF8(a) (BF_UTF8 == box_flags(a) || BF_IRI == box_flags(a))
 
 /* Modified by AK 29-OCT-1997 to skip all NULL arguments (i.e.
    the result being exactly like they were empty strings "") */
@@ -3402,7 +3403,7 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   caddr_t *cast_args = NULL;
   int alen;
   caddr_t a;
-  int len = 0, fill = 0;
+  int len = 0, wlen = 0, fill = 0;
   caddr_t res;
   int haveWides = 0, haveWeirds = 0;
   dtp_t dtp1;
@@ -3419,11 +3420,27 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	case DV_STRING:
 	case DV_UNAME:
 	  len += box_length (a) - 1;
+	  if (DV_STRING_MAYBE_UTF8 (a))	/* the IRIs may be UTF-8 so we try */
+	    {
+	      size_t wide_len = wide_char_length_of_utf8_string (a, box_length (a) - 1);
+	      if (wide_len >= 0)
+		wlen += wide_len;
+	      else		/* in case utf8 is not a proper sequence, then gigo, we set flag here and do not try converting below */
+		{
+		  if (NULL == cast_args)
+		    cast_args = dk_alloc_list_zero (n_args);
+		  cast_args[inx] = box_num (1);
+		  wlen += box_length (a) - 1;
+		}
+	    }
+	  else
+	    wlen += box_length (a) - 1;
 	  break;
 	case DV_WIDE:
 	case DV_LONG_WIDE:
 	  haveWides = 1;
 	  len += box_length (a) / sizeof (wchar_t) - 1;
+	  wlen += box_length (a) / sizeof (wchar_t) - 1;
 	  break;
 	default:
 	  if (NULL == cast_args)
@@ -3456,24 +3473,27 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 		  sprintf (buf, BOXINT_FMT, unbox (a));
 		  cast_args[inx] = box_dv_short_string (buf);
 		  len += box_length (cast_args[inx]) - 1;
+		  wlen += box_length (cast_args[inx]) - 1;
 		  break;
 		}
 	      /* no break */
 	    default:
 	      {
 		char save = qi->qi_no_cast_error;
-		qi->qi_no_cast_error = 0; /* concat may get vector as input, this is not a cast to be done w/o error here */
+		qi->qi_no_cast_error = 0;	/* concat may get vector as input, this is not a cast to be done w/o error here */
 		QR_RESET_CTX
 		{
 		  if (haveWides)
 		    {
 		      cast_args[inx] = box_cast (qst, a, st_nvarchar, dtp1);
 		      len += box_length (cast_args[inx]) / sizeof (wchar_t) - 1;
+		      wlen += box_length (cast_args[inx]) / sizeof (wchar_t) - 1;
 		    }
 		  else
 		    {
 		      cast_args[inx] = box_cast (qst, a, st_varchar, dtp1);
 		      len += box_length (cast_args[inx]) - 1;
+		      wlen += box_length (cast_args[inx]) - 1;
 		    }
 		}
 		QR_RESET_CODE
@@ -3495,6 +3515,8 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	}
     }
   sizeof_char = haveWides ? sizeof (wchar_t) : sizeof (char);
+  if (haveWides)
+    len = wlen;
   if (((len + 1) * sizeof_char) > 10000000)
     {
       /*dk_free_box ((caddr_t)orig_args); */
@@ -3506,7 +3528,7 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
     {
       /*dk_free_box ((caddr_t)orig_args); */
       dk_free_tree ((caddr_t) cast_args);
-    qi_signal_if_trx_error (qi);
+      qi_signal_if_trx_error (qi);
     }
   for (inx = 0; inx < n_args; inx++)
     {
@@ -3521,7 +3543,10 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	  if (haveWides)
 	    {
 	      alen = box_length (a) - 1;
-	      box_narrow_string_as_wide ((unsigned char *) a, res + fill * sizeof_char, alen, QST_CHARSET (qst), err_ret, 1);
+	      if (DV_STRING_MAYBE_UTF8 (a) && (!cast_args || !cast_args[inx]))
+		alen = (size_t) box_utf8_as_wide_char (a, res + fill * sizeof_char, alen, len - fill);
+	      else
+		box_narrow_string_as_wide ((unsigned char *) a, res + fill * sizeof_char, alen, QST_CHARSET (qst), err_ret, 1);
 	      break;
 	    }
 	  /* no break */
