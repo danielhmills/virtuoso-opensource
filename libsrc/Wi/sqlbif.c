@@ -16664,7 +16664,7 @@ bif_rdf_encode_for_uri_impl (caddr_t * qst, caddr_t * err_ret, state_slot_t ** a
     case DV_LONG_WIDE:
       {
         ses = strses_allocate ();
-        dks_esc_write (ses, str, box_length (str) - 1, CHARSET_UTF8, CHARSET_WIDE, DKS_ESC_URI);
+        dks_esc_write (ses, str, box_length (str) - sizeof (wchar_t), CHARSET_UTF8, CHARSET_WIDE, DKS_ESC_URI);
       }
       break;
     default:
