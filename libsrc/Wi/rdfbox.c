@@ -2793,7 +2793,7 @@ iri_cast_and_split_ttl_qname_impl (query_instance_t *qi, caddr_t iri, caddr_t *n
             if (min_named_bnode_iri_id () > iid)
               {
                 ns_prefix_ret[0] = uname___empty;
-                local_ret[0] = BNODE_IID_TO_TTL_LABEL_LOCAL (iid);
+                local_ret[0] = BNODE_IID_TO_LABEL_LOCAL (iid);
                 is_bnode_ret[0] = 1;
                 return 1;
               }
@@ -2891,7 +2891,7 @@ iri_cast_rdfxml_qname (query_instance_t *qi, caddr_t iri, caddr_t *uri_ret, ptrl
           {
             if (min_named_bnode_iri_id () > iid)
               {
-                uri_ret[0] = BNODE_IID_TO_TTL_LABEL_LOCAL (iid);
+                uri_ret[0] = BNODE_IID_TO_LABEL_LOCAL (iid);
                 is_bnode_ret[0] = 1;
 		dk_free_box (old_uri_ret);
                 return 1;
@@ -2920,9 +2920,10 @@ iri_cast_nt_absname (query_instance_t *qi, caddr_t iri, caddr_t *iri_ret, ptrlon
 /*                                             0123456789 */
         if ((iri_boxlen > 9) && !memcmp (iri, "nodeID://", 9))
           {
-            iri_ret[0] = box_dv_short_nchars (iri + (9-2), iri_boxlen - (9-2));
+            iri_ret[0] = box_dv_short_nchars (iri + (9-3), iri_boxlen - (9-3));
             iri_ret[0][0] = '_';
             iri_ret[0][1] = ':';
+            iri_ret[0][2] = 'v';
             is_bnode_ret[0] = 1;
             return 1;
           }
@@ -3201,7 +3202,7 @@ ttl_http_write_ref (dk_session_t *ses, ttl_env_t *env, ttl_iriref_t *ti)
     sqlr_new_error ("22023", "SR645", "Turtle serialization of RDF data has got NULL instead of an URI");
   if (ti->is_bnode)
     {
-      session_buffered_write (ses, "_:", 2);
+      session_buffered_write (ses, "_:v", 3);
       session_buffered_write (ses, loc, strlen (loc));
       return;
     }

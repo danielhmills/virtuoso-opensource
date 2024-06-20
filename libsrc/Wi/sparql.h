@@ -173,6 +173,16 @@ extern void sparp_debug_weird (struct sparp_s *sparp, const char *file, int line
 #define SPARP_PU_IN_READ	2
 #define SPARP_PU_BGP		3
 
+#define SPARP_PRECODE_NO_LOCAL_VARS	0x01		/*!< Parser reads a precode expression that can not contain non-global variables */
+#define SPARP_PRECODE_NO_GLOBAL_VARS	0x02		/*!< Parser reads a precode expression that can not contain global variables */
+#define SPARP_PRECODE_NO_BNODES		0x04		/*!< Parser reads a precode expression that can not contain blank nodes */
+#define SPARP_PRECODE_NO_AGGREGATES	0x08		/*!< Parser reads a precode expression that can not contain aggreages */
+#define SPARP_PRECODE_NO_FN_CONTEXT	0x10		/*!< Parser reads a precode expression that can not contain content-dependant functions (only BMD_IS_PURE are OK) */
+#define SPARP_PRECODE_NO_BACKQUOTES	0x20		/*!< Parser reads a constructor context that does not permit generic backquotes */
+#define SPARP_PRECODE_SQL_BEGIN_ONLY	(SPARP_PRECODE_NO_LOCAL_VARS | SPARP_PRECODE_NO_BNODES | SPARP_PRECODE_NO_AGGREGATES)
+#define SPARP_PRECODE_CTOR_DATA_ONLY	(SPARP_PRECODE_NO_LOCAL_VARS | SPARP_PRECODE_NO_GLOBAL_VARS | SPARP_PRECODE_NO_AGGREGATES | SPARP_PRECODE_NO_FN_CONTEXT | SPARP_PRECODE_NO_BACKQUOTES)
+#define SPARP_PRECODE_PURE_ONLY	(SPARP_PRECODE_NO_LOCAL_VARS | SPARP_PRECODE_NO_GLOBAL_VARS | SPARP_PRECODE_NO_BNODES | SPARP_PRECODE_NO_AGGREGATES | SPARP_PRECODE_NO_FN_CONTEXT)
+
 struct spar_sqlgen_s;
 struct spar_tree_s;
 
@@ -374,7 +384,6 @@ typedef struct sparp_e4qm_s {
   dk_set_t		e4qm_deleted;			/*!< Backstack of deleted JS objects, class IRI pushed first, instance IRI pushed after so it's above) */
 } sparp_e4qm_t;
 
-
 typedef struct sparp_s {
 /* Generic environment */
   spar_query_env_t *sparp_sparqre;	/*!< External environment of the query */
@@ -401,7 +410,7 @@ typedef struct sparp_s {
   int sparp_total_lexems_parsed;
   spar_lexem_t *sparp_curr_lexem;
   spar_lexbmk_t sparp_curr_lexem_bmk;
-  int sparp_in_precode_expn;		/*!< If nonzero (usually 1) then the parser reads precode-safe expression so it can not contain non-global variables, if bit 2 is set then even global variables are prohibited (like it is in INSERT DATA statement) */
+  int sparp_in_precode_expn;		/*!< This bitmask is non-zero when the parser reads precode-safe expressions and the like. Otherwise it is combination of SPARP_PRECODE_xxx bits */
   int sparp_in_ctor_from_where;		/*!< If nonzero then the parser reads WHERE clause of CONSTRUCT WHERE or DELETE WHERE statement */
   int sparp_allow_aggregates_in_expn;	/*!< The parser reads result-set expressions, GROUP BY, ORDER BY, or HAVING. Each bit is responsible for one level of nesting. */
   int sparp_scalar_subq_count;		/*!< Counter of scalar subqueries. It's primary purpose is to track whether BIND expression contain scalar subqueries and hence is non-repeatable. */
@@ -1011,6 +1020,7 @@ extern void spar_compose_retvals_of_delete_from_wm (sparp_t *sparp, SPART *tree,
 extern int spar_optimize_delete_of_single_triple_pattern (sparp_t *sparp, SPART *top);
 extern void spar_optimize_retvals_of_insert_or_delete (sparp_t *sparp, SPART *top);
 extern void spar_optimize_retvals_of_modify (sparp_t *sparp, SPART *top);
+extern SPART *spar_make_insertdata_or_deletedata (sparp_t *sparp, ptrlong subtype, SPART *dflt_g, SPART *ctor);
 extern SPART **spar_retvals_of_describe (sparp_t *sparp, SPART *req_top, SPART **retvals, SPART *limit, SPART *offset);
 extern void spar_add_rgc_vars_and_consts_from_retvals (sparp_t *sparp, SPART **retvals);
 extern SPART *spar_make_wm (sparp_t *sparp, SPART *pattern, SPART **groupings, SPART *having, SPART **order, SPART *limit, SPART *offset, SPART *binv);

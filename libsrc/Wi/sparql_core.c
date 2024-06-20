@@ -4139,21 +4139,20 @@ spar_make_variable (sparp_t *sparp, caddr_t name)
 #endif
   if (is_global)
     {
+      if (sparp->sparp_in_precode_expn & SPARP_PRECODE_NO_GLOBAL_VARS)
+        spar_error (sparp, "Global variable '%.100s' is not allowed in a constant clause", name);
       t_set_push_new_string (&(sparp->sparp_env->spare_global_var_names), name);
     }
-  if (sparp->sparp_in_precode_expn)
+  else
     {
-      if (2 & sparp->sparp_in_precode_expn)
-        spar_error (sparp, "Variable '%.100s' is not allowed in a constant clause", name);
-      else if (!is_global)
+      if (sparp->sparp_in_precode_expn & SPARP_PRECODE_NO_LOCAL_VARS)
         spar_error (sparp, "non-global variable '%.100s' can not be used outside any group pattern or result-set list", name);
     }
   if (is_global) /* say, 'insert in graph ?:someglobalvariable {...} where {...} */
     selid = t_box_dv_uname_string ("(global)");
   else if (SPART_VARNAME_IS_SPECIAL(name)) /* say, '@"limofs"."describe-1"' */
     selid = t_box_dv_uname_string ("(special)");
-  /*!!! TBD finda replacement for
-  else
+  /*!!! TBD find a replacement for
     spar_internal_error (sparp, "non-global variable outside any group pattern or result-set list"); */
   else
     selid = NULL;
@@ -4175,7 +4174,7 @@ spar_make_macropu (sparp_t *sparp, caddr_t name, ptrlong pos)
 SPART *spar_make_blank_node (sparp_t *sparp, caddr_t name, int bracketed)
 {
   SPART *res;
-  if ((sparp->sparp_in_precode_expn) && !(bracketed & 0x2))
+  if ((sparp->sparp_in_precode_expn & SPARP_PRECODE_NO_BNODES) && !(bracketed & 0x2))
     spar_error (sparp, "Blank node '%.100s' is not allowed in a constant clause", name);
   /*if (NULL == env->spare_selids)
     spar_error (sparp, "Blank nodes (e.g., '%.100s') can not be used outside any group pattern or result-set list", name);*/
@@ -5379,6 +5378,23 @@ spar_make_topmost_sparul_sql (sparp_t *sparp, SPART **actions)
   SPART **action_sqls;
   caddr_t volatile err = NULL;
   int action_ctr, action_count = BOX_ELEMENTS (actions);
+/* INSERT DATA can be converted to a pair of INSERT DATA (w/o blank nodes) and INSERT (with blank nodes), then it's stored in list of actions as a SPAR_LIST with 2 items */
+  for (action_ctr = action_count; action_ctr--; /* no step */)
+    {
+      SPART *actn = actions [action_ctr];
+      if (SPAR_LIST == SPART_TYPE (actn))
+        {
+          int lst_len = BOX_ELEMENTS (actn->_.list.items);
+          if (0 == lst_len)
+            actions = (SPART **)t_list_remove_nth ((caddr_t)actions, action_ctr);
+          else
+            {
+              actions = (SPART **)t_list_insert_many_before_nth ((caddr_t)actions, (caddr_t *)(actn->_.list.items + 1), lst_len - 1, action_ctr + 1);
+              actions[action_ctr] = actn->_.list.items[0];
+            }
+          action_count = BOX_ELEMENTS (actions);
+        }
+    }
   if ((1 == action_count) && unbox (spar_compose_report_flag (sparp)))
     return actions[0]; /* No need to make grouping around single action. */
 /* First of all, every tree for every action is compiled into string literal containing SQL text. */

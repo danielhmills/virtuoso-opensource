@@ -999,7 +999,7 @@ spar_sponge_option_commalist	/* ::=  SpongeOption ( ',' SpongeOption )* */
 	;
 
 spar_precode_expn	/* [Virt]	PrecodeExpn	 ::=  Expn	(* Only global variables can occur in Expn, local can not *)	*/
-	: { sparp_arg->sparp_in_precode_expn = 1; }
+	: { sparp_arg->sparp_in_precode_expn = SPARP_PRECODE_SQL_BEGIN_ONLY; }
 	  spar_expn %prec PRECODE_EXPN_PREC
 	  { sparp_arg->sparp_in_precode_expn = 0; $$ = $2; }
 	;
@@ -2201,7 +2201,7 @@ spar_expn		/* [43]	Expn		 ::=  ConditionalOrExpn	( 'AS' ( VAR1 | VAR2 ) ) */
 		sparp_arg->sparp_allow_aggregates_in_expn >>= 1; }
 	| spar_ret_agg_call {
 		$$ = $1;
-		if (sparp_arg->sparp_in_precode_expn)
+		if (sparp_arg->sparp_in_precode_expn & SPARP_PRECODE_NO_AGGREGATES)
 		  sparyyerror (sparp_arg, "Aggregates are not allowed in 'precode' expressions that should be calculated before the result-set of the query");
 		if (!(sparp_arg->sparp_allow_aggregates_in_expn & 1))
 		  sparyyerror (sparp_arg, "Aggregates are allowed only in result sets"); }
@@ -2542,15 +2542,10 @@ spar_sparul_insertdata	/* [DML]*	InsertDataAction	 ::=  */
 			/*... ConstructTemplate	*/
 	: INSERT_L DATA_L spar_in_graph_precode_opt _LBRA {
 		t_set_push (&(sparp_arg->sparp_env->spare_propvar_sets), NULL);
-		sparp_arg->sparp_in_precode_expn = 2; }
+		sparp_arg->sparp_in_precode_expn = SPARP_PRECODE_CTOR_DATA_ONLY; }
 	    spar_ctor_template_nolbra {
-                SPART *fake = spar_make_fake_action_solution (sparp_arg);
-		SPART *dflt_g = $3;
-		if ((NULL == dflt_g) && spar_ctor_uses_default_graph ($6))
-		  dflt_g = spar_default_sparul_target (sparp_arg, "triple in INSERT DATA {...} without GRAPH {...}", 0);
 		sparp_arg->sparp_in_precode_expn = 0;
-		$$ = spar_make_top_or_special_case_from_wm (sparp_arg, SPARUL_INSERT_DATA, NULL, fake );
-		spar_compose_retvals_of_insert_or_delete (sparp_arg, $$, dflt_g, $6); }
+                $$ = spar_make_insertdata_or_deletedata (sparp_arg, SPARUL_INSERT_DATA, $3, $6); }
 	;
 
 spar_sparul_delete	/* [DML]*	DeleteAction	 ::=  */
@@ -2573,15 +2568,10 @@ spar_sparul_deletedata	/* [DML]*	DeleteDataAction	 ::=  */
 			/*... ConstructTemplate	*/
 	: DELETE_L DATA_L spar_from_graph_precode_opt _LBRA {
 		t_set_push (&(sparp_arg->sparp_env->spare_propvar_sets), NULL);
-		sparp_arg->sparp_in_precode_expn = 2; }
+		sparp_arg->sparp_in_precode_expn = (SPARP_PRECODE_CTOR_DATA_ONLY | SPARP_PRECODE_NO_BNODES); }
 	    spar_ctor_template_nolbra {
-                SPART *fake = spar_make_fake_action_solution (sparp_arg);
-		SPART *dflt_g = $3;
-		if ((NULL == dflt_g) && spar_ctor_uses_default_graph ($6))
-		  dflt_g = spar_default_sparul_target (sparp_arg, "triple in DELETE DATA {...} without GRAPH {...}", 0);
 		sparp_arg->sparp_in_precode_expn = 0;
-		$$ = spar_make_top_or_special_case_from_wm (sparp_arg, SPARUL_DELETE_DATA, NULL, fake );
-		spar_compose_retvals_of_insert_or_delete (sparp_arg, $$, dflt_g, $6); }
+                $$ = spar_make_insertdata_or_deletedata (sparp_arg, SPARUL_DELETE_DATA, $3, $6); }
 	;
 
 spar_sparul_modify	/* [DML]*	ModifyAction	 ::=  */
