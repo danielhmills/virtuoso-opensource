@@ -3057,6 +3057,8 @@ int
 tsp_next (ts_split_state_t * tsp, it_cursor_t * itc, buffer_desc_t ** buf_ret, it_cursor_t * prev)
 {
   int nth = ++tsp->tsp_nth_call;
+  if (!tsp->tsp_n_parts)
+    return TSS_NO_SPLIT;
   if (itc->itc_insert_key->key_is_col && enable_col_split)
     return tsp_next_col (tsp, itc, buf_ret, prev);
   for (;;)
