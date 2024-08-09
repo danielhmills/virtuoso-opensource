@@ -3780,7 +3780,7 @@ sqlo_use_p_stat (df_elt_t * dfe, df_elt_t ** lowers, int inx_const_fill, int64 e
   if (!enable_p_stat || !inx_const_fill)
     return 0;
   if (0 != strcmp (((dbe_column_t*)key->key_parts->data)->col_name, "P")
-      || !strstr (key->key_table->tb_name, "RDF_QUAD"))
+      || !tb_is_rdf_quad (key->key_table))
     return 0;
   col2 = (dbe_column_t*)key->key_parts->next->data;
   so_dfe = sqlo_key_part_best (col2, dfe->_.table.col_preds, 0);
@@ -4688,6 +4688,8 @@ dfe_unit_cost (df_elt_t * dfe, float input_arity, float * u1, float * a1, float 
       if (dfe->dfe_type == DFE_DT
 	  && dfe->_.sub.ot->ot_is_outer)
 	*a1 = MAX (1, *a1); /* right siode of left oj has min cardinality 1 */
+      if (dfe->_.sub.trans && TRANS_LR == dfe->_.sub.trans->tl_direction) /* in unkn est. potentially increase */
+        *u1 *= MAX (dfe->_.sub.in_arity, 1.0);
 
       break;
     case DFE_QEXP:

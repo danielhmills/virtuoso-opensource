@@ -1172,6 +1172,19 @@ qn_print_reuse (data_source_t * qn)
 }
 
 const char *
+tn_direction_string(int dir)
+{
+  switch (dir)
+    {
+      case TRANS_ANY: return "any";
+      case TRANS_LR: return "LR";
+      case TRANS_RL: return "RL";
+      case TRANS_LRRL: return "LRRL";
+      default: return "???";
+    }
+}
+
+const char *
 predicate_name_of_gsop (int gsop)
 {
   switch (gsop)
@@ -2246,14 +2259,14 @@ node_print (data_source_t * node)
 	  stmt_printf  ((" %s\n", tn->tn_lowest_sas ? "min same-as id" : ""));
 	  if (tn->tn_sas_g)
 	    {
-	      stmt_printf (("g = "));
+              stmt_printf (("G = "));
 	      ssl_array_print (tn->tn_sas_g);
 	      stmt_printf (("\n"));
 	    }
 	}
       else
 	{
-	  stmt_printf (("Transitive dt dir %d, input: ", tn->tn_direction));
+          stmt_printf (("Transitive DT dir %s(%d), input: ", tn_direction_string(tn->tn_direction), tn->tn_direction));
 	  ssl_array_print (tn->tn_input);
 	  stmt_printf (("\n  input shadow: "));
 	  ssl_array_print (tn->tn_input_ref);
