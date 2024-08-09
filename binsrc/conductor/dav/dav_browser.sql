@@ -3292,6 +3292,8 @@ create procedure WEBDAV.DBA.DAV_PERROR (
     S := replace (S, 'Resource', 'File');
     S := subseq (S, 6);
   }
+  if (-44 = x and isstring (connection_get('__sql_message')))
+    S := connection_get('__sql_message');
   return S;
 }
 ;
