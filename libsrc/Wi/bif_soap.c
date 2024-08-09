@@ -11546,7 +11546,7 @@ ws_soap_http (ws_connection_t * ws)
   }
 
 end:
-  if (err && http_resp_code != 200)
+  if (err && http_resp_code != 200 && !ws->ws_status_line)
     {
       ws->ws_status_line = ws_http_error_header (http_resp_code);
       ws->ws_status_code = http_resp_code;
