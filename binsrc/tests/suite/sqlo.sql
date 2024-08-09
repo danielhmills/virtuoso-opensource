@@ -2092,5 +2092,22 @@ ECHO BOTH $IF $EQU $LAST[1] 1 "PASSED" "***FAILED";
 SET ARGV[$LIF] $+ $ARGV[$LIF] 1;
 ECHO BOTH ": " $U{caseno} " STATE=" $STATE " MESSAGE=" $MESSAGE "\n";
 
+create table TBUDTSTR (id0 varchar, id1 varchar, primary key(id0,id1)) if not exists;
+create unique index TBUDTSTR_i0 on TBUDTSTR(id0) if not exists;
+drop type UDT2STR if exists;
+create type UDT2STR as (id varchar, u utr0)
+constructor method UDT2STR(id varchar);
+
+create constructor method UDT2STR(in id varchar) for UDT2STR { self.id := id; };
+
+insert soft TBUDTSTR values ('1','1');
+insert soft TBUDTSTR values ('2','1');
+insert soft TBUDTSTR values ('3','1');
+
+select * from TBUDTSTR where id0 = UDT2STR(1).id;
+ECHO BOTH $IF $EQU $STATE OK "PASSED" "***FAILED";
+SET ARGV[$LIF] $+ $ARGV[$LIF] 1;
+ECHO BOTH ": member observer any type STATE=" $STATE " MESSAGE=" $MESSAGE "\n";
+
 ECHO BOTH "COMPLETED: SQL Optimizer tests (sqlo.sql) WITH " $ARGV[0] " FAILED, " $ARGV[1] " PASSED\n\n";
 

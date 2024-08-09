@@ -2634,7 +2634,11 @@ sqlc_udt_is_udt_call (sql_comp_t * sc, char *name, dk_set_t * code,
 	  cv_call (code, NULL, t_sqlp_box_id_upcase (UDT_MEMBER_HANDLER_BIF), ret, bif_parms);
 	  qr_uses_type (sc->sc_cc->cc_query, udt->scl_name);
 	  if (ret && IS_REAL_SSL (ret) && ret->ssl_dtp == DV_UNKNOWN)
-	    ret->ssl_sqt = udt->scl_member_map[fld_inx]->sfl_sqt;
+            {
+              ret->ssl_sqt = udt->scl_member_map[fld_inx]->sfl_sqt;
+              if (!ret->ssl_sqt.sqt_class)
+                ret->ssl_dtp = DV_ANY;
+            }
 	  if (ret && udt->scl_ext_lang == UDT_LANG_SQL)
 	    ret->ssl_is_observer = 1;
 	  retc = 1;
