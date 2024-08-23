@@ -2039,7 +2039,7 @@ sf_inprocess_ep (void)
 static server_func
 sf_inprocess_ep_wrapper (caddr_t args[])
 {
-  return sf_inprocess_ep();
+  return (server_func) sf_inprocess_ep();
 }
 
 
@@ -3647,7 +3647,7 @@ sf_caller_identification (char *name)
 static server_func
 sf_caller_identification_wrapper (caddr_t args[])
 {
-  return sf_caller_identification ((char *)args[0]);
+  return (server_func) sf_caller_identification ((char *)args[0]);
 }
 
 #endif /* NO_THREAD */

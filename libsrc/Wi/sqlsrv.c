@@ -3981,7 +3981,7 @@ srv_global_init_plugin_actions (dk_set_t *set_ptr, char *mode)
 static server_func
 sf_sql_connect_wrapper (caddr_t args[])
 {
-  return sf_sql_connect (args[0], args[1], args[2], (caddr_t *) args[3]);
+  return (server_func) sf_sql_connect (args[0], args[1], args[2], (caddr_t *) args[3]);
 }
 
 static server_func
@@ -4015,7 +4015,7 @@ sf_sql_transact_wrapper (caddr_t args[])
 static server_func
 sf_sql_free_stmt_wrapper (caddr_t args[])
 {
-  return (caddr_t) sf_sql_free_stmt (args[0], (int)args[1]);
+  return (server_func) sf_sql_free_stmt (args[0], (int)args[1]);
 }
 
 static server_func
@@ -4042,7 +4042,7 @@ sf_sql_extended_fetch_wrapper (caddr_t args[])
 static server_func
 sf_sql_no_threads_reply_wrapper (caddr_t args[])
 {
-  return sf_sql_no_threads_reply ();
+  return (server_func) sf_sql_no_threads_reply ();
 }
 
 static server_func
