@@ -325,7 +325,7 @@ bh_string_output_w (/* this was before 3.0: index_space_t * isp, */ lock_trx_t *
 	}
       byte_len = LONG_REF (buf->bd_buffer + DP_BLOB_LEN);
       mbc = buf->bd_buffer + DP_DATA;
-      char_len = (long) virt_mbsnrtowcs (wpage, &mbc, byte_len, PAGE_DATA_SZ, &state);
+      char_len = (long) virt_mbsnrtowcs (wpage, (const unsigned char **) &mbc, byte_len, PAGE_DATA_SZ, &state);
       if (char_len < 0)
 	GPF_T1 ("bad UTF8 data in wide blob page");
       chars_on_page = char_len - from_char;
@@ -407,7 +407,7 @@ bh_string_list_w (/* this was before 3.0: index_space_t * isp,*/ lock_trx_t * lt
 
       byte_len = LONG_REF (buf->bd_buffer + DP_BLOB_LEN);
       mbc = buf->bd_buffer + DP_DATA;
-      char_len = (long) virt_mbsnrtowcs (wpage, &mbc, byte_len, PAGE_DATA_SZ, &state);
+      char_len = (long) virt_mbsnrtowcs (wpage, (const unsigned char **) &mbc, byte_len, PAGE_DATA_SZ, &state);
       if (char_len < 0)
 	GPF_T1 ("bad UTF8 data in wide blob page");
       chars_on_page = MIN (char_len - from_char, get_chars);
@@ -873,7 +873,7 @@ box_utf8_string_as_narrow (ccaddr_t _str, caddr_t narrow, long max_len, wcharset
     charset = default_charset;
 
   memset (&state, 0, sizeof (virt_mbstate_t));
-  len = (long) virt_mbsnrtowcs (NULL, (unsigned char **) &src, box_length (str), 0, &state);
+  len = (long) virt_mbsnrtowcs (NULL, (const unsigned char **) &src, box_length (str), 0, &state);
   if (max_len > 0 && len > max_len)
     len = max_len;
   if (len < 0) /* there was <= 0 - bug */
@@ -916,7 +916,7 @@ t_box_utf8_string_as_narrow (ccaddr_t _str, caddr_t narrow, long max_len, wchars
     charset = default_charset;
 
   memset (&state, 0, sizeof (virt_mbstate_t));
-  len = (long) virt_mbsnrtowcs (NULL, (unsigned char **) &src, strlen ((char *) str), 0, &state);
+  len = (long) virt_mbsnrtowcs (NULL, (const unsigned char **) &src, strlen ((char *) str), 0, &state);
   if (max_len > 0 && len > max_len)
     len = max_len;
   if (len < 0) /* there was <= 0 - bug */
@@ -975,7 +975,7 @@ t_box_utf8_as_wide_char (ccaddr_t _utf8, caddr_t _wide_dest, size_t utf8_len, si
 
   utf8work = utf8;
   memset (&state, 0, sizeof (virt_mbstate_t));
-  wide_len = virt_mbsnrtowcs (NULL, &utf8work, utf8_len, 0, &state);
+  wide_len = virt_mbsnrtowcs (NULL, (const unsigned char **) &utf8work, utf8_len, 0, &state);
   if (((long) wide_len) < 0)
     return _wide_dest ? ((caddr_t) wide_len) : NULL;
   if (max_wide_len && max_wide_len < wide_len)
@@ -987,7 +987,7 @@ t_box_utf8_as_wide_char (ccaddr_t _utf8, caddr_t _wide_dest, size_t utf8_len, si
 
   utf8work = utf8;
   memset (&state, 0, sizeof (virt_mbstate_t));
-  if (wide_len != virt_mbsnrtowcs ((wchar_t *) dest, &utf8work, utf8_len, wide_len, &state))
+  if (wide_len != virt_mbsnrtowcs ((wchar_t *) dest, (const unsigned char **) &utf8work, utf8_len, wide_len, &state))
     GPF_T1("non consistent multi-byte to wide char translation of a buffer");
 
   ((wchar_t *)dest)[wide_len] = L'\0';

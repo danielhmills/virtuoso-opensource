@@ -10713,7 +10713,7 @@ do_bin_again:
 
 	      wide_work = wide;
 	      memset (&state, 0, sizeof (virt_mbstate_t));
-	      utf8_len = (long) virt_wcsnrtombs (NULL, &wide_work, wide_len, 0, &state);
+	      utf8_len = (long) virt_wcsnrtombs (NULL, (const wchar_t **) &wide_work, wide_len, 0, &state);
 	      if (utf8_len < 0)
 		sqlr_new_error ("22005", "IN014",
 		    "Invalid data supplied in NVARCHAR -> VARBINARY conversion");
@@ -10721,7 +10721,7 @@ do_bin_again:
 
 	      wide_work = wide;
 	      memset (&state, 0, sizeof (virt_mbstate_t));
-              actual_utf8_len = virt_wcsnrtombs ((unsigned char *) res, &wide_work, wide_len, utf8_len, &state);
+              actual_utf8_len = virt_wcsnrtombs ((unsigned char *) res, (const wchar_t **) &wide_work, wide_len, utf8_len, &state);
 	      if (utf8_len != actual_utf8_len)
 		GPF_T1("non consistent wide char to multi-byte translation of a buffer");
 	      if (NULL != tmp_res)
@@ -10778,14 +10778,14 @@ do_wide:
               virt_mbstate_t state;
               utf8work = utf8;
               memset (&state, 0, sizeof (virt_mbstate_t));
-              wide_len = virt_mbsnrtowcs (NULL, &utf8work, utf8_len, 0, &state);
+              wide_len = virt_mbsnrtowcs (NULL, (const unsigned char **) &utf8work, utf8_len, 0, &state);
               if (((long) wide_len) < 0)
 	        sqlr_new_error ("22005", "IN015",
 	          "Invalid data supplied in UNAME -> NVARCHAR conversion");
               ret = dk_alloc_box ((int) (wide_len  + 1) * sizeof (wchar_t), DV_WIDE);
               utf8work = utf8;
               memset (&state, 0, sizeof (virt_mbstate_t));
-              if (wide_len != virt_mbsnrtowcs ((wchar_t *) ret, &utf8work, utf8_len, wide_len, &state))
+              if (wide_len != virt_mbsnrtowcs ((wchar_t *) ret, (const unsigned char **) &utf8work, utf8_len, wide_len, &state))
                 {
                   dk_free_box (ret);
 	          sqlr_new_error ("22005", "IN015",
