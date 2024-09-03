@@ -2245,8 +2245,8 @@ qi_check_trx_error (query_instance_t * qi, int flags)
       sqlr_resignal (err);
     }
 
-  if (cli->cli_start_time &&
-      time_now_msec - cli->cli_start_time > BURST_STOP_TIMEOUT
+  if (cli->cli_start_time_usec &&
+      time_now_msec - (cli->cli_start_time_usec / 1000UL) > BURST_STOP_TIMEOUT
       && cli->cli_session
       && cli_is_interactive (cli)
       && !cli->cli_ws)

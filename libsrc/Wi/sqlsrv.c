@@ -709,7 +709,7 @@ client_connection_reset (client_connection_t * cli)
   cli->cli_not_char_c_escape = 0;
   cli->cli_utf8_execs = 0;
   cli->cli_no_system_tables = 0;
-  cli->cli_start_time = 0;
+  cli->cli_start_time_usec = 0;
   cli->cli_terminate_requested = 0;
   if (client_connection_reset_hook)
     cli->cli_outp_worker = client_connection_reset_hook (cli->cli_outp_worker);
@@ -1564,7 +1564,7 @@ sf_stmt_prepare (caddr_t stmt_id, char *text, long explain,
   if (!stmt && err)
     goto report_error;
   cli->cli_terminate_requested = 0;
-  cli->cli_start_time = time_now_msec;
+  cli->cli_start_time_usec = get_usec_real_time();
   if (!stmt || stmt->sst_cursor_state)
     {
       /* There's an instance. can't do it */
@@ -1747,8 +1747,8 @@ cli_set_start_times (client_connection_t * cli)
 {
   if (prof_on)
     dt_now ((caddr_t)&cli->cli_start_dt);
-  cli->cli_start_time = get_msec_real_time ();
-  cli->cli_ws_check_time = cli->cli_start_time;
+  cli->cli_start_time_usec = get_usec_real_time();
+  cli->cli_ws_check_time = cli->cli_start_time_usec / 1000UL;
   cli->cli_cl_start_ts = rdtsc ();
   cli->cli_activity.da_thread_time = 0;
 }
@@ -1799,7 +1799,7 @@ sf_sql_execute (caddr_t stmt_id, char *text, char *cursor_name,
 #endif
 
   cli->cli_terminate_requested = 0;
-  cli->cli_start_time = time_now_msec;
+  cli->cli_start_time_usec = get_usec_real_time();
   if (!stmt || stmt->sst_cursor_state)
     {
       /* Busy */

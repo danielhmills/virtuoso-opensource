@@ -1879,7 +1879,7 @@ typedef struct client_connection_s
 #ifdef INPROCESS_CLIENT
     int			cli_inprocess;
 #endif
-    time_msec_t		cli_start_time;
+    time_usec_t		cli_start_time_usec;
     time_msec_t		cli_ws_check_time;
     caddr_t *		cli_info;
     cl_thread_t *	cli_clt; /* if cli of a cluster server thread, this is the clt */
