@@ -991,6 +991,8 @@ log_info_http (ws_connection_t * ws, const char * code, OFF_T clen)
   const char * str;
   int volatile len;
   int http_resp_code = 0;
+  client_connection_t *cli = ws->ws_cli;
+  time_usec_t time_usec_now = 0;
   time_t now;
   struct tm *tm;
 #if defined (HAVE_LOCALTIME_R) && !defined (WIN32)
@@ -1081,8 +1083,36 @@ next_fragment:
 		      dk_free_tree (connvar_value);
 		    }
 		  break;
-	      default:
-		  WS_LOG_ERROR;
+	      case 'T':
+		if (!time_usec_now)
+		  time_usec_now = get_usec_real_time ();
+		if (!strcmp (format, "s"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000000UL);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "ms"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000UL);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "us"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec));
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "rt"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", rdtsc () - cli->cli_cl_start_ts);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		/* no break; */
+		  default:
+		      WS_LOG_ERROR;
 	    }
 	  goto get_next;
 	}
@@ -1109,8 +1139,19 @@ next_fragment:
 		  (tm->tm_mday), monthname [month - 1], year, tm->tm_hour, tm->tm_min, tm->tm_sec, TZ_TO_HHMM(dt_local_tz_for_logs));
 	    }
 	  break;
+    case 'T':
+      if (!time_usec_now)
+	time_usec_now = get_usec_real_time ();
+      snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000000UL);
+      break;
+    case 'D':
+      if (!time_usec_now)
+	time_usec_now = get_usec_real_time ();
+      snprintf (tmp, sizeof (tmp), "%lld", time_usec_now - cli->cli_start_time_usec);
+      break;
       case 'r':
-         snprintf (tmp, sizeof (tmp), "%.*s", tmp_len, ws->ws_req_line ? ws->ws_req_line : "GET unspecified");
+      snprintf (tmp, sizeof (tmp), "%.*s", tmp_len, ws->ws_req_line
+	  && ws->ws_method != WM_ERROR ? ws->ws_req_line : "GET unspecified");
 	  strcat_ck (tmp, ws->ws_proto);
 	  tmp [sizeof (tmp) - 1] = 0;
 	  break;
