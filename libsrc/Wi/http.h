@@ -204,6 +204,8 @@ extern long  tws_bad_request;
 #define WM_ERROR 4	/*!< comment out this definition to stop sending 401 Bad request */
 #define WM_HEAD 5
 #define WM_OPTIONS 6
+#define WM_PUT 7
+#define WM_DELETE 8
 
 #define WM_URIQA_FIRST 100
 #define WM_URIQA_MGET 100

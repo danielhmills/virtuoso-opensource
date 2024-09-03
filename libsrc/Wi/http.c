@@ -1589,6 +1589,8 @@ ws_path_and_params (ws_connection_t * ws)
     case 3:
       if (0 == memcmp (ws->ws_req_line, "GET", 3))
         ws->ws_method = WM_GET;
+      if (0 == memcmp (ws->ws_req_line, "PUT", 3))
+        ws->ws_method = WM_PUT;
       break;
     case 4:
       if (0 == memcmp (ws->ws_req_line, "POST", 4))
@@ -1599,6 +1601,10 @@ ws_path_and_params (ws_connection_t * ws)
         ws->ws_method = WM_URIQA_MGET;
       else if (0 == memcmp (ws->ws_req_line, "MPUT", 4))
         ws->ws_method = WM_URIQA_MPUT;
+      break;
+    case 6:
+      if (0 == memcmp (ws->ws_req_line, "DELETE", 6))
+        ws->ws_method = WM_DELETE;
       break;
     case 7:
       if (0 == memcmp (ws->ws_req_line, "MDELETE", 7))
