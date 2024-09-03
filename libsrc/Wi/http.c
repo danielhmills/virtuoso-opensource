@@ -373,13 +373,11 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
   else if (check_rate == ACL_CHECK_HITS)
     {
       acl_hit_t * hit, **place;
-      int64 now;
-      timeout_t tv;
+      time_usec_t now_usec;
 
       res = elm->ha_flag;
-      get_real_time (&tv);
-      now = ((int64)tv.to_sec * 1000000) + (int64) tv.to_usec;
-      /*now = get_msec_real_time ();*/
+      now_usec = get_usec_real_time ();
+
       mutex_enter (http_acl_mtx);
       loc_hash = elm->ha_hits;
 #ifdef DEBUG
@@ -394,7 +392,7 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
 
 	  hit = *place;
 
-	  elapsed = (float) (now - hit->ah_initial) / 1000000;
+	  elapsed = (float) (now_usec - hit->ah_initial) / 1000000;
 	  if (elapsed < 1) elapsed = 0.5;
 	  rate = (float)((hit->ah_count + 1) / elapsed);
 	  hit->ah_avg = rate;
@@ -414,7 +412,7 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
 	  memset (hit, 0, sizeof (acl_hit_t));
 	  id_hash_set (loc_hash, (caddr_t) &new_name, (caddr_t) &hit);
 	}
-      if (!hit->ah_initial) hit->ah_initial = now;
+      if (!hit->ah_initial) hit->ah_initial = now_usec;
       hit->ah_count ++;
       if (hit_ret)
 	*hit_ret = hit;
