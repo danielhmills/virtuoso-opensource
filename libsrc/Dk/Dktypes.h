@@ -146,6 +146,8 @@ typedef struct
 
 /* General time for specifying timestamps in msec from EPOCH */
 typedef uint64 time_msec_t;
+/* General time for specifying timestamps in µsec from EPOCH */
+typedef uint64 time_usec_t;
 
 #ifdef FILE64
 

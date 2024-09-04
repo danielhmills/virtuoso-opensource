@@ -69,6 +69,7 @@
   declare auto_sponge_on_empty_graph int;
   declare q_txt any;
   declare safetolink integer;
+  declare jsses any;
 
   set http_charset='utf-8';
   { 
@@ -83,6 +84,7 @@
   err := null;
 
   deadl := 0;
+  jsses := null;
 
   declare exit handler for sqlstate '40001' {
     rollback work;
@@ -497,6 +499,14 @@ again:
     <link rel="icon" href="/favicon/favicon.svg?v=1" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon/apple-touch-icon-180x180.png?v=1" />
     <link rel="manifest" href="/favicon/manifest.webmanifest?v=1" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.1.0/ol.css">
+    <style>
+    .ol_map {
+        width: 100%;
+        height: 340px;
+    }
+    </style>
 <?vsp fct_links_mup (_S, rdf_link); ?>
 </head>
 <body about="<?V page_resource_uri ?>">
@@ -757,7 +767,7 @@ if (_subject <> '') {
 	       curr_pred := pred;
                curr_flag := FLAG;
 	     }
-           vis := b3s_http_print_r (OBJECT, sid, PRED, langs, 1, all_langs, _from, FLAG);
+           vis := b3s_http_print_r (OBJECT, sid, PRED, langs, 1, all_langs, _from, FLAG, jsses);
 	   nxt1:;
 	   inx := inx + 1;
 	   skip:;
@@ -849,6 +859,15 @@ if (_subject <> '') {
 	</form>
       </div>
     </div> <!--  #MD -->
+    <?vsp
+       if (jsses is not null)
+         {
+           http ('<script src="https://cdn.jsdelivr.net/npm/ol@v7.1.0/dist/ol.js"></script>');
+           http ('<script>');
+           http (jsses);
+           http ('</script>');
+         }
+    ?>
     <?vsp b3s_render_dbg_out (dbg_out); ?>
 <!-- footer -->
     <div id="FT">

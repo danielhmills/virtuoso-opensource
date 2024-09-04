@@ -373,13 +373,11 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
   else if (check_rate == ACL_CHECK_HITS)
     {
       acl_hit_t * hit, **place;
-      int64 now;
-      timeout_t tv;
+      time_usec_t now_usec;
 
       res = elm->ha_flag;
-      get_real_time (&tv);
-      now = ((int64)tv.to_sec * 1000000) + (int64) tv.to_usec;
-      /*now = get_msec_real_time ();*/
+      now_usec = get_usec_real_time ();
+
       mutex_enter (http_acl_mtx);
       loc_hash = elm->ha_hits;
 #ifdef DEBUG
@@ -394,7 +392,7 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
 
 	  hit = *place;
 
-	  elapsed = (float) (now - hit->ah_initial) / 1000000;
+	  elapsed = (float) (now_usec - hit->ah_initial) / 1000000;
 	  if (elapsed < 1) elapsed = 0.5;
 	  rate = (float)((hit->ah_count + 1) / elapsed);
 	  hit->ah_avg = rate;
@@ -414,7 +412,7 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
 	  memset (hit, 0, sizeof (acl_hit_t));
 	  id_hash_set (loc_hash, (caddr_t) &new_name, (caddr_t) &hit);
 	}
-      if (!hit->ah_initial) hit->ah_initial = now;
+      if (!hit->ah_initial) hit->ah_initial = now_usec;
       hit->ah_count ++;
       if (hit_ret)
 	*hit_ret = hit;
@@ -993,6 +991,8 @@ log_info_http (ws_connection_t * ws, const char * code, OFF_T clen)
   const char * str;
   int volatile len;
   int http_resp_code = 0;
+  client_connection_t *cli = ws->ws_cli;
+  time_usec_t time_usec_now = 0;
   time_t now;
   struct tm *tm;
 #if defined (HAVE_LOCALTIME_R) && !defined (WIN32)
@@ -1083,8 +1083,36 @@ next_fragment:
 		      dk_free_tree (connvar_value);
 		    }
 		  break;
-	      default:
-		  WS_LOG_ERROR;
+	      case 'T':
+		if (!time_usec_now)
+		  time_usec_now = get_usec_real_time ();
+		if (!strcmp (format, "s"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000000UL);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "ms"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000UL);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "us"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec));
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "rt"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", rdtsc () - cli->cli_cl_start_ts);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		/* no break; */
+		  default:
+		      WS_LOG_ERROR;
 	    }
 	  goto get_next;
 	}
@@ -1111,8 +1139,19 @@ next_fragment:
 		  (tm->tm_mday), monthname [month - 1], year, tm->tm_hour, tm->tm_min, tm->tm_sec, TZ_TO_HHMM(dt_local_tz_for_logs));
 	    }
 	  break;
+    case 'T':
+      if (!time_usec_now)
+	time_usec_now = get_usec_real_time ();
+      snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000000UL);
+      break;
+    case 'D':
+      if (!time_usec_now)
+	time_usec_now = get_usec_real_time ();
+      snprintf (tmp, sizeof (tmp), "%lld", time_usec_now - cli->cli_start_time_usec);
+      break;
       case 'r':
-         snprintf (tmp, sizeof (tmp), "%.*s", tmp_len, ws->ws_req_line ? ws->ws_req_line : "GET unspecified");
+      snprintf (tmp, sizeof (tmp), "%.*s", tmp_len, ws->ws_req_line
+	  && ws->ws_method != WM_ERROR ? ws->ws_req_line : "GET unspecified");
 	  strcat_ck (tmp, ws->ws_proto);
 	  tmp [sizeof (tmp) - 1] = 0;
 	  break;
@@ -1550,6 +1589,8 @@ ws_path_and_params (ws_connection_t * ws)
     case 3:
       if (0 == memcmp (ws->ws_req_line, "GET", 3))
         ws->ws_method = WM_GET;
+      if (0 == memcmp (ws->ws_req_line, "PUT", 3))
+        ws->ws_method = WM_PUT;
       break;
     case 4:
       if (0 == memcmp (ws->ws_req_line, "POST", 4))
@@ -1560,6 +1601,10 @@ ws_path_and_params (ws_connection_t * ws)
         ws->ws_method = WM_URIQA_MGET;
       else if (0 == memcmp (ws->ws_req_line, "MPUT", 4))
         ws->ws_method = WM_URIQA_MPUT;
+      break;
+    case 6:
+      if (0 == memcmp (ws->ws_req_line, "DELETE", 6))
+        ws->ws_method = WM_DELETE;
       break;
     case 7:
       if (0 == memcmp (ws->ws_req_line, "MDELETE", 7))

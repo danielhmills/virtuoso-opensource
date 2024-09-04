@@ -8185,7 +8185,10 @@ create function DB.DBA.SPARUL_CLEAR (in graph_iris any, in inside_sponge integer
           repl_text ('__rdf_repl', sprintf ('sparql define input:storage "" define sql:log-enable %d clear graph iri ( ?? )', lm), g_iri);
         }
       declare exit handler for sqlstate '*' { log_enable (old_log_mode, 1); resignal; };
-      kesg := __max (1, key_estimate('DB.DBA.RDF_QUAD', 'RDF_QUAD_GS', iri_to_id (g_iri, 0)));
+      if (1 = sys_stat ('cl_run_local_only'))
+        kesg := __max (1, key_estimate('DB.DBA.RDF_QUAD', 'RDF_QUAD_GS', iri_to_id (g_iri, 0)));
+      else
+        kesg := 10000;
       if (kesg <= 1000)
         {
           -- if graph is relatively small

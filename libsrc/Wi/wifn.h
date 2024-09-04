@@ -555,6 +555,7 @@ void * pm_get (buffer_desc_t * buf, size_t sz);
 index_tree_t *DBG_NAME (it_allocate) (DBG_PARAMS dbe_storage_t *);
 index_tree_t *DBG_NAME (it_temp_allocate) (DBG_PARAMS dbe_storage_t *);
 int DBG_NAME (it_temp_free) (DBG_PARAMS index_tree_t * it);	/*!< \returns zero is the \c it is actually kept, just with smaller it_ref_count; non-zero means real free */
+void it_temp_write_cancel (index_tree_t *tree);
 #ifdef MALLOC_DEBUG
 #define it_allocate(s) dbg_it_allocate (__FILE__, __LINE__, (s))
 #define it_temp_allocate(s) dbg_it_temp_allocate (__FILE__, __LINE__, (s))
@@ -1359,6 +1360,7 @@ typedef enum { SQW_OFF, SQW_ON, SQW_ERROR } sqw_mode;
 extern sqw_mode sql_warning_mode;
 extern long sql_warnings_to_syslog;
 extern long temp_db_size;
+extern int64 dbs_max_temp_db_pages;
 
 void
 srv_set_cfg(

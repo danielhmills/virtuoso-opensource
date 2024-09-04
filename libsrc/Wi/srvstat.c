@@ -331,6 +331,7 @@ long vt_batch_size_limit = 1000000L;
 
 /* flags for simulated exceptions */
 long dbf_no_disk = 0;
+extern int64 dbs_max_temp_db_pages;
 long dbf_log_no_disk;
 extern int32 dbf_log_always;
 extern int32 dbf_no_atomic;
@@ -1879,6 +1880,7 @@ dbf_protected_param (stat_desc_t * sd)
 stat_desc_t dbf_descs [] =
   {
     {"dbf_no_disk", &dbf_no_disk, NULL},
+    {"dbs_max_temp_db_pages", &dbs_max_temp_db_pages, SD_INT64},
     {"dbf_2pc_prepare_wait", &dbf_2pc_prepare_wait, NULL},
     {"dbf_2pc_wait", &dbf_2pc_wait, NULL},
     {"dbf_branch_transact_wait", &dbf_branch_transact_wait, NULL},
@@ -4530,7 +4532,7 @@ rep_num_scale (double n, char ** scale_ret, int is_base_2)
 void
 da_string (db_activity_t * da, char * out, int len)
 {
-  char *rans, *seqs, *rs, * bs, *ms, *same_segs, *same_pages, *same_pars, *specs, *qps;
+  char *rans, *seqs, *rs, * bs, *ms, *same_segs, *same_pages, *same_pars, *specs, *qps, *tps;
   double ran = rep_num_scale (da->da_random_rows, &rans, 0);
   double seq = rep_num_scale (da->da_seq_rows, &seqs, 0);
   double same_seg = rep_num_scale (da->da_same_seg, &same_segs, 0);
@@ -4541,10 +4543,11 @@ da_string (db_activity_t * da, char * out, int len)
   double bytes = rep_num_scale (da->da_cl_bytes, &bs, 1);
   double msgs = rep_num_scale (da->da_cl_messages, &ms, 0);
   double qp = rep_num_scale (da->da_qp_thread, &qps, 0);
-  snprintf (out, len, "%6.4g%s rnd %6.4g%s seq %6.4g%s same seg  %6.4g%s same pg %6.4g%s same par %6.4g%s disk %6.4g%s spec disk %6.4g%sB / %6.4g%s messages %6.4g%s fork",
+  double tp = rep_num_scale (da->da_temp_pages, &tps, 0);
+  snprintf (out, len, "%6.4g%s rnd %6.4g%s seq %6.4g%s same seg  %6.4g%s same pg %6.4g%s same par %6.4g%s disk %6.4g%s spec disk %6.4g%sB / %6.4g%s messages %6.4g%s fork %6.4g%s temp",
 	    ran, rans, seq, seqs,
 	    same_seg, same_segs, same_page, same_pages, same_par, same_pars,
-	    reads, rs, spec_reads, specs, bytes, bs, msgs, ms, qp, qps);
+	    reads, rs, spec_reads, specs, bytes, bs, msgs, ms, qp, qps, tp, tps);
 }
 
 
@@ -4562,9 +4565,9 @@ bif_db_activity (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
     : &qi->qi_client->cli_activity;
   caddr_t res;
   if ((flag & 1))
-    res = list (9, box_num (da->da_random_rows), box_num (da->da_seq_rows), box_num (da->da_lock_waits),
+    res = list (10, box_num (da->da_random_rows), box_num (da->da_seq_rows), box_num (da->da_lock_waits),
 		box_num (da->da_lock_wait_msec), box_num (da->da_disk_reads), box_num (da->da_spec_disk_reads),
-		box_num (da->da_cl_messages), box_num (da->da_cl_bytes), box_num (da->da_same_seg));
+		box_num (da->da_cl_messages), box_num (da->da_cl_bytes), box_num (da->da_same_seg), box_num(da->da_temp_pages));
   else
     {
       char txt[200];

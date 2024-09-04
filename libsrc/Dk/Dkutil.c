@@ -215,6 +215,90 @@ get_msec_real_time (void)
 }
 
 
+time_usec_t
+get_usec_real_time (void)
+{
+  time_usec_t now_usec = 0;
+  int done = 0;
+
+#if defined (WIN32)
+  if (!done)
+    {
+      timeout_t time_now;
+      LARGE_INTEGER count;
+      static LARGE_INTEGER freq;
+      static int initialized = 0;
+
+      if (!initialized)
+	{
+	  QueryPerformanceFrequency (&freq);
+	  initialized = 1;
+	}
+
+      if (freq.QuadPart > 0 && QueryPerformanceCounter (&count))
+	{
+	  time_now.to_sec = (time_t) (count.QuadPart / freq.QuadPart);
+	  time_now.to_usec = (int) ((count.QuadPart % freq.QuadPart) * 1000000UL / freq.QuadPart);
+
+	  now_usec = (time_usec_t) time_now.to_sec * 1000000UL + time_now.to_usec;
+	  done = 1;
+	}
+    }
+#endif
+
+#if defined (CLOCK_MONOTONIC)
+  /*
+   *  Use clock_gettime which works on Linux/macOS/FreeBSD
+   */
+  if (!done)
+    {
+      struct timespec ts;
+      int have_clock_gettime = 1;
+
+#if defined (CLOCK_MONOTONIC_FAST)
+      clockid_t cop = CLOCK_MONOTONIC_FAST;	/* FreeBSD */
+#else
+      clockid_t cop = CLOCK_MONOTONIC;	/* Linux and macOS */
+#endif
+
+#if defined (__APPLE__)
+      have_clock_gettime = 0;
+      if (__builtin_available (macOS 10.12, iOS 10, tvOS 10, watchOS 3, *))
+	have_clock_gettime = 1;
+#endif
+
+      if (have_clock_gettime && clock_gettime (cop, &ts) == 0)
+	{
+	  now_usec = (time_usec_t) ts.tv_sec * 1000000ULL + (ts.tv_nsec / 1000ULL);
+	  done = 1;
+	}
+    }
+#endif
+
+  /*
+   *  Fallback if any of the above fail
+   */
+  if (!done)
+    {
+      timeout_t time_now;
+
+      get_real_time (&time_now);
+
+      now_usec = (time_usec_t) time_now.to_sec * 1000000ULL + time_now.to_usec;
+    }
+
+  /*
+   *  Save approx time in msec
+   */
+  time_now_msec = (now_usec + 500) / 1000;
+
+  /*
+   *  Finally return the value
+   */
+  return now_usec;
+}
+
+
 void
 time_add (timeout_t * time1, timeout_t * time2)
 {

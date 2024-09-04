@@ -2380,6 +2380,19 @@ new_dbs_read_cfg (dbe_storage_t * dbs, const char *ignore_file_name)
   else if (dbs->dbs_type == DBS_RECOVER)
     section = "Database";
 
+  if (DBS_TEMP == dbs->dbs_type)
+    {
+      char *str;
+      unsigned long c_pages;
+
+      if (cfg_getstring (pconfig, section, "MaxTempDBPages", &str) == -1
+	  || cfg_parse_size_with_modifier (str, NULL, NULL, &c_pages) == -1 )
+	c_pages = 0;
+      if (c_pages < 2 * EXTENT_SZ)
+	c_pages = 0;
+      dbs_max_temp_db_pages = c_pages;
+    }
+
   if (cfg_getstring (pconfig, section, "DatabaseFile", &c_database_file) == -1)
     c_database_file = s_strdup (setext (prefix, s_db, EXT_SET));
 
