@@ -459,6 +459,8 @@ hi_bp_set (hash_index_t * hi, it_cursor_t *itc, uint32 code, dp_addr_t dp, short
 	  itc->itc_ltrx->lt_error = LTE_NO_DISK;
 	  itc_bust_this_trx (itc, &hb_buf, ITC_BUST_THROW);
 	}
+      if (itc->itc_ltrx && itc->itc_ltrx->lt_client)
+        itc->itc_ltrx->lt_client->cli_activity.da_temp_pages++;
       HI_BUCKET_PTR_PAGE (hi, code) = hb_buf->bd_page;
       memset (hb_buf->bd_buffer + DP_DATA, 0, PAGE_DATA_SZ);
       set_dbg_fprintf ((stdout, "hi_bp_set:new bp: page=%lu\n", (unsigned long) hb_buf->bd_page));
@@ -929,6 +931,8 @@ itc_ha_disk_row (it_cursor_t * itc, buffer_desc_t * buf, hash_area_t * ha, caddr
 	  itc->itc_ltrx->lt_error = LTE_NO_DISK;
 	  itc_bust_this_trx (itc, &buf, ITC_BUST_THROW);
 	}
+      if (itc->itc_ltrx && itc->itc_ltrx->lt_client)
+        itc->itc_ltrx->lt_client->cli_activity.da_temp_pages++;
       if (!tree->it_hash_first)
 	tree->it_hash_first = new_buf->bd_page;
       if (hash_buf)

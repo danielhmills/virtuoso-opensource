@@ -1733,6 +1733,7 @@ typedef struct db_activity_s
   int	da_batch_size_request;
   char		da_anytime_result; /* if set, this means the recipient has run out of time and should return an answer */
   char	da_trans_partial; /* if transitive ops incomplete due to time or mem limit */
+  int64 da_temp_pages;
 } db_activity_t;
 
 
