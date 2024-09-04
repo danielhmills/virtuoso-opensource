@@ -1360,6 +1360,7 @@ typedef enum { SQW_OFF, SQW_ON, SQW_ERROR } sqw_mode;
 extern sqw_mode sql_warning_mode;
 extern long sql_warnings_to_syslog;
 extern long temp_db_size;
+extern int64 dbs_max_temp_db_pages;
 
 void
 srv_set_cfg(
