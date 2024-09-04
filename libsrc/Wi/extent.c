@@ -257,7 +257,7 @@ dbs_extend_ext_cache (dbe_storage_t * dbs)
 }
 
 int32 dbs_check_extent_free_pages = 1;
-
+int64 dbs_max_temp_db_pages = 0;
 
 int
 dbs_file_extend (dbe_storage_t * dbs, extent_t ** new_ext_ret, int is_in_sys_em)
@@ -268,6 +268,8 @@ dbs_file_extend (dbe_storage_t * dbs, extent_t ** new_ext_ret, int is_in_sys_em)
   dp_addr_t ext_first = dbs->dbs_n_pages;
   ASSERT_IN_DBS (dbs);
   if (dbf_no_disk)
+    return 0;
+  if (dbs_max_temp_db_pages > EXTENT_SZ && DBS_TEMP == dbs->dbs_type && (dbs->dbs_n_pages + EXTENT_SZ) > dbs_max_temp_db_pages)
     return 0;
   if (dbs->dbs_disks)
     {

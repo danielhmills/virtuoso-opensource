@@ -1916,6 +1916,12 @@ pf_rd_append (page_fill_t * pf, row_delta_t * rd, row_size_t * split_after)
 	{
 	  extend = it_new_page (pf->pf_itc->itc_tree,
 				pf->pf_org->bd_page, DPF_INDEX, 0, pf->pf_itc);
+          if (!extend && DBS_TEMP == pf->pf_itc->itc_tree->it_storage->dbs_type)
+            {
+              log_error ("Out of disk space for temp table");
+              pf->pf_itc->itc_ltrx->lt_error = LTE_NO_DISK;
+              itc_bust_this_trx (pf->pf_itc, &extend, ITC_BUST_THROW);
+            }
 	  if (!extend)
 	    GPF_T1("Can't get page buffer from it_new_page");
 	  if (pf->pf_itc->itc_is_ac)

@@ -331,6 +331,7 @@ long vt_batch_size_limit = 1000000L;
 
 /* flags for simulated exceptions */
 long dbf_no_disk = 0;
+extern int64 dbs_max_temp_db_pages;
 long dbf_log_no_disk;
 extern int32 dbf_log_always;
 extern int32 dbf_no_atomic;
@@ -1879,6 +1880,7 @@ dbf_protected_param (stat_desc_t * sd)
 stat_desc_t dbf_descs [] =
   {
     {"dbf_no_disk", &dbf_no_disk, NULL},
+    {"dbs_max_temp_db_pages", &dbs_max_temp_db_pages, SD_INT64},
     {"dbf_2pc_prepare_wait", &dbf_2pc_prepare_wait, NULL},
     {"dbf_2pc_wait", &dbf_2pc_wait, NULL},
     {"dbf_branch_transact_wait", &dbf_branch_transact_wait, NULL},

@@ -555,6 +555,7 @@ void * pm_get (buffer_desc_t * buf, size_t sz);
 index_tree_t *DBG_NAME (it_allocate) (DBG_PARAMS dbe_storage_t *);
 index_tree_t *DBG_NAME (it_temp_allocate) (DBG_PARAMS dbe_storage_t *);
 int DBG_NAME (it_temp_free) (DBG_PARAMS index_tree_t * it);	/*!< \returns zero is the \c it is actually kept, just with smaller it_ref_count; non-zero means real free */
+void it_temp_write_cancel (index_tree_t *tree);
 #ifdef MALLOC_DEBUG
 #define it_allocate(s) dbg_it_allocate (__FILE__, __LINE__, (s))
 #define it_temp_allocate(s) dbg_it_temp_allocate (__FILE__, __LINE__, (s))

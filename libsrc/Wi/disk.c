@@ -738,6 +738,30 @@ DBG_NAME (it_temp_free) (DBG_PARAMS index_tree_t * it)
   return 1;
 }
 
+void
+it_temp_write_cancel (index_tree_t * tree)
+{
+  int inx;
+  ptrlong dp;
+  buffer_desc_t * buf;
+  dk_hash_iterator_t hit;
+  if (KI_TEMP != tree->it_key->key_id)
+    GPF_T1 ("it_temp_write_cancel is supposed to use with temp tree only");
+  for (inx = 0; inx < IT_N_MAPS; inx++)
+    {
+      it_map_t * itm = &tree->it_maps[inx];
+      dk_hash_iterator (&hit, &itm->itm_dp_to_buf);
+      while (dk_hit_next (&hit, (void**) &dp, (void **) &buf))
+        {
+          if (!BUF_WIRED(buf))
+            continue;
+          if (buf->bd_iq)
+            buf_cancel_write (buf);
+          BD_SET_IS_WRITE (buf, 0);
+        }
+    }
+}
+
 
 page_map_t *
 map_allocate (ptrlong sz)

@@ -2438,6 +2438,8 @@ setp_order_row (setp_node_t * setp, caddr_t * qst)
     {
       /* this node may be invoked from inside itc_row_check.  If so and there is a trx error, come out as an error, not as RST_DEADLOCK.
        * This will cause itc_next to exit its buffer properly */
+      if (LTE_NO_DISK == qi->qi_trx->lt_error)
+        it_temp_write_cancel (tree);
       sqlr_resignal (srv_make_trx_error (qi->qi_trx->lt_error, NULL));
     }
   END_FAIL (ins_itc);
