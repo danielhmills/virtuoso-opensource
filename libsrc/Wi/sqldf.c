@@ -264,7 +264,7 @@ sqlo_is_tautology (ST * tree)
       dtp_t l_dtp = DV_TYPE_OF (l);
       dtp_t r_dtp = DV_TYPE_OF (r);
       if (DV_LONG_INT == l_dtp && DV_LONG_INT == r_dtp)
-	return unbox (l) == unbox (r);
+	return unbox ((ccaddr_t) l) == unbox ((ccaddr_t) r);
       return 2;
     }
   return 2;

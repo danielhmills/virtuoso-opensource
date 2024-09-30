@@ -2940,7 +2940,7 @@ xenc_id_t xenc_encode_by_key (xenc_key_t * key, dk_session_t * ses, long seslen,
   xenc_id_t id = xenc_next_id ();
   char id_str[200];
   uuid_t id_stat;
-  uuid_unparse (id, id_str);
+  uuid_unparse ((const unsigned char *) id, id_str);
   memcpy (&id_stat, id, sizeof (uuid_t));
 
   snprintf (buf, 1024, "<xenc:EncryptedData Type=\"" XENC_NS "%s" "\" Id=\"Id-%s\" ", xenc_types[type_idx], id_str);
@@ -4143,7 +4143,7 @@ void xenc_security_token_id_format (char * buf, int maxlen, xenc_id_t id, int is
   else
     snprintf (buf, maxlen, "#SecurityToken-");
 
-  uuid_unparse (id, buf + strlen (buf));
+  uuid_unparse ((const unsigned char *) id, buf + strlen (buf));
 }
 
 void xenc_write_key_info_tag (dk_session_t * ses, const char * name)
@@ -4419,7 +4419,7 @@ xenc_generate_key_tag (xenc_key_t * key, int extended_ver, xenc_id_t * ids, int 
 	      char uuid_str[200];
 	      char buf[256];
 	      xenc_tag_t * dr;
-	      uuid_unparse (id, uuid_str);
+	      uuid_unparse ((const unsigned char *) id, uuid_str);
 	      snprintf (buf, 255, "#Id-%s", uuid_str);
 	      dr = xenc_tag_create (XENC_NS, ":DataReference");
 	      xenc_tag_add_att (dr, "URI", buf);
@@ -4744,7 +4744,7 @@ caddr_t xenc_generate_encrypted_key_tag (query_instance_t * qi, xenc_key_inst_t 
 	  char uuid_str[200];
 	  char buf[256];
 	  xenc_tag_t * dr;
-	  uuid_unparse (id, uuid_str);
+	  uuid_unparse ((const unsigned char *) id, uuid_str);
 	  snprintf (buf, 255, "#Id-%s", uuid_str);
 	  dr = xenc_tag_create (XENC_NS, ":DataReference");
 	  xenc_tag_add_att (dr, "URI", buf);
@@ -4783,7 +4783,7 @@ caddr_t * xenc_generate_ref_list (query_instance_t * qi, xenc_id_t * ids)
       xenc_tag_t * ref;
       memset (id_str, 0, 200);
       stpcpy (id_str, "#Id-");
-      uuid_unparse ((uuid_t*)id, id_str + strlen (id_str));
+      uuid_unparse ((const unsigned char *) id, id_str + strlen (id_str));
 
       ref = xenc_tag_create (XENC_URI, ":DataReference");
       xenc_tag_add_att (ref, "URI", id_str);
@@ -7722,7 +7722,7 @@ bif_xenc_x509_verify_array (caddr_t * qst, caddr_t * err_ret, state_slot_t ** ar
 {
   char * me = "x509_verify_array";
   caddr_t cert_name = bif_string_arg (qst, args, 0, me);
-  caddr_t * ca_certs  = bif_arg (qst, args, 1, me);
+  caddr_t * ca_certs  = (caddr_t *) bif_arg (qst, args, 1, me);
   xenc_key_t * cert = xenc_get_key_by_name (cert_name, 1);
   int rc = 0, inx;
   X509 *ca_cert;
@@ -7758,7 +7758,7 @@ bif_xenc_x509_cert_verify_array (caddr_t * qst, caddr_t * err_ret, state_slot_t 
 {
   char * me = "x509_cert_verify_array";
   caddr_t cert_text = bif_string_arg (qst, args, 0, me);
-  caddr_t * ca_certs  = bif_arg (qst, args, 1, me);
+  caddr_t * ca_certs  = (caddr_t *) bif_arg (qst, args, 1, me);
   X509 * cert = x509_from_pem (cert_text);
   int rc = 0, inx;
   X509 *ca_cert;

@@ -1597,7 +1597,7 @@ sqlg_vec_setp (sql_comp_t * sc, setp_node_t * setp, dk_hash_t * res)
 {
   sqlg_vec_ref_ssl_list (sc, setp->setp_keys);
   if (setp->setp_ha && HA_ORDER == setp->setp_ha->ha_op)
-    setp->setp_org_slots = (state_slot_t **)box_concat (setp->setp_keys_box, setp->setp_dependent_box);
+    setp->setp_org_slots = (state_slot_t **)box_concat ((caddr_t) setp->setp_keys_box, (caddr_t) setp->setp_dependent_box);
   if (setp->setp_loc_ts)
     sqlg_vec_setp_loc (sc, setp);
   if (setp->setp_ha && HA_GROUP == setp->setp_ha->ha_op && !setp->setp_set_no_in_key)

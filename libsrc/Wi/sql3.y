@@ -2927,7 +2927,7 @@ aggregate_ref
 		  $$ = sqlp_make_user_aggregate_fun_ref ($2, arglist, 1);
 		}
 /*	| AMMSC '(' '*' ')'			{ FN_REF ($$, $1, 0, 0); }*/
-| AMMSC '(' DISTINCT scalar_exp opt_sql_opt ')'	{ FN_REF ($$, $1, 1, $4); $$->_.fn_ref.fn_arglist = $5; }
+        | AMMSC '(' DISTINCT scalar_exp opt_sql_opt ')'	{ FN_REF ($$, $1, 1, $4); $$->_.fn_ref.fn_arglist = (ST **) $5; }
 	| AMMSC '(' ALL scalar_exp ')'		{ FN_REF ($$, $1, 0, $4) }
 	| AMMSC '(' scalar_exp ')'		{ FN_REF ($$, $1, 0, $3) }
 	;
@@ -2979,7 +2979,7 @@ tail_of_tag_of
 		  $$ = ((caddr_t *)$1)[0];
 		  if (!IS_BLOB_DTP($$))
 		    yyerror (scanner, "__TAG OF ... HANDLE is valid only for LONG datatypes");
-		  $$ = (caddr_t *)(ptrlong)DV_BLOB_HANDLE_DTP_FOR_BLOB_DTP($$);
+		  $$ = (caddr_t)(ptrlong)DV_BLOB_HANDLE_DTP_FOR_BLOB_DTP($$);
 		}
 	| DICTIONARY_L REFERENCE_L { $$ = (caddr_t) DV_DICT_ITERATOR; }
 	| STREAM_L { $$ = (caddr_t) DV_STRING_SESSION; }

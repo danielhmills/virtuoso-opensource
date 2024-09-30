@@ -10044,7 +10044,7 @@ bif_tlsf_dump (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   int ht_mode = AB_ALLOCD;
   if (BOX_ELEMENTS (args) > 2)
     {
-      hit = bif_arg (qst, args, 2, "tlsf_dump");
+      hit = (id_hash_iterator_t *) bif_arg (qst, args, 2, "tlsf_dump");
       ht_mode = bif_long_arg (qst, args, 3, "tlsf_dump");
       if (DV_DICT_ITERATOR == DV_TYPE_OF (hit))
 	ht = hit->hit_hash;
@@ -11142,7 +11142,7 @@ bif_blob_dps (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   dtp_t dtp = DV_TYPE_OF (bh);
   if (dtp != DV_BLOB_HANDLE && dtp != DV_BLOB_WIDE_HANDLE)
     return NEW_DB_NULL;
-  l = bh_dp_list_n (qi->qi_trx, bh);
+  l = bh_dp_list_n (qi->qi_trx, (blob_handle_t *) bh);
   return list_to_array (l);
 }
 
@@ -12535,7 +12535,7 @@ bif_deserialize (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
     return NEW_DB_NULL;
   if (DV_STRING_SESSION == dtp)
     {
-      return read_object (xx);
+      return read_object ((dk_session_t *) xx);
     }
   if (!IS_BLOB_HANDLE_DTP(dtp))
     sqlr_new_error ("22023", "SR581", "deserialize() requires a blob or NULL or string argument");
@@ -12581,7 +12581,7 @@ bif_serialize_to_string_session (caddr_t * qst, caddr_t * err_ret, state_slot_t 
 	  dv_type_title (tag), (unsigned) tag);
     }
   END_WRITE_FAIL (out);
-  return out;
+  return (caddr_t) out;
 }
 
 static caddr_t

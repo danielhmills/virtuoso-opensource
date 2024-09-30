@@ -39,7 +39,7 @@ trset_start (caddr_t * qst)
   ctx = (trset_ctx_t *)dk_alloc_box (sizeof (trset_ctx_t), DV_CUSTOM);
   ctx->tc_tail = ctx->tc_buf = dk_alloc_box (TRSET_BUF_MAX + 1, DV_LONG_STRING);
   ctx->tc_buf[0] = '\0';
-  ctx->tc_qst = qst;
+  ctx->tc_qst = (query_instance_t *) qst;
   ctx->tc_indent = 0;
   SET_THR_ATTR (THREAD_CURRENT_THREAD, TA_REPORT_CTX, ctx);
 

@@ -8843,11 +8843,11 @@ http_map_fill_cors_allow_headers (caddr_t option_value)
       if (NULL == ht)
         ht = id_strcase_hash_create (7);
       if (h[0] != '!' || 0 == stricmp (h, "!ALL")) /* expilicitly added header, or all custom disabled */
-        id_hash_set (ht, &h, (caddr_t) &one);
+        id_hash_set (ht, (caddr_t) &h, (caddr_t) &one);
       else /* explicitly denied header */
         {
           caddr_t he = box_dv_short_string (h+1);
-          id_hash_set (ht, &he, (caddr_t) &two);
+          id_hash_set (ht, (caddr_t) &he, (caddr_t) &two);
         }
     }
   END_DO_SET();
@@ -8855,10 +8855,10 @@ http_map_fill_cors_allow_headers (caddr_t option_value)
   /* default allowed headers, except if denied explicitly, see above */
   DO_SET (caddr_t, h, &http_default_allow_headers_list)
     {
-      ptrlong * flag = id_hash_get (ht, (caddr_t) &h);
+      ptrlong * flag = (ptrlong *) id_hash_get (ht, (caddr_t) &h);
       if (flag && 2 == flag[0])
         continue;
-      id_hash_set (ht, &h, (caddr_t) &one);
+      id_hash_set (ht, (caddr_t) &h, (caddr_t) &one);
     }
   END_DO_SET();
 
@@ -11702,7 +11702,7 @@ bif_http_on_message (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
       ses = (dk_session_t *) conn[0];
       server_session = (ws && ses && ses == ws->ws_session);
       if (ses && DKSESSTAT_ISSET (ses, SST_OK))
-        conn[0] = keep_conn_ref && !server_session ? ses : NULL;
+        conn[0] = keep_conn_ref && !server_session ? (caddr_t) ses : (caddr_t) NULL;
       else
 	ses = NULL;
       mutex_enter (thread_mtx);

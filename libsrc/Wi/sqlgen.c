@@ -679,9 +679,9 @@ sqlg_geo_index_table (dbe_key_t * text_key, ST ** geo_args)
   for (inx = 2; inx < n; inx++)
     {
       ST * arg = geo_args[inx];
-      if (DV_STRINGP (arg) && !stricmp (arg, "index") && inx + 1 < n && DV_STRINGP (geo_args[inx + 1]))
+      if (DV_STRINGP (arg) && !stricmp ((const char *) arg, "index") && inx + 1 < n && DV_STRINGP (geo_args[inx + 1]))
 	{
-	  caddr_t inx_name = geo_args[inx + 1];
+	  caddr_t inx_name = (caddr_t) geo_args[inx + 1];
 	  dbe_table_t * tb = sch_name_to_table (wi_inst.wi_schema, inx_name);
 	  if (!tb)
 	    sqlc_new_error (top_sc->sc_cc, "28008", "GEOTB", "No geo index table %s", inx_name);
@@ -3350,7 +3350,7 @@ sqlg_may_parallelize (sql_comp_t * sc, data_source_t * qn)
 	}
       if (IS_QN(ts, outer_seq_end_input))
         {
-          outer_seq_end_node_t * ose = ts;
+          outer_seq_end_node_t * ose = (outer_seq_end_node_t *) ts;
           data_source_t * qn0 = qn;
           for (qn0 = qn; qn0; qn0 = qn_next(qn0))
             {

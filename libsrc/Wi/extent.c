@@ -1517,7 +1517,7 @@ em_compact (extent_map_t * em, int free_em)
 	      IN_DBS (em->em_dbs);
 	      dbs_locate_incbackup_bit (em->em_dbs, dp, &array, &array_page, &inx, &bit);
 	      array[inx] = 0;
-	      page_set_checksum_init (array);
+	      page_set_checksum_init ((db_buf_t) array);
 	      if (EXT_INDEX == EXT_TYPE (ext))
 		{
 		  /* when dropping a column extent map in a drop index, cpt remaps are possible, so if any, drop them. The remap pagge is dropped anyway as part of the em */

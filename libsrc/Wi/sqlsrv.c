@@ -4008,7 +4008,7 @@ sf_sql_fetch_wrapper (caddr_t args[])
 static server_func
 sf_sql_transact_wrapper (caddr_t args[])
 {
-  sf_sql_transact ((long) args[0], args[1]);
+  sf_sql_transact ((long) args[0], (caddr_t *) args[1]);
   return NULL;			/* void function */
 }
 

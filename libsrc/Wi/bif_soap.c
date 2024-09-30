@@ -761,7 +761,7 @@ xml_find_child (caddr_t *entity, const char *szSearchName, const char *szURI, in
 caddr_t *
 xml_find_one_child (caddr_t *entity, char *szSearchName, char **szURIs, int nth, int *start_inx)
 {
-  const char **urls = szURIs;
+  const char **urls = (const char **) szURIs;
   caddr_t * rc = NULL;
   for (; urls[0]; urls++)
     {
@@ -11367,7 +11367,7 @@ ws_soap_qr_opt_check (ws_connection_t * ws, query_t * qr)
     return;
   BOX_AUTO_TYPED (caddr_t, item, tmp, 5, DV_STRING);
   strcpy_box_ck (item,"Http");
-  inx = find_index_to_vector (item, qr->qr_proc_soap_opts, BOX_ELEMENTS(qr->qr_proc_soap_opts), DV_ARRAY_OF_POINTER, 0, 2, "http_rest");
+  inx = find_index_to_vector (item, (caddr_t) qr->qr_proc_soap_opts, BOX_ELEMENTS(qr->qr_proc_soap_opts), DV_ARRAY_OF_POINTER, 0, 2, "http_rest");
   if (!inx || !DV_STRINGP (qr->qr_proc_soap_opts[inx]))
     goto done;
   split_string (qr->qr_proc_soap_opts[inx], NULL, &set);

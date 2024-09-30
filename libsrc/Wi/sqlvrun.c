@@ -3995,7 +3995,7 @@ ts_aq_result (table_source_t * ts, caddr_t * inst)
     }
   if (prof_on || !ts->src_gen.src_query->qr_select_node)
     {
-      qi_add_stats ((QI*)inst, qst_get (inst, ts->ts_aq_qis), ts->src_gen.src_query);
+      qi_add_stats ((QI*)inst, (QI **) qst_get (inst, ts->ts_aq_qis), ts->src_gen.src_query);
     }
   if (!ts->ts_agg_node)
     return;

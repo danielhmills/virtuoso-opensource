@@ -131,7 +131,7 @@ ceic_del_dbg_log_row (ce_ins_ctx_t * ceic, buffer_desc_t * buf)
   memzero (&dc, sizeof (dc));
   dc.dc_mp = ceic->ceic_mp;
   dc.dc_type = DCT_BOXES | DCT_FROM_POOL;
-  dc.dc_values = (caddr_t *) mp_alloc (ceic->ceic_mp, sizeof (caddr_t) * n_del);
+  dc.dc_values = (db_buf_t) mp_alloc (ceic->ceic_mp, sizeof (caddr_t) * n_del);
   dc.dc_sqt.sqt_dtp = DV_ARRAY_OF_POINTER;
   dc.dc_n_places = n_del;
   DO_SET (dbe_column_t *, col, &key->key_parts)

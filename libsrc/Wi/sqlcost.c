@@ -3471,7 +3471,7 @@ rq_sample_subp (df_elt_t * dfe, rq_cols_t * rq, index_choice_t * ic)
   ri_iterator_t * rit;
   int found;
   rdf_sub_t * sub_iri;
-  variable = &rq->rq_p.rqp_lower->_.bin.right->dfe_tree;
+  variable = (caddr_t *) &rq->rq_p.rqp_lower->_.bin.right->dfe_tree;
   save = *variable;
   sub = ric_iri_to_sub (ric, save, RI_SUBPROPERTY, 0);
   if (!sub || (!sub->rs_sub && !sub->rs_equiv))
@@ -3585,9 +3585,9 @@ dfe_init_p_stat (df_elt_t * dfe, df_elt_t * lower)
   rq.rq_p.rqp_lower = lower;
   ic.ic_set_sample_key = 1;
   ic.ic_key = tb_px_key (rq.rq_table, rq.rq_s_col);
-  dfe_p_card (dfe, &rq, &p_stat, &ic, SO_S);
+  dfe_p_card (dfe, &rq, p_stat, &ic, SO_S);
   ic.ic_key = tb_px_key (rq.rq_table, rq.rq_o_col);
-  dfe_p_card (dfe, &rq, &p_stat, &ic, SO_O);
+  dfe_p_card (dfe, &rq, p_stat, &ic, SO_O);
   return 1;
 }
 

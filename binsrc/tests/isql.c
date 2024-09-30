@@ -9372,7 +9372,7 @@ is_set_subcommand_aux (TCHAR *text, int show_instead_of_set,
 #endif
 	      if (is_macro_name (macro_name, _T("LOCALE")))
 		{
-		  isql_locale = setlocale (LC_ALL, arg);
+		  isql_locale = setlocale (LC_ALL, (const char *) arg);
 		  if (!isql_locale)
 		    {
 		      isql_fprintf (error_stream, _T("%") PCT_S _T(": Warning: setlocale \"%") PCT_S _T("\" failed.\n"), progname, arg);

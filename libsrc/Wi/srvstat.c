@@ -4741,7 +4741,7 @@ sc_data_to_ext (query_instance_t * qi, caddr_t dt)
 	  arr[inx] = sc_data_to_ext (qi, a);
 	}
       END_DO_BOX;
-      return arr;
+      return (caddr_t) arr;
     }
   else
     return box_copy_tree (dt);
@@ -4754,7 +4754,7 @@ sc_ext_to_data (query_instance_t * qi, caddr_t dt)
   dtp_t dtp = DV_TYPE_OF (dt);
   caddr_t err = NULL;
   if (DV_STRING == dtp && box_flags (dt))
-    return iri_to_id (qi, dt, 1, &err);
+    return iri_to_id ((caddr_t *) qi, dt, 1, &err);
   else if (DV_ARRAY_OF_POINTER == dtp)
     {
       caddr_t * arr = (caddr_t*)dk_alloc_box (box_length (dt), DV_ARRAY_OF_POINTER);
@@ -4763,7 +4763,7 @@ sc_ext_to_data (query_instance_t * qi, caddr_t dt)
 	  arr[inx] = sc_ext_to_data (qi, a);
 	}
       END_DO_BOX;
-      return arr;
+      return (caddr_t) arr;
     }
   else
     return box_copy_tree (dt);
@@ -4959,7 +4959,7 @@ bif_stat_import (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	  smpl.smp_time = approx_msec_real_time ();
 	  smpl.smp_card = unbox_float (smp[1]);
 	  smpl.smp_inx_card = unbox_float (smp[2]);
-	  id_hash_set (ric->ric_samples, (caddr_t)&k, (caddr_t*)&smpl);
+	  id_hash_set (ric->ric_samples, (caddr_t)&k, (caddr_t)&smpl);
 	}
       END_DO_BOX;
     }
