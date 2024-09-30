@@ -111,17 +111,17 @@ ceic_del_dbg_log_row (ce_ins_ctx_t * ceic, buffer_desc_t * buf)
     }
   if (!n_del)
     return;
-  itc->itc_matches = mp_alloc_box (ceic->ceic_mp, n_del * sizeof (row_no_t), DV_BIN);
-  log_rds = (row_delta_t **)mp_alloc_box (ceic->ceic_mp, sizeof (caddr_t) * n_del, DV_BIN);
+  itc->itc_matches = (row_no_t *) mp_alloc_box (ceic->ceic_mp, n_del * sizeof (row_no_t), DV_BIN);
+  log_rds = (row_delta_t **) mp_alloc_box (ceic->ceic_mp, sizeof (caddr_t) * n_del, DV_BIN);
   for (inx = 0; inx < itc->itc_range_fill; inx++)
     {
       if (COL_NO_ROW == itc->itc_ranges[inx].r_end)
 	{
-	  row_delta_t * rd = log_rds[fill] = mp_alloc (ceic->ceic_mp, sizeof (row_delta_t));
+	  row_delta_t * rd = log_rds[fill] = (row_delta_t *) mp_alloc (ceic->ceic_mp, sizeof (row_delta_t));
 	  memzero (rd, sizeof (row_delta_t));
 	  rd->rd_key = key;
 	  rd->rd_op = RD_DELETE;
-	  rd->rd_values = mp_alloc_box (ceic->ceic_mp,  sizeof (caddr_t) * key->key_n_significant, DV_ARRAY_OF_POINTER);
+	  rd->rd_values = (caddr_t *) mp_alloc_box (ceic->ceic_mp,  sizeof (caddr_t) * key->key_n_significant, DV_ARRAY_OF_POINTER);
 	  itc->itc_matches[fill++] = itc->itc_ranges[inx].r_first;
 	}
     }
@@ -131,7 +131,7 @@ ceic_del_dbg_log_row (ce_ins_ctx_t * ceic, buffer_desc_t * buf)
   memzero (&dc, sizeof (dc));
   dc.dc_mp = ceic->ceic_mp;
   dc.dc_type = DCT_BOXES | DCT_FROM_POOL;
-  dc.dc_values = mp_alloc (ceic->ceic_mp, sizeof (caddr_t) * n_del);
+  dc.dc_values = (caddr_t *) mp_alloc (ceic->ceic_mp, sizeof (caddr_t) * n_del);
   dc.dc_sqt.sqt_dtp = DV_ARRAY_OF_POINTER;
   dc.dc_n_places = n_del;
   DO_SET (dbe_column_t *, col, &key->key_parts)
