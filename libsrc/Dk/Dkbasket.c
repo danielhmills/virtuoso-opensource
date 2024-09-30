@@ -411,6 +411,7 @@ rbuf_destroy (rbuf_t * rb)
 }
 
 
+#if 0
 rbuf_t test_rbuf;
 
 void
@@ -458,6 +459,7 @@ rbuf_test ()
   rbuf_rewrite_done (&rb);
   if (rb.rb_count != 99000) GPF_T1 ("bad rewrite");
 }
+#endif
 
 #ifdef MALLOC_DEBUG
 dk_mutex_t *spare_rbufs_mtx = NULL;
