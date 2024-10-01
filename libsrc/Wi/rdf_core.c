@@ -932,7 +932,7 @@ ttlp_qname_prefix_is_explicit_and_valid (ttlp_t *ttlp_arg, caddr_t qname)
   char *lname = strchr (qname, ':');
   caddr_t ns_pref;
   id_hash_t *ns_dict;
-  caddr_t **ns_uri_ptr;
+  caddr_t ns_uri_ptr;
   if (NULL == lname)
     return 0;
   if (qname == lname)
@@ -942,12 +942,12 @@ ttlp_qname_prefix_is_explicit_and_valid (ttlp_t *ttlp_arg, caddr_t qname)
   if (ttlp_arg[0].ttlp_in_trig_graph)
     {
       ns_dict = ttlp_arg[0].ttlp_inner_namespaces_prefix2iri;
-      ns_uri_ptr = ((NULL == ns_dict) ? NULL : (caddr_t *) id_hash_get (ns_dict, (caddr_t)(&ns_pref)));
+      ns_uri_ptr = ((NULL == ns_dict) ? NULL : (caddr_t) id_hash_get (ns_dict, (caddr_t)(&ns_pref)));
       if (NULL != ns_uri_ptr)
         goto ns_found; /* see below */
     }
   ns_dict = ttlp_arg[0].ttlp_namespaces_prefix2iri;
-  ns_uri_ptr = ((NULL == ns_dict) ? NULL : (caddr_t *) id_hash_get (ns_dict, (caddr_t)(&ns_pref)));
+  ns_uri_ptr = ((NULL == ns_dict) ? NULL : (caddr_t) id_hash_get (ns_dict, (caddr_t)(&ns_pref)));
   if (NULL != ns_uri_ptr)
     goto ns_found; /* see below */
   if (!strcmp (ns_pref, "rdf:"))
