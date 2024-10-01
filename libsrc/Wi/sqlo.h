@@ -968,7 +968,7 @@ void dfe_unplace_fill_join (df_elt_t * fill_dt, df_elt_t * tb_dfe, dk_set_t org_
 int st_is_call (ST * tree, char * f, int n_args);
 df_elt_t * dfe_container (sqlo_t * so, int type, df_elt_t * super);
 float dfe_hash_fill_cond_card (df_elt_t * tb_dfe);
-float sqlo_hash_ins_cost (df_elt_t * dfe, float card, dk_set_t cols, float * size_ret);
+float sqlo_hash_ins_cost (df_elt_t * dfe, float card, dk_set_t * cols, float * size_ret);
 float sqlo_hash_ref_cost (df_elt_t * dfe, float hash_card);
 
 #define SQK_MAX_CHARS 2000

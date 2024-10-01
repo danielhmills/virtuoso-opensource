@@ -6624,7 +6624,7 @@ err:
 }
 
 static void
-x509_add_extensions_from_vector (X509 *issuer, X509 *x, caddr_t ** exts)
+x509_add_extensions_from_vector (X509 *issuer, X509 *x, caddr_t * exts)
 {
   int i;
   for (i = 0; i < BOX_ELEMENTS (exts); i += 2)

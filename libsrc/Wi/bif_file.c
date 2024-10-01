@@ -4911,13 +4911,12 @@ gz_stream_free (void * s)
   return gz_s_free ((gz_stream *)s);
 }
 
-int
-do_flush_ses (gzFile file, int flush, dk_session_t *ses_out)
+static int
+do_flush_ses (gz_stream *s, int flush, dk_session_t *ses_out)
 {
   uInt len;
   int done = 0;
   char temp[20];
-  gz_stream *s = (gz_stream *) file;
 
   s->stream.avail_in = 0;	/* should be zero already anyway */
 

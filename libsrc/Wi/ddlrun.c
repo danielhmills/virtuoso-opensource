@@ -2695,7 +2695,7 @@ ddl_modify_col (query_instance_t * qi, char *table, caddr_t * column)
 
 
 void
-ddl_drop_col (query_instance_t * qi, char *table, caddr_t * col, int if_exists)
+ddl_drop_col (query_instance_t * qi, char *table, caddr_t col, int if_exists)
 {
   static query_t *dc_qr;
   caddr_t err;
@@ -4097,7 +4097,7 @@ sql_ddl_node_input_1 (ddl_node_t * ddl, caddr_t * inst, caddr_t * state)
       ddl_modify_col (qi, tree->_.op.arg_1, (caddr_t *) tree->_.op.arg_2);
       break;
     case DROP_COL:
-      ddl_drop_col (qi, tree->_.op.arg_1, (caddr_t *) tree->_.op.arg_2, (int)(ptrlong)tree->_.op.arg_3);
+      ddl_drop_col (qi, tree->_.op.arg_1, tree->_.op.arg_2, (int)(ptrlong)tree->_.op.arg_3);
       break;
     case TABLE_RENAME:
       ddl_rename_table (qi, tree->_.op.arg_1, tree->_.op.arg_2);
