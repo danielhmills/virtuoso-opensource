@@ -4546,7 +4546,7 @@ srv_make_trx_error (int code, caddr_t detail)
       case LTE_SQL_ERROR:
         {
           du_thread_t *self = THREAD_CURRENT_THREAD;
-          caddr_t *probable_err = (caddr_t *)thr_get_error_code (self);
+          caddr_t probable_err = thr_get_error_code (self);
           if (DV_ARRAY_OF_POINTER != DV_TYPE_OF (probable_err))
             probable_err = NULL;
           if (NULL == probable_err)
@@ -4560,7 +4560,7 @@ srv_make_trx_error (int code, caddr_t detail)
             {
 	      err = srv_make_new_error ("4000X", "SR176",
 	        "Transaction rolled back due to previous SQL error %s (((\n%s\n)))%s%s",
-					probable_err[1], probable_err[2], detail ? " : " : "", detail ? detail : "");
+					ERR_STATE(probable_err), ERR_MESSAGE(probable_err), detail ? " : " : "", detail ? detail : "");
 	      break;
             }
         }
