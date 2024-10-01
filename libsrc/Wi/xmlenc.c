@@ -1630,7 +1630,7 @@ caddr_t bif_xenc_DH_get_params (caddr_t * qst, caddr_t * err_r, state_slot_t ** 
   int n, len;
   caddr_t buf = NULL, ret, b64;
   DH *dh;
-  BIGNUM *num;
+  const BIGNUM *num;
 
   mutex_enter (xenc_keys_mtx);
   key = xenc_get_key_by_name (name, 0);

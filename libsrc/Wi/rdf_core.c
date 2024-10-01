@@ -3348,7 +3348,7 @@ bif_rdf_handle_invalid_iri_id (caddr_t * qst, caddr_t * err_ret, state_slot_t **
   if (8192 == iid) return uname_nodeID_ns_8192;
   if (debug_invalid_iri_id)
     {
-      caddr_t buf[100];
+      char buf[1024];
       caddr_t b;
 
       if (is_prefix)

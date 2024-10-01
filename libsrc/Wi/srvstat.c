@@ -4775,7 +4775,7 @@ bif_stat_export (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   QNCAST (QI, qi, qst);
   int inx, inx2;
   dbe_schema_t * sc = wi_inst.wi_schema;
-  dk_set_t * cols = NULL, keys = NULL, rics = NULL;
+  dk_set_t cols = NULL, keys = NULL, rics = NULL;
   DO_HT (ptrlong, id, dbe_column_t *, col, sc->sc_id_to_col)
     {
       dk_set_push (&cols, list (6, box_string (col->col_defined_in->tb_name), box_string (col->col_name),

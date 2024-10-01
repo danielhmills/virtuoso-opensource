@@ -1957,7 +1957,7 @@ ws_clear (ws_connection_t * ws, int error_cleanup)
 
 char http_server_id_string_buf [1024];
 char *http_server_id_string = NULL;
-const char *http_client_id_string = "Mozilla/4.0 (compatible; OpenLink Virtuoso)";
+char *http_client_id_string = "Mozilla/4.0 (compatible; OpenLink Virtuoso)";
 uint32 http_default_client_req_timeout = 100;
 extern char * https_csp;
 
@@ -2803,7 +2803,7 @@ static char *fmt1 =
 
 #define REPLY_SENT "reply sent"
 
-const char *www_root = ".";
+char *www_root = ".";
 
 
 static int
