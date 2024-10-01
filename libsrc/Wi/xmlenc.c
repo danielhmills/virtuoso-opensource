@@ -1414,7 +1414,7 @@ xenc_key_t * xenc_key_create_from_x509_cert (char * name, char * certificate, ch
 	      X509_STORE_add_cert (CA_certs, x);
 	    }
 	  mutex_leave (xenc_keys_mtx);
-	  sk_free (ca_list);
+	  sk_X509_pop_free (ca_list, X509_free);
 	}
     }
   else if (type == CERT_DER_FORMAT)
@@ -7280,7 +7280,7 @@ bif_xenc_pkcs12_export (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	  certs = sk_X509_new_null ();
 	  for (i = 1; i < sk_X509_num (chain) ; i++)
 	    sk_X509_push (certs, sk_X509_value (chain, i));
-	  sk_free (chain);
+	  sk_X509_pop_free (chain, X509_free);
 	}
       if (inf)
 	{
@@ -7303,7 +7303,8 @@ bif_xenc_pkcs12_export (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
     }
   BIO_free (b);
   PKCS12_free (p12);
-  sk_free (certs);
+  if (certs)
+    sk_X509_pop_free (certs, X509_free);
   if (inf)
     sk_X509_INFO_pop_free (inf, X509_INFO_free);
   return ret;
