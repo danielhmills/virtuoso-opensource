@@ -169,7 +169,8 @@ _cfg_freeimage (PCONFIG pconfig)
    *
    *  Dont reset the fileName and mtx fields
    */
-  pconfig->image = pconfig->entries = NULL;
+  pconfig->image = NULL;
+  pconfig->entries = NULL;
   pconfig->dirty = 0;
   pconfig->size = 0L;
   pconfig->mtime = 0L;
