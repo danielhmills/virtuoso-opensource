@@ -151,9 +151,12 @@ typedef struct udt_parse_tree_s
 }
 udt_parse_tree_t;
 
+#define UST_P(s, tp) \
+  (ARRAYP (s) && BOX_ELEMENTS (s) > 0 && ((UST *)(s))->type == tp)
+
 #define IS_DISTINCT_TYPE(tree) \
    ((tree)->_.type.representation && BOX_ELEMENTS ((tree)->_.type.representation) == 1 && \
-       !ST_P (((UST **)(tree)->_.type.representation)[0], UDT_MEMBER))
+       !UST_P (((UST **)(tree)->_.type.representation)[0], UDT_MEMBER))
 
 void udt_exec_class_def (query_instance_t * qi, ST * tree);
 void udt_drop_class_def (query_instance_t * qi, ST * tree);
