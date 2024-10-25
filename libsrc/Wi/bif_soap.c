@@ -11422,7 +11422,7 @@ ws_soap_http (ws_connection_t * ws)
   const char *usr_own;
   client_connection_t *cli = ws->ws_cli;
   query_t *qr = NULL;
-  caddr_t err = NULL, *pars, text;
+  caddr_t err = NULL, *pars = NULL, text;
   dk_session_t *ses = ws->ws_strses;
   ws_http_map_t *vd = ws->ws_map;
   wcharset_t *volatile charset = ws->ws_charset;
@@ -11497,8 +11497,10 @@ ws_soap_http (ws_connection_t * ws)
 	}
     }
   ctx.literal = (SOAP_MSG_LITERAL & qr->qr_proc_place);
-  pars = soap_http_params (qr, params, &text, &err, &ctx);
   ws_soap_qr_opt_check (ws, qr);
+  if (NULL != vd && vd->hm_exec_opts && WM_OPTIONS == ws->ws_method)
+    goto end;
+  pars = soap_http_params (qr, params, &text, &err, &ctx);
   if (err)
     {
       dk_free_tree ((box_t) pars);
@@ -11518,11 +11520,6 @@ ws_soap_http (ws_connection_t * ws)
 	dk_free_tree ((box_t) pars);
 	goto end;
       }
-      if (NULL != vd && vd->hm_exec_opts && WM_OPTIONS == ws->ws_method)
-        {
-	  dk_free_tree ((box_t) pars);
-	  goto end;
-        }
       err = qr_exec (cli, call_qry, CALLER_LOCAL, NULL, NULL,
 	  &lc, pars, NULL, 1);
     dk_free_box ((box_t) pars);
