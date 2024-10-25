@@ -11466,6 +11466,7 @@ ws_soap_http (ws_connection_t * ws)
       qrs = get_granted_qrs (cli, NULL, NULL, 0);
       if (!(qr = proc_find_in_grants (szMethod, &qrs, NULL)))
 	{
+          http_resp_code = 404;
 	  err = srv_make_new_error ("37000", "SOH03", "There is no such procedure: %.500s", szFullProcName);
 	  goto end;
 	}
