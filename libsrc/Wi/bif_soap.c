@@ -4220,9 +4220,11 @@ bif_soap_box_structure (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 static caddr_t
 bif_soap_boolean (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
-  char *szMe = "soap_boolean";
-  ptrlong val = bif_long_arg (qst, args, 0, szMe);
-
+  const char *szMe = "soap_boolean";
+  int is_null;
+  ptrlong val = bif_long_or_null_arg (qst, args, 0, szMe, &is_null);
+  if (is_null)
+    return NEW_DB_NULL;
   return list (2, dk_alloc_box (0, DV_COMPOSITE), box_num_nonull (val));
 }
 
