@@ -11355,6 +11355,32 @@ end:
   return params;
 }
 
+void
+ws_soap_qr_opt_check (ws_connection_t * ws, query_t * qr)
+{
+  int inx, m;
+  caddr_t opts, tmp[BOX_AUTO_OVERHEAD+5], item;
+  dk_set_t set = NULL;
+  if (!qr || !ARRAYP(qr->qr_proc_soap_opts))
+    return;
+  BOX_AUTO_TYPED (caddr_t, item, tmp, 5, DV_STRING);
+  strcpy_box_ck (item,"Http");
+  inx = find_index_to_vector (item, qr->qr_proc_soap_opts, BOX_ELEMENTS(qr->qr_proc_soap_opts), DV_ARRAY_OF_POINTER, 0, 2, "http_rest");
+  if (!inx || !DV_STRINGP (qr->qr_proc_soap_opts[inx]))
+    goto done;
+  split_string (qr->qr_proc_soap_opts[inx], NULL, &set);
+  http_set_default_options (ws);
+  DO_SET (caddr_t, meth, &set)
+    {
+      m = http_method_id (meth);
+      ws->ws_options [m] = '\x1';
+    }
+  END_DO_SET();
+done:
+  dk_free_tree (list_to_array (set));
+  BOX_DONE(item,tmp);
+}
+
 static void
 ws_rest_handle_error (dk_session_t * ses, char * media_type, caddr_t * err_ret, char * code, int * http_resp_code, soap_ctx_t * ctx, int mode)
 {
@@ -11469,6 +11495,7 @@ ws_soap_http (ws_connection_t * ws)
     }
   ctx.literal = (SOAP_MSG_LITERAL & qr->qr_proc_place);
   pars = soap_http_params (qr, params, &text, &err, &ctx);
+  ws_soap_qr_opt_check (ws, qr);
   if (err)
     {
       dk_free_tree ((box_t) pars);
