@@ -11665,7 +11665,7 @@ bif_http_get_cli_sessions (caddr_t * qst, caddr_t * err_ret, state_slot_t ** arg
   while (dk_hit_next (&hit, (void**) &sid, (void**) &ses))
     {
       caddr_t * args = (caddr_t *) DKS_DB_DATA (ses);
-      dk_set_push (&set, list (2, box_num(sid), add_args ? box_copy_tree (args) : NEW_DB_NULL));
+      dk_set_push (&set, list (3, box_num(sid), add_args ? box_copy_tree (args) : NEW_DB_NULL, box_num((boxint)ses->dks_n_threads)));
     }
   mutex_leave (ws_cli_mtx);
   return list_to_array (dk_set_nreverse (set));
@@ -11676,9 +11676,11 @@ bif_http_client_session_cached (caddr_t * qst, caddr_t * err_ret, state_slot_t *
 {
   boxint id = bif_long_arg (qst, args, 0, "http_client_session_cached");
   boxint ret;
+  dk_session_t * ses;
   mutex_enter (ws_cli_mtx);
-  ret = ((NULL != gethash ((void *) (ptrlong) id, ws_cli_sessions)) ? 1 : 0);
+  ses = (dk_session_t *) gethash ((void *) (ptrlong) id, ws_cli_sessions);
   mutex_leave (ws_cli_mtx);
+  ret = (ses && ses->dks_n_threads ? 1 : (ses ? 2 : 0));
   return box_num (ret);
 }
 
