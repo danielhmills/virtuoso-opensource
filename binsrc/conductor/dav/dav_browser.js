@@ -1405,14 +1405,8 @@ WEBDAV.menuMouseOut = function (event)
     return false;
   }
 
-  if (window.event)
-  {
-    current = this;
-    related = window.event.toElement;
-  } else {
-    current = event.currentTarget;
-    related = event.relatedTarget;
-  }
+  current = event.currentTarget;
+  related = event.relatedTarget;
   if ((current != related) && !menuMouseIn(current, related))
     OAT.Dom.hide(current);
 }
