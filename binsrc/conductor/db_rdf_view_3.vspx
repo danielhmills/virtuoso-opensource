@@ -338,7 +338,7 @@
 		   exec (qr, stat, msg, vector (), 0, meta, data);
 		   if (stat = '00000' and length (data) and length (data[0]))
 		     {
-		     http (sprintf ('<div>Transient Views: <a href="/describe/?uri=%U"i target="_blank">%V</a> <br/>', gr, gr));
+                  http (sprintf ('<div>Transient Views: <a href="/describe/?uri=%U" target="_blank">%V</a> <br/>', gr, gr));
 		       foreach (any _row in data) do
 			 {
 			   if (_row[0] not like '%/stat#%')
