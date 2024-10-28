@@ -17,10 +17,10 @@
 --  with this program; if not, write to the Free Software Foundation, Inc.,
 --  51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 --
-create procedure WSOCK.DBA.WEBSOCKET_WRITE_MESSAGE (in sid int, in message varchar)
+create procedure WSOCK.DBA.WEBSOCKET_WRITE_MESSAGE (in sid int, in message varchar, in encode int default 0)
 {
   declare ses, data, payload any;
-  payload := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE (message);
+  payload := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE (message, encode);
   -- get cached
   ses := http_recall_session (sid, 0);
   -- write something
@@ -49,12 +49,12 @@ create procedure WSOCK.DBA.WEBSOCKET_CLOSE_MESSAGE (in sid int, in code int, in 
 }
 ;
 
-create procedure WSOCK.DBA.SEND_PING (in sid bigint, in message varchar := null)
+create procedure WSOCK.DBA.SEND_PING (in sid bigint, in message varchar := null, in encode int default 0)
 {
   declare ping varchar;
   declare ses any;
   message := subseq (message, 0, 125);
-  ping := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE(message);
+  ping := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE(message, encode);
   aset (ping, 0, 137);
   ses := http_recall_session (sid, 0);
   ses_write (ping, ses);
