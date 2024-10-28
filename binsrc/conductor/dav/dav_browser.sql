@@ -2524,7 +2524,7 @@ create procedure WEBDAV.DBA.settings_tbLabels (
 create procedure WEBDAV.DBA.settings_hiddens (
   inout settings any)
 {
-  return get_keyword ('hiddens', settings, '.,_');
+  return get_keyword ('hiddens', settings, '.');
 }
 ;
 
