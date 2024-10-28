@@ -30,17 +30,16 @@ create procedure WSOCK.DBA.WEBSOCKET_WRITE_MESSAGE (in sid int, in message varch
 }
 ;
 
-create procedure WSOCK.DBA.WEBSOCKET_CLOSE_MESSAGE (in sid int, in code int, in message varchar)
+create procedure WSOCK.DBA.WEBSOCKET_CLOSE_MESSAGE (in sid int, in code int, in message varchar, in encode int default 0)
 {
-  declare h, c, ses, payload any;
+  declare c, ses, payload any;
   message := subseq (message, 0, 125 - 2); -- only short errors
   if (code <> bit_and (code, 0hex7fff))
     signal ('22023', 'Only short int is allowed for code');
-  h := '\x88\x00'; -- 10001000  FIN x80 | opcode 0x8
-  h[1] := length (message) + 2;
   c := '00';
   c := short_set (c, 0, code);
-  payload := concat (h,c,message);
+  payload := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE (concat (c,message), encode);
+  aset(payload, 0, 136);
 
   ses := http_recall_session (sid, 0);
   ses_write (payload, ses);
