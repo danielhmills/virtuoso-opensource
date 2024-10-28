@@ -87,6 +87,11 @@
 #define HC_F_REPLY_READ (uint32)0x0040
 #define HC_F_HDRS_READ  (uint32)0x0080
 #define HC_F_BODY_READ  (uint32)0x0100
+#define HC_F_UPGRADE    (uint32)0x0200
+
+#define HC_U_NONE       (uint32)0x0000 /* No upgrade at all */
+#define HC_U_WEBSOCKET  (uint32)0x0001 /* Websocket upgrade */
+#define HC_U_UNKNOWN    (uint32)0x0002 /* Upgrade happens but of unknown type */
 
 /* States */
 
@@ -210,6 +215,7 @@ typedef struct http_cli_ctx_s
   caddr_t *         hcctx_callback_args;
   int 		    hcctx_redirects;
   char              hcctx_accept_cookies;
+  int32             hcctx_connection_upgrade;
 } http_cli_ctx;
 
 
