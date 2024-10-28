@@ -11690,18 +11690,21 @@ bif_http_on_message (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   caddr_t func = bif_string_arg (qst, args, 1, "http_on_message");
   caddr_t cd = bif_arg (qst, args, 2, "http_on_message");
   int signal_on_disconnected = BOX_ELEMENTS(args) > 3 ? bif_long_arg (qst, args, 3, "http_on_message") : 1;
+  int keep_conn_ref = BOX_ELEMENTS(args) > 4 ? bif_long_arg (qst, args, 4, "http_on_message") : 0; /* use on client side to keep ses ref */
   dk_session_t * ses = NULL;
   ws_connection_t * ws = qi->qi_client->cli_ws;
 
   if (DV_CONNECTION == DV_TYPE_OF (conn))
     {
+      int server_session = 0;
       ses = (dk_session_t *) conn[0];
+      server_session = (ws && ses && ses == ws->ws_session);
       if (ses && DKSESSTAT_ISSET (ses, SST_OK))
-        conn[0] = NULL;
+        conn[0] = keep_conn_ref && !server_session ? ses : NULL;
       else
 	ses = NULL;
       mutex_enter (thread_mtx);
-      if (ws && ses && ses == ws->ws_session)
+      if (server_session)
 	{
 	  ws->ws_session->dks_ws_status = DKS_WS_CACHED;
 	  ws->ws_session->dks_n_threads++;
