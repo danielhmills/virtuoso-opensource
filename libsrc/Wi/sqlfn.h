@@ -1767,7 +1767,7 @@ int dv_rdf_id_delta (int64 ro_id_1, int64 ro_id_2, int64 *delta_ret);
 
 blob_handle_t * cli_ready_dae (client_connection_t  * cli, blob_handle_t * bh);
 void cli_free_dae (client_connection_t * cli);
-void qi_set_batch_sz (caddr_t * inst, table_source_t * ts, int new_sz);
+void qi_set_batch_sz (caddr_t * inst, data_source_t * ts, int new_sz);
 void dk_hash_copy (dk_hash_t * to, dk_hash_t * from);
 state_slot_t * upd_find_col_ssl (update_node_t * upd, oid_t col_id);
 void complete_proc_name (char * proc_name, char * complete, char * def_qual, char * def_owner);
