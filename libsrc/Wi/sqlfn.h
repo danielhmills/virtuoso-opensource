@@ -1046,13 +1046,15 @@ extern void qi_check_stack (query_instance_t *qi, void *addr, ptrlong margin);
 #define QI_CHECK_STACK(qi,addr,margin) qi_check_stack (qi, addr, margin)
 #else
 #define QI_CHECK_STACK(qi, addr, margin) \
-  if (THR_IS_STACK_OVERFLOW (qi->qi_thread, addr, margin)) \
-    sqlr_new_error ("42000", "SR178", "Stack overflow (stack size is %ld, more than %ld is in use)", (long)(qi->qi_thread->thr_stack_size), (long)(qi->qi_thread->thr_stack_size - margin)); \
-  if (DK_MEM_RESERVE) \
-    { \
-      SET_DK_MEM_RESERVE_STATE(qi->qi_trx); \
-      qi_signal_if_trx_error (qi); \
-    }
+  do { \
+    if (THR_IS_STACK_OVERFLOW (qi->qi_thread, addr, margin)) \
+      sqlr_new_error ("42000", "SR178", "Stack overflow (stack size is %ld, more than %ld is in use)", (long)(qi->qi_thread->thr_stack_size), (long)(qi->qi_thread->thr_stack_size - margin)); \
+    if (DK_MEM_RESERVE) \
+      { \
+	SET_DK_MEM_RESERVE_STATE(qi->qi_trx); \
+	qi_signal_if_trx_error (qi); \
+      } \
+  } while (0)
 #endif
 
 #define DEL_STACK_MARGIN (2*PAGE_SZ + 200 * sizeof (caddr_t))
