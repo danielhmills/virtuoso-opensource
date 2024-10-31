@@ -8487,6 +8487,18 @@ grant select on DB.DBA.SPARQL_BINDINGS_VIEW to public
 ;
 
 --!AWK PUBLIC
+create procedure DB.DBA.SPARQL_BINDINGS_VIEW_C_0_IMP (in dta any)
+{
+  declare rcount, rctr integer;
+  declare BND0 any;
+  result_names (BND0);
+  rcount := length (dta);
+  for (rctr := 0; rctr < rcount; rctr := rctr+1)
+    result (NULL);
+}
+;
+
+--!AWK PUBLIC
 create procedure DB.DBA.SPARQL_BINDINGS_VIEW_C_1_IMP (in dta any)
 {
   declare rcount, rctr integer;
@@ -8534,6 +8546,9 @@ create procedure DB.DBA.SPARQL_BINDINGS_VIEW_C_4_IMP (in dta any)
 }
 ;
 
+create procedure view DB.DBA.SPARQL_BINDINGS_VIEW_C_0 as DB.DBA.SPARQL_BINDINGS_VIEW_C_0_IMP (dta) (BND0 any)
+;
+
 create procedure view DB.DBA.SPARQL_BINDINGS_VIEW_C_1 as DB.DBA.SPARQL_BINDINGS_VIEW_C_1_IMP (dta) (BND0 any)
 ;
 
@@ -8544,6 +8559,9 @@ create procedure view DB.DBA.SPARQL_BINDINGS_VIEW_C_3 as DB.DBA.SPARQL_BINDINGS_
 ;
 
 create procedure view DB.DBA.SPARQL_BINDINGS_VIEW_C_4 as DB.DBA.SPARQL_BINDINGS_VIEW_C_4_IMP (dta) (BND0 any, BND1 any, BND2 any, BND3 any)
+;
+
+grant select on DB.DBA.SPARQL_BINDINGS_VIEW_C_0 to public
 ;
 
 grant select on DB.DBA.SPARQL_BINDINGS_VIEW_C_1 to public
