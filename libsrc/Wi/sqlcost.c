@@ -2581,16 +2581,16 @@ sqlo_inx_sample_1 (df_elt_t * tb_dfe, dbe_key_t * key, df_elt_t ** lowers, df_el
     }
   if (sop)
     itc->itc_st.cols = sop->sop_cols;
-    {
-    res = itc_sample (itc);
-      row_sel = itc_row_selectivity (itc, res);
-      if (sop && (dk_hash_t*)-1 == itc->itc_st.cols)
-	{
-	  /* the itc sample has set the p stat, so no p stat or cxol samples here */
-	  hash_table_free (sop->sop_cols);
-	  sop->sop_cols = NULL;
-	}
-    }
+  {
+  res = itc_sample (itc);
+    row_sel = itc_row_selectivity (itc, res);
+    if (sop && (dk_hash_t*)-1 == itc->itc_st.cols)
+      {
+	/* the itc sample has set the p stat, so no p stat or cxol samples here */
+	hash_table_free (sop->sop_cols);
+	sop->sop_cols = NULL;
+      }
+  }
   if (sop)
     sop->sop_n_sample_rows += itc->itc_st.n_sample_rows;
   itc->itc_st.cols = NULL;

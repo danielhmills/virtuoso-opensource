@@ -3826,11 +3826,11 @@ vec_fref_group_result (fun_ref_node_t * fref, table_source_t * ts, caddr_t * ins
     hash_area_t *ha = setp->setp_ha;
     if (HA_GROUP != ha->ha_op)
       continue;
-      if (1 == n_sets && (tree = (index_tree_t*) (SSL_REF == ha->ha_tree->ssl_type || SSL_VEC == ha->ha_tree->ssl_type  ? sslr_qst_get (inst, (state_slot_ref_t*)ha->ha_tree, 0) : qst_get (inst, ha->ha_tree))))
-      {
-	if (tree->it_hi && tree->it_hi->hi_chash)
-	  chash_to_memcache (inst, tree, ha);
-      }
+    if (1 == n_sets && (tree = (index_tree_t*) (SSL_REF == ha->ha_tree->ssl_type || SSL_VEC == ha->ha_tree->ssl_type  ? sslr_qst_get (inst, (state_slot_ref_t*)ha->ha_tree, 0) : qst_get (inst, ha->ha_tree))))
+    {
+      if (tree->it_hi && tree->it_hi->hi_chash)
+	chash_to_memcache (inst, tree, ha);
+    }
   }
   END_DO_SET ();
   if (fref->src_gen.src_continuations)

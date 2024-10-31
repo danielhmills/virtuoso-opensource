@@ -588,17 +588,17 @@ artm_print:
 	    stmt_printf (("declare handler end at %d", in->_.handler.label));
 	  else
 	    stmt_printf (("declare DEFAULT handler "));
-	    {
-	      int inx;
-	      DO_BOX (caddr_t *, state, inx, in->_.handler.states)
-		{
-		  if (IS_BOX_POINTER (state))
-		    stmt_printf ((" state %s, ", state[0]));
-		  else
-		    stmt_printf ((" NO DATA_FOUND, "));
-		}
-	      END_DO_BOX;
-	    }
+	  {
+	    int inx;
+	    DO_BOX (caddr_t *, state, inx, in->_.handler.states)
+	      {
+		if (IS_BOX_POINTER (state))
+		  stmt_printf ((" state %s, ", state[0]));
+		else
+		  stmt_printf ((" NO DATA_FOUND, "));
+	      }
+	    END_DO_BOX;
+	  }
 	  break;
 
 	case INS_HANDLER_END:

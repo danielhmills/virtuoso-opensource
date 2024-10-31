@@ -4453,10 +4453,10 @@ DBG_NAME(srv_make_new_error) (DBG_PARAMS const char *code, const char *virt_code
 
   if (code[1] == 'Y')
     virtuoso_sleep (0, 10000);
-    if ('S' == code[0] || '4' == code[0])
-      {
-        at_printf (("Host %d make err %s %s in %s\n", local_cll.cll_this_host, code, temp, cl_thr_stat ()));
-      }
+  if ('S' == code[0] || '4' == code[0])
+    {
+      at_printf (("Host %d make err %s %s in %s\n", local_cll.cll_this_host, code, temp, cl_thr_stat ()));
+    }
 #ifdef SIGNAL_DEBUG
   ctx = THREAD_CURRENT_THREAD->thr_reset_ctx;
   for (ctx_ctr = 0, ctx_iter = ctx; NULL != ctx_iter; ctx_ctr++, ctx_iter = ctx_iter->j_parent) { /*do nothing*/; }

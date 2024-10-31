@@ -4472,10 +4472,10 @@ qr_set_vec_ssls (query_t * qr)
   {
     if (SSL_VEC == ssl->ssl_type && !ssl->ssl_alias_of)
       dk_set_push (&ssls, (void *) ssl);
-      if (DV_ANY == ssl->ssl_dc_dtp)
-	est += dc_default_var_len + sizeof (caddr_t);
-      else
-	est += sizeof (int64);
+    if (DV_ANY == ssl->ssl_dc_dtp)
+      est += dc_default_var_len + sizeof (caddr_t);
+    else
+      est += sizeof (int64);
   }
   END_DO_SET ();
   DO_SET (state_slot_t *, ssl, &qr->qr_temp_spaces)

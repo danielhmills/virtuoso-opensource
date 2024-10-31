@@ -1919,15 +1919,15 @@ sqlg_pop_sqs (sql_comp_t * sc, subq_source_t * sqs, data_source_t ** head, dk_se
     qn->src_continuations = NULL;
     if (qn != last)
       sql_node_append (head, qn);
-      if (IS_QN (qn, select_node_input_subq) && !((select_node_t*)qn)->sel_subq_inlined)
-      {
-	QNCAST (select_node_t, sel, qn);
-	sel->sel_set_ctr = sctr;
-	sel->sel_subq_inlined = 1;
-	  sel->src_gen.src_after_test = sqs->sqs_after_join_test;
-	  sqs->sqs_after_join_test = NULL;
-	break;
-      }
+    if (IS_QN (qn, select_node_input_subq) && !((select_node_t*)qn)->sel_subq_inlined)
+    {
+      QNCAST (select_node_t, sel, qn);
+      sel->sel_set_ctr = sctr;
+      sel->sel_subq_inlined = 1;
+	sel->src_gen.src_after_test = sqs->sqs_after_join_test;
+	sqs->sqs_after_join_test = NULL;
+      break;
+    }
   }
   END_DO_SET ();
   qr->qr_nodes = dk_set_conc (sqr->qr_nodes, qr->qr_nodes);
@@ -5205,8 +5205,8 @@ sqlg_handle_select_list (sqlo_t *so, df_elt_t * dfe, data_source_t ** head,
 	      state_slot_t * target_ssl = sqlg_dfe_ssl (so, sqlo_df (so, target_names[inx]));
 	      if (sc->sc_trans)
 		sqlg_trans_rename (sc, res[inx], target_ssl);
-		res[inx] = sqlg_alias_or_assign (so, target_ssl, res[inx], &code, sqlg_is_vector
-		    && DFE_VALUE_SUBQ == dfe->dfe_type);
+	      res[inx] = sqlg_alias_or_assign (so, target_ssl, res[inx], &code, sqlg_is_vector
+		  && DFE_VALUE_SUBQ == dfe->dfe_type);
 	    }
 	}
     }

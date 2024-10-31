@@ -524,12 +524,12 @@ ext_get_dp (extent_t * ext, dp_addr_t near)
     {
       if (!DP_IN_EXTENT (near, ext))
 	GPF_T1 ("near outside of extent");
-	word = (near - ext->ext_dp) / BITS_IN_LONG;
-	if (ext->ext_pages[word] != 0xffffffff)
-	  {
-	    bit = word_free_bit (ext->ext_pages[word]);
-	    goto bit_found;
-	  }
+      word = (near - ext->ext_dp) / BITS_IN_LONG;
+      if (ext->ext_pages[word] != 0xffffffff)
+	{
+	  bit = word_free_bit (ext->ext_pages[word]);
+	  goto bit_found;
+	}
     }
   for (word = 0; word < EXTENT_SZ / BITS_IN_LONG; word++)
     {

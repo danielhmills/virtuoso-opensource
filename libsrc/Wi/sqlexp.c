@@ -2119,16 +2119,16 @@ cv_refd_slots (sql_comp_t * sc, code_vec_t cv, dk_hash_t * res, dk_hash_t * all_
 	  break;
 	case INS_SUBQ:
 	  {
-	    state_slot_t ** out_save = sc->sc_sel_out;
-	  if (non_cl_local)
-	    *non_cl_local = 1;
+	    state_slot_t **out_save = sc->sc_sel_out;
+	    if (non_cl_local)
+	      *non_cl_local = 1;
 	    sc->sc_sel_out = NULL;
-	  if (res)
-	  sqlg_qn_env (sc, ins->_.subq.query->qr_head_node, NULL, res);
+	    if (res)
+	      sqlg_qn_env (sc, ins->_.subq.query->qr_head_node, NULL, res);
 	    sc->sc_sel_out = out_save;
 	    if (ins->_.subq.query->qr_select_node)
 	      {
-	  ASG_SSL (res, all_res, ins->_.subq.query->qr_select_node->sel_out_slots[0]);
+		ASG_SSL (res, all_res, ins->_.subq.query->qr_select_node->sel_out_slots[0]);
 		ASG_SSL (res, all_res, ins->_.subq.query->qr_select_node->sel_scalar_ret);
 	      }
 	    break;
