@@ -3541,7 +3541,7 @@ sqlg_parallel_ts_seq (sql_comp_t * sc, df_elt_t * dt_dfe, table_source_t * ts, f
 
 
 #define CVC(c) c = cv_copy (c)
-code_vec_t cv_copy (code_vec_t * cv);
+code_vec_t cv_copy (code_vec_t cv);
 
 
 
@@ -3627,7 +3627,7 @@ cv_is_copiable (code_vec_t cv)
 
 
 code_vec_t
-cv_copy (code_vec_t * cv)
+cv_copy (code_vec_t cv)
 {
   int len;
   code_vec_t copy;

@@ -75,7 +75,7 @@ sqlo_index_path_print (df_elt_t * dfe)
 caddr_t dv_iri_short_name (caddr_t x);
 
 void
-dbg_print_st (caddr_t * box, FILE * f)
+dbg_print_st (caddr_t box, FILE * f)
 {
   ST * st = (ST*)box;
   dtp_t dtp = DV_TYPE_OF (box);
@@ -190,26 +190,26 @@ sqlo_dfe_print (df_elt_t * dfe, int offset)
       {
 	if (ST_P (dfe->dfe_tree, KWD_PARAM))
 	  {
-	    dbg_print_st ((caddr_t *) dfe->dfe_tree->_.bin_exp.left, stdout);
+	    dbg_print_st ((caddr_t) dfe->dfe_tree->_.bin_exp.left, stdout);
 	    sqlo_print (("=> "));
-	    dbg_print_st ((caddr_t *) dfe->dfe_tree->_.bin_exp.right, stdout);
+	    dbg_print_st ((caddr_t) dfe->dfe_tree->_.bin_exp.right, stdout);
 	  }
 	else if (ST_P (dfe->dfe_tree, ASG_STMT))
 	  {
-	    dbg_print_st ((caddr_t *) dfe->_.bin.left->dfe_tree, stdout);
+	    dbg_print_st ((caddr_t) dfe->_.bin.left->dfe_tree, stdout);
 	    sqlo_print ((":= "));
-	    dbg_print_st ((caddr_t *) dfe->_.bin.right->dfe_tree, stdout);
+	    dbg_print_st ((caddr_t) dfe->_.bin.right->dfe_tree, stdout);
 	  }
 	else
 	  {
 	    sqlo_print ((" "));
 	    if (!dfe->_.bin.right)
 	      sqlo_print ((" %s ", bop_text (dfe->_.bin.op)));
-	    dbg_print_st ((caddr_t *) dfe->_.bin.left->dfe_tree, stdout);
+	    dbg_print_st ((caddr_t) dfe->_.bin.left->dfe_tree, stdout);
 	    if (dfe->_.bin.right)
 	      {
 		sqlo_print ((" %s ", bop_text (dfe->_.bin.op)));
-		dbg_print_st ((caddr_t *) dfe->_.bin.right->dfe_tree, stdout);
+		dbg_print_st ((caddr_t) dfe->_.bin.right->dfe_tree, stdout);
 	      }
 	  }
 	sqlo_print (("\n"));

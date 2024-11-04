@@ -4838,12 +4838,12 @@ bif_stat_export (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
       id_hash_iterator (&hit, ric->ric_samples);
       while (hit_next (&hit, (caddr_t*)&s_key, (caddr_t*)&smp))
 	{
-	  caddr_t * ent = sc_data_to_ext (qi, *(caddr_t*)s_key);
+	  caddr_t ent = sc_data_to_ext (qi, *(caddr_t*)s_key);
 	  dbe_key_t * key = sch_id_to_key (wi_inst.wi_schema, unbox (ent[0]));
 	  if (key)
 	    {
-	      dk_free_box (ent[0]);
-	      ent[0] = box_dv_short_string (key->key_name);
+	      dk_free_box (ent);
+	      ent = box_dv_short_string (key->key_name);
 	    }
 	  dk_set_push (&smps, list (3, ent, box_float (smp->smp_card), box_float (smp->smp_inx_card)));
 	}
@@ -4931,7 +4931,7 @@ bif_stat_import (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   DO_BOX (caddr_t *, ks, inx, stats[1])
     {
       dbe_table_t * tb = sch_name_to_table (sc, ks[0]);
-      caddr_t * ps = ks[3];
+      caddr_t ps = ks[3];
       if (!tb)
 	continue;
       key = tb_name_to_key (tb, ks[1], 0);

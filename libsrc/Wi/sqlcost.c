@@ -3889,7 +3889,7 @@ arity_scale (float ar)
 }
 
 int
-col_dfe_list_size (dk_set_t * cols)
+col_dfe_list_size (dk_set_t cols)
 {
   int res = 0;
   DO_SET (df_elt_t *, dfe, &cols)
@@ -3905,7 +3905,7 @@ col_dfe_list_size (dk_set_t * cols)
 
 
 float 
-sqlo_hash_ins_cost (df_elt_t * dfe, float card, dk_set_t * cols, float * size_ret)
+sqlo_hash_ins_cost (df_elt_t * dfe, float card, dk_set_t cols, float * size_ret)
 {
   float mem_cost = sqlo_hash_mem_cost (card);
   if (dfe->_.table.is_unique && !cols)
