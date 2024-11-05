@@ -344,7 +344,7 @@ jp_fanout (join_plan_t * jp)
 	{
 	  if (DFE_BOP_PRED == is_o->dfe_type && 1 == is_o->_.bin.is_in_list)
 	    {
-	      ST ** in_list = sqlo_in_list (is_o, NULL, NULL);
+	      df_elt_t **in_list = sqlo_in_list (is_o, NULL, NULL);
 	      misc_card *= BOX_ELEMENTS (in_list) - 1;
 	    }
 	  return jp->jp_fanout = (p_stat[0] / o_card) * misc_card;

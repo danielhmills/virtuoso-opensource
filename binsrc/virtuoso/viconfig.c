@@ -1336,7 +1336,7 @@ cfg_setup (void)
   section = "Flags";
   {
     stat_desc_t *sd = &dbf_descs[0];
-    int64 v;
+    size_t v;
     int32 v32;
     while (sd->sd_name)
       {
