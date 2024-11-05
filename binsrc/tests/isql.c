@@ -10465,10 +10465,10 @@ isql_main (int argc,
 	{
 	  if (!isqlt_tcsncmp (argv[i], _T("-?"), 2) || !isqlt_tcsncmp (argv[i], _T("/?"), 2) || !isqlt_tcsncmp (argv[i], _T("--help"), 6))
 	    {
-	      isqlt_ftprintf (stdout, _T("%") PCT_S _T(" Interactive SQL ") ISQL_TYPE _T("\n"), PRODUCT_NAME);
-	      isqlt_ftprintf (stdout, _T("Version %")  PCT_S  _T(" as of %s\n"), ISQL_VERSION, __DATE__);
+	      isqlt_ftprintf (stdout, _T("%s Interactive SQL ") ISQL_TYPE _T("\n"), PRODUCT_NAME);
+	      isqlt_ftprintf (stdout, _T("Version %s as of %s\n"), ISQL_VERSION, __DATE__);
 #ifndef ODBC_ONLY
-	      isqlt_ftprintf (stdout, _T("Compiled for %")  PCT_S _T(" (%")  PCT_S _T(")\n"), build_opsys_id, build_host_id);
+	      isqlt_ftprintf (stdout, _T("Compiled for %s (%s)\n"), build_opsys_id, build_host_id);
 #endif
  	      isqlt_ftprintf (stdout, _T("%s\n"), PRODUCT_COPYRIGHT);
 	      isqlt_ftprintf (stdout,
@@ -10617,7 +10617,7 @@ isql_main (int argc,
 		  i++;
 		  connect_port = argv[i];
 		}
-	      pserv = getservbyname (connect_port, _T("tcp"));
+	      pserv = getservbyname ((const char *)connect_port, "tcp");
 	      if (pserv)
 		{
 		  isqlt_stprintf (port, _T("%d"), ntohs (pserv->s_port));
@@ -10763,9 +10763,9 @@ isql_main (int argc,
 
   if (verbose_mode && (NOT web_mode))
     {
-      isql_printf (_T("%") PCT_S _T(" Interactive SQL ") ISQL_TYPE _T("\n"), PRODUCT_NAME);
-      isql_printf (_T("Version %")  PCT_S  _T(" as of %s\n"), ISQL_VERSION, __DATE__);
-      isql_printf ("Type HELP; for help and EXIT; to exit.\n");
+      isql_printf (_T("%s Interactive SQL ") ISQL_TYPE _T("\n"), PRODUCT_NAME);
+      isql_printf (_T("Version %s as of %s\n"), ISQL_VERSION, __DATE__);
+      isql_printf (_T("Type HELP; for help and EXIT; to exit.\n"));
     }
 
   if (nth_non_option || shortcuts_used)		/* Used in the traditional way, with datasource,
@@ -10899,7 +10899,7 @@ get_list_of_datasources (int for_html, TCHAR *dest_buf, int dest_size)
     {
       isqlt_tcsncpy (dest_buf, _T("<INPUT NAME=S_DATASOURCE TYPE=TEXT VALUE=\""), dest_size);
       my_strncat (dest_buf, DEFAULT_DATASOURCE_IN_UNIX, dest_size);
-      my_strncat (dest_buf, "\">", dest_size);
+      my_strncat (dest_buf, _T("\">"), dest_size);
     }
   else
     {
