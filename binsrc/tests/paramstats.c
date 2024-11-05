@@ -34,7 +34,7 @@
 
 typedef struct
 {
-  SQLINTEGER length;
+  SQLLEN length;
   SQLINTEGER value;
 } PARAM;
 

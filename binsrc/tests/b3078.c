@@ -337,10 +337,10 @@ ODBC_Execute()
   SQLCHAR *      Statement = "select * from BTEST where id > ?";
   SQLUINTEGER    IDArray[ARRAY_SIZE];
 
-  SQLINTEGER     IDIndArray[ARRAY_SIZE];
+  SQLULEN        IDIndArray[ARRAY_SIZE];
 
   SQLUSMALLINT   i, ParamStatusArray[ARRAY_SIZE];
-  SQLUINTEGER    ParamsProcessed;
+  SQLULEN        ParamsProcessed;
 
   if (SQLParamOptions(hstmt, ARRAY_SIZE, &ParamsProcessed) != SQL_SUCCESS)
     {
