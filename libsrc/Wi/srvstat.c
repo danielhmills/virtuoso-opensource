@@ -4839,7 +4839,7 @@ bif_stat_export (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
       while (hit_next (&hit, (caddr_t*)&s_key, (caddr_t*)&smp))
 	{
 	  caddr_t ent = sc_data_to_ext (qi, *(caddr_t*)s_key);
-	  dbe_key_t * key = sch_id_to_key (wi_inst.wi_schema, unbox (ent[0]));
+         dbe_key_t * key = sch_id_to_key (wi_inst.wi_schema, unbox (ent));
 	  if (key)
 	    {
 	      dk_free_box (ent);
