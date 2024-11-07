@@ -1179,7 +1179,7 @@ dbs_sched_low_dirty (dbe_storage_t * dbs, dp_addr_t min_dp, int * n_sched)
 	      bufs[fill++] = buf;
 	      if (fill == BUFS_BATCH)
 		{
-		  bufs = mp_alloc_box (mp, sizeof (caddr_t) * BUFS_BATCH, DV_NON_BOX);
+		  bufs = (buffer_desc_t **) mp_alloc_box (mp, sizeof (caddr_t) * BUFS_BATCH, DV_NON_BOX);
 		  mp_set_push (mp, &buf_list, (void*)bufs);
 		  fill = 0;
 		}

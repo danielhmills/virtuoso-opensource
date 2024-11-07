@@ -199,6 +199,8 @@ typedef struct xp_ctx_s
     int			xc_is_generated;
   } xp_ctx_t;
 
+#define XT_P(s, tp) \
+  (ARRAYP (s) && BOX_ELEMENTS (s) > 0 && ((XT *)(s))->type == tp)
 
 typedef ptrlong xqst_t; /* int size of caddr_t */
 

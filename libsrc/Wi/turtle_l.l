@@ -797,7 +797,7 @@ resume_sniffing:
   QR_RESET_CODE
     {
       du_thread_t *self = THREAD_CURRENT_THREAD;
-      caddr_t *err = (caddr_t *)thr_get_error_code (self);
+      caddr_t err = thr_get_error_code (self);
 #ifdef TTLYYDEBUG
       ttlyy_dbg_printf (("{ERROR %s %s}", ERR_STATE(err), ERR_MESSAGE(err)));
 #endif

@@ -4380,9 +4380,9 @@ DBG_NAME(qr_exec) (DBG_PARAMS  client_connection_t * cli, query_t * qr,
 	if (ret && DV_ARRAY_OF_POINTER == DV_TYPE_OF (ret) && qr->qr_proc_vectored)
 	  {
 	    {
-	      caddr_t * prev = ret;
-	      ret = (caddr_t*)((caddr_t*)ret)[0];
-	      dk_free_box ((caddr_t)prev);
+	      caddr_t prev = ret;
+	      ret = (caddr_t)((caddr_t*)ret)[0];
+	      dk_free_box (prev);
 	    }
 	  }
         if (ret && DV_ARRAY_OF_POINTER == DV_TYPE_OF (ret) && caller == CALLER_CLIENT)

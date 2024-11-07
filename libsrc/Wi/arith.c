@@ -1197,7 +1197,7 @@ dvc_num_double (numeric_t num1, double d2)
       if (d2 > MIN_INT_DOUBLE && d2 < MAX_INT_DOUBLE)
 	{
 	  NUMERIC_VAR (num2);
-	  numeric_from_double (num2, d2);
+	  numeric_from_double ((numeric_t) num2, d2);
 	  return numeric_compare_dvc ((numeric_t) num1, (numeric_t) num2);
 	}
       if (num1->n_len + num1->n_scale <= 15)
@@ -1973,7 +1973,7 @@ vec_cmp_t dbl_cmp_ops[] = {NULL, (vec_cmp_t)cmp_vec_dbl_eq, (vec_cmp_t)cmp_vec_d
 
 
 #define CMP_VEC_OP(name, dtp, op) \
-void name  (dtp * l, dtp * r, int n_sets, dtp_t * set_mask, dtp_t * res_bits, dtp_t cmp_op, char * mix_ret) \
+void name  (dtp l, dtp r, int n_sets, dtp_t * set_mask, dtp_t * res_bits, dtp_t cmp_op, char * mix_ret) \
 { \
   int set; \
   char mix = *mix_ret; \
@@ -2015,8 +2015,9 @@ dt_cmp_fl (db_buf_t dt1, db_buf_t dt2)
 }
 
 
-CMP_VEC_OP (cmp_vec_dt, dtp_t *, cmp_op & dt_cmp_fl (((db_buf_t)l) + DT_LENGTH * set, ((db_buf_t)r) + DT_LENGTH * set))
-CMP_VEC_OP (cmp_vec_any, dtp_t **, cmp_op & dv_compare (((db_buf_t*)l)[set], ((db_buf_t*)r)[set], NULL, 0))
+CMP_VEC_OP (cmp_vec_dt, void *, cmp_op & dt_cmp_fl (((db_buf_t)l) + DT_LENGTH * set, ((db_buf_t)r) + DT_LENGTH * set))
+CMP_VEC_OP (cmp_vec_any, void *, cmp_op & dv_compare (((db_buf_t*)l)[set], ((db_buf_t*)r)[set], NULL, 0))
+
 #define SWAP(t, l, r) { t tmp; tmp = r; r = l; l = tmp;}
 #define CMP_REV(new_op) \
   { cmp_op = new_op; SWAP (dtp_t, l_dtp, r_dtp); SWAP (state_slot_t *, l, r);}
@@ -2085,7 +2086,7 @@ CMP_VEC_OP (cmp_vec_any, dtp_t **, cmp_op & dv_compare (((db_buf_t*)l)[set], ((d
 	    la = ssl_artm_param (inst, l, (int64 *) & vn_temp_1.i, DV_DATETIME, inx, n, NULL, NULL);
 	  if (!inx || (SSL_VEC == r->ssl_type || SSL_REF == r->ssl_type))
 	    ra = ssl_artm_param (inst, r, (int64 *) & vn_temp_2.i, DV_DATETIME, inx, n, NULL, NULL);
-	  cmp_vec_dt ((db_buf_t)la, (db_buf_t)ra, n, set_mask ? &set_mask[inx / 8] : NULL, &res_bits[inx / 8], cmp_op, &mix);
+	  cmp_vec_dt (la, ra, n, set_mask ? &set_mask[inx / 8] : NULL, &res_bits[inx / 8], cmp_op, &mix);
 	}
       return mix - 1;
     }

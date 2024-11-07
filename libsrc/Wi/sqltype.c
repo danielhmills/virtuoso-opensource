@@ -307,7 +307,7 @@ udt_compile_class_methods (dbe_schema_t * sc, sql_class_t * udt,
 	int inx2;
 	DO_BOX (UST *, prop, inx2, mtd->_.method_def.props)
 	  {
-	    if (ST_P (prop, UDT_EXT))
+	    if (UST_P (prop, UDT_EXT))
 	      {
 		if (prop->_.ext_def.name)
 		  {
@@ -337,7 +337,7 @@ udt_compile_class_methods (dbe_schema_t * sc, sql_class_t * udt,
 		    udtm->scm_ext_type = box_dv_short_string (prop->_.ext_def.type);
 		  }
 	      }
-	    else if (ST_P (prop, UDT_VAR_EXT))
+	    else if (UST_P (prop, UDT_VAR_EXT))
 	      {
 		if (udtm->scm_type != UDT_METHOD_STATIC)
 		  {

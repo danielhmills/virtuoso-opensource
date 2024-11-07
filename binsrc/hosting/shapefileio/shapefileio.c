@@ -362,7 +362,7 @@ shapefileio_read_dbf_fld_mdata (shapefileio_ctx_t *ctx, int fldctr)
   mdta[4] = (caddr_t)(ptrlong)1;
   mdta[5] = (caddr_t)(ptrlong)0;
   mdta[6] = (caddr_t)(ptrlong)0;
-  ctx->shpio_dbf_cbk_mdata [fldctr] = mdta;
+  ctx->shpio_dbf_cbk_mdata [fldctr] = (caddr_t) mdta;
 }
 
 caddr_t
@@ -462,11 +462,11 @@ shapefileio_read_one_shape (
     }
   boxed_entity_id = box_num (entity_id);
   params = NEW_LIST (5);
-  params[0] = &boxed_entity_id;
-  params[1] = &geo_obj;
-  params[2] = &(ctx->shpio_dbf_cbk_mdata);
-  params[3] = &boxed_attrs;
-  params[4] = app_env;
+  params[0] = (caddr_t) &boxed_entity_id;
+  params[1] = (caddr_t) &geo_obj;
+  params[2] = (caddr_t) &(ctx->shpio_dbf_cbk_mdata);
+  params[3] = (caddr_t) &boxed_attrs;
+  params[4] = (caddr_t) app_env;
   err_ret[0] = qr_exec (ctx->shpio_qi->qi_client, ctx->shpio_cbk_fn_plain, ctx->shpio_qi, NULL, NULL, NULL, params, NULL, 0);
   dk_free_box (boxed_entity_id);
   dk_free_box (geo_obj);
@@ -534,9 +534,9 @@ shapefileio_read_all_shapes (caddr_t text_or_filename, int arg1_is_filename, cad
           if (NULL != ctx.shpio_cbk_fn_mdata)
             {
               caddr_t *params = NEW_LIST (3);
-              params[0] = &raw_metas;
-              params[1] = &(ctx.shpio_dbf_cbk_mdata);
-              params[2] = app_env;
+              params[0] = (caddr_t) &raw_metas;
+              params[1] = (caddr_t) &(ctx.shpio_dbf_cbk_mdata);
+              params[2] = (caddr_t) app_env;
               err = qr_exec (ctx.shpio_qi->qi_client, ctx.shpio_cbk_fn_mdata, ctx.shpio_qi, NULL, NULL, NULL, params, NULL, 0);
               dk_free_box (params);
             }
@@ -544,9 +544,9 @@ shapefileio_read_all_shapes (caddr_t text_or_filename, int arg1_is_filename, cad
       else
         {
           caddr_t *params = NEW_LIST (3);
-          params[0] = &raw_metas;
-          params[1] = &cbk_metas;
-          params[2] = app_env;
+          params[0] = (caddr_t) &raw_metas;
+          params[1] = (caddr_t) &cbk_metas;
+          params[2] = (caddr_t) app_env;
           err = qr_exec (ctx.shpio_qi->qi_client, ctx.shpio_cbk_fn_mdata, ctx.shpio_qi, NULL, NULL, NULL, params, NULL, 0);
           dk_free_box (params);
         }

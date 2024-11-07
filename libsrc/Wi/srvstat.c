@@ -1497,360 +1497,532 @@ extern int32 enable_spar_logfile;
 extern int32 enable_sqlc_logfile;
 
 
+/**INDENT-OFF**/
 stat_desc_t stat_descs [] =
 {
-    {"main_bufs", (long *)&main_bufs, SD_INT32},
-    {"st_has_vdb", &st_has_vdb, NULL},
-    {"disk_reads", (long *)&disk_reads, NULL},
-    {"disk_releases", &disk_releases, NULL},
-    {"disk_writess", &disk_writes, NULL},
-    {"read_cum_time", &read_cum_time, SD_INT64},
-    {"write_cum_time", &write_cum_time, SD_INT64},
-    {"lock_deadlocks", &lock_deadlocks, NULL},
-    {"lock_2r1w_deadlocks", &lock_2r1w_deadlocks, NULL},
-    {"lock_killed_by_force", &lock_killed_by_force, NULL},
-    {"lock_waits", &lock_waits, NULL},
-    {"lock_enters", &lock_enters, NULL},
-    {"lock_leaves", &lock_leaves, NULL},
-    {"tc_try_land_write",  &tc_try_land_write, NULL},
-    {"tc_dp_changed_while_waiting_mtx", &tc_dp_changed_while_waiting_mtx, NULL},
-    {"tc_try_land_reset",  &tc_try_land_reset, NULL},
-    {"tc_up_transit_parent_change", &tc_up_transit_parent_change, NULL},
-    {"tc_dive_split",  &tc_dive_split, NULL},
-    {"tc_dtrans_split",  &tc_dtrans_split, NULL},
-    {"tc_up_transit_wait",  &tc_up_transit_wait, NULL},
-    {"tc_double_deletes",  &tc_double_deletes, NULL},
-    {"tc_delete_parent_waits",  &tc_delete_parent_waits, NULL},
-    {"tc_wait_trx_self_kill",  &tc_wait_trx_self_kill, NULL},
-    {"tc_read_wait_while_ra_finding_buf", &tc_read_wait_while_ra_finding_buf, NULL},
-    {"tc_split_while_committing",  &tc_split_while_committing, NULL},
-    {"tc_rb_code_non_unique",  &tc_rb_code_non_unique, NULL},
-    {"tc_set_by_pl_wait",  &tc_set_by_pl_wait, NULL},
-    {"tc_split_2nd_read",  &tc_split_2nd_read, NULL},
-    {"tc_read_wait_decoy", &tc_read_wait_decoy, NULL},
-    {"tc_read_wait",  &tc_read_wait, NULL},
-    {"tc_write_wait",  &tc_write_wait, NULL},
-    {"tc_cl_deadlocks", &tc_cl_deadlocks, NULL},
-    {"tc_cl_wait_queries", &tc_cl_wait_queries, NULL},
-    {"tc_cl_keep_alives", &tc_cl_keep_alives, NULL},
-    {"tc_cl_branch_wanted_queries", &tc_cl_branch_wanted_queries, NULL},
-    {"tc_cl_consensus_rollback", &tc_cl_consensus_rollback, NULL},
-    {"tc_cl_consensus_commit", &tc_cl_consensus_commit, NULL},
-    {"tc_cl_consensus_deferred", &tc_cl_consensus_deferred, NULL},
-    {"swap_guard_last_majflt", &swap_guard_last_majflt, NULL },
+    SD_DEF_I32 (main_bufs, "main_bufs"),
+    SD_DEF_L   (st_has_vdb, "st_has_vdb"),
+    SD_DEF_L   (disk_reads, "disk_reads"),
+    SD_DEF_L   (disk_releases, "disk_releases"),
+    SD_DEF_L   (disk_writes, "disk_writess"),
+    SD_DEF_I64 (read_cum_time, "read_cum_time"),
+    SD_DEF_I64 (write_cum_time, "write_cum_time"),
+    SD_DEF_L   (lock_deadlocks, "lock_deadlocks"),
+    SD_DEF_L   (lock_2r1w_deadlocks, "lock_2r1w_deadlocks"),
+    SD_DEF_L   (lock_killed_by_force, "lock_killed_by_force"),
+    SD_DEF_L   (lock_waits, "lock_waits"),
+    SD_DEF_L   (lock_enters, "lock_enters"),
+    SD_DEF_L   (lock_leaves, "lock_leaves"),
+    SD_DEF_L   (tc_try_land_write, "tc_try_land_write"),
+    SD_DEF_L   (tc_dp_changed_while_waiting_mtx, "tc_dp_changed_while_waiting_mtx"),
+    SD_DEF_L   (tc_try_land_reset, "tc_try_land_reset"),
+    SD_DEF_L   (tc_up_transit_parent_change, "tc_up_transit_parent_change"),
+    SD_DEF_L   (tc_dive_split, "tc_dive_split"),
+    SD_DEF_L   (tc_dtrans_split, "tc_dtrans_split"),
+    SD_DEF_L   (tc_up_transit_wait, "tc_up_transit_wait"),
+    SD_DEF_L   (tc_double_deletes, "tc_double_deletes"),
+    SD_DEF_L   (tc_delete_parent_waits, "tc_delete_parent_waits"),
+    SD_DEF_L   (tc_wait_trx_self_kill, "tc_wait_trx_self_kill"),
+    SD_DEF_L   (tc_read_wait_while_ra_finding_buf, "tc_read_wait_while_ra_finding_buf"),
+    SD_DEF_L   (tc_split_while_committing, "tc_split_while_committing"),
+    SD_DEF_L   (tc_rb_code_non_unique, "tc_rb_code_non_unique"),
+    SD_DEF_L   (tc_set_by_pl_wait, "tc_set_by_pl_wait"),
+    SD_DEF_L   (tc_split_2nd_read, "tc_split_2nd_read"),
+    SD_DEF_L   (tc_read_wait_decoy, "tc_read_wait_decoy"),
+    SD_DEF_L   (tc_read_wait, "tc_read_wait"),
+    SD_DEF_L   (tc_write_wait, "tc_write_wait"),
+    SD_DEF_L   (tc_cl_deadlocks, "tc_cl_deadlocks"),
+    SD_DEF_L   (tc_cl_wait_queries, "tc_cl_wait_queries"),
+    SD_DEF_L   (tc_cl_keep_alives, "tc_cl_keep_alives"),
+    SD_DEF_L   (tc_cl_branch_wanted_queries, "tc_cl_branch_wanted_queries"),
+    SD_DEF_L   (tc_cl_consensus_rollback, "tc_cl_consensus_rollback"),
+    SD_DEF_L   (tc_cl_consensus_commit, "tc_cl_consensus_commit"),
+    SD_DEF_L   (tc_cl_consensus_deferred, "tc_cl_consensus_deferred"),
+    SD_DEF_L   (swap_guard_last_majflt, "swap_guard_last_majflt"),
 
-    {"tc_cl_branch_missed_rb", &tc_cl_branch_missed_rb, NULL},
-    {"tc_cl_keep_alive_timeouts", &tc_cl_keep_alive_timeouts, NULL},
-    {"tc_cl_commit_resend", &tc_cl_commit_resend, NULL},
-    {"tc_cl_disconnect", &tc_cl_disconnect, NULL},
-    {"tc_cl_disconnect_in_clt", &tc_cl_disconnect_in_clt, NULL},
-    {"tc_dfg_coord_pause", &tc_dfg_coord_pause, NULL},
-    {"tc_dfg_more", &tc_dfg_more, NULL},
+    SD_DEF_L   (tc_cl_branch_missed_rb, "tc_cl_branch_missed_rb"),
+    SD_DEF_L   (tc_cl_keep_alive_timeouts, "tc_cl_keep_alive_timeouts"),
+    SD_DEF_L   (tc_cl_commit_resend, "tc_cl_commit_resend"),
+    SD_DEF_L   (tc_cl_disconnect, "tc_cl_disconnect"),
+    SD_DEF_L   (tc_cl_disconnect_in_clt, "tc_cl_disconnect_in_clt"),
+    SD_DEF_L   (tc_dfg_coord_pause, "tc_dfg_coord_pause"),
+    SD_DEF_L   (tc_dfg_more, "tc_dfg_more"),
 
-    {"tc_cl_kill_1pc", &tc_cl_kill_1pc, NULL},
-    {"tc_cl_kill_2pc", &tc_cl_kill_2pc, NULL},
-    {"tc_atomic_wait_2pc", &tc_atomic_wait_2pc, NULL},
-    {"tc_cl_alt_interface", &tc_cl_alt_interface, NULL},
-    {"tc_anytime_early_flush", &tc_anytime_early_flush, NULL},
-    {"read_block_usec", &read_block_usec, NULL},
-    {"write_block_usec", &write_block_usec, NULL},
-    {"tc_qp_thread", &tc_qp_thread, NULL},
-    {"strses_file_reads", &strses_file_reads, NULL},
-    {"strses_file_writes", &strses_file_writes, NULL},
-    {"strses_file_seeks", &strses_file_seeks, NULL},
-    {"strses_file_wait_msec", &strses_file_wait_msec, NULL},
-    {"tc_dive_would_deadlock", &tc_dive_would_deadlock, NULL},
-    {"tc_get_buffer_while_stat", &tc_get_buffer_while_stat, NULL},
-    {"tc_bp_wait_flush", &tc_bp_wait_flush, NULL},
-    {"tc_page_fill_hash_overflow", &tc_page_fill_hash_overflow, NULL},
-    {"tc_autocompact_split", &tc_autocompact_split, NULL},
-    {"tc_key_sample_reset", &tc_key_sample_reset, NULL},
-    {"tc_part_hash_join", &tc_part_hash_join, NULL},
-    {"tc_pl_moved_in_reentry", &tc_pl_moved_in_reentry, NULL},
-    {"tc_enter_transiting_bm_inx", &tc_enter_transiting_bm_inx, NULL},
-    {"tc_geo_delete_retry", &tc_geo_delete_retry, NULL},
-    {"tc_geo_delete_missed", &tc_geo_delete_missed, NULL},
-    {"tc_aio_seq_write", &tc_aio_seq_write, NULL},
-    {"tc_aio_seq_read", &tc_aio_seq_read, NULL},
-    {"tc_read_absent_while_finalize", &tc_read_absent_while_finalize, NULL},
-    {"tc_fix_outdated_leaf_ptr", &tc_fix_outdated_leaf_ptr, NULL},
-    {"tc_bm_split_left_separate_but_no_split", &tc_bm_split_left_separate_but_no_split, NULL},
-    {"tc_aq_sleep", &tc_aq_sleep, NULL},
-    {"tc_root_image_miss", &tc_root_image_miss, NULL},
-    {"tc_root_image_ref_deleted", &tc_root_image_ref_deleted, NULL},
-    {"tc_uncommit_cpt_page", &tc_uncommit_cpt_page, NULL},
-    {"tc_root_write", &tc_root_write, NULL},
-    {"tc_unregister_enter", &tc_unregister_enter, NULL},
-    {"tc_root_cache_miss", &tc_root_cache_miss, NULL},
+    SD_DEF_L   (tc_cl_kill_1pc, "tc_cl_kill_1pc"),
+    SD_DEF_L   (tc_cl_kill_2pc, "tc_cl_kill_2pc"),
+    SD_DEF_L   (tc_atomic_wait_2pc, "tc_atomic_wait_2pc"),
+    SD_DEF_L   (tc_cl_alt_interface, "tc_cl_alt_interface"),
+    SD_DEF_L   (tc_anytime_early_flush, "tc_anytime_early_flush"),
+    SD_DEF_L   (read_block_usec, "read_block_usec"),
+    SD_DEF_L   (write_block_usec, "write_block_usec"),
+    SD_DEF_L   (tc_qp_thread, "tc_qp_thread"),
+    SD_DEF_L   (strses_file_reads, "strses_file_reads"),
+    SD_DEF_L   (strses_file_writes, "strses_file_writes"),
+    SD_DEF_L   (strses_file_seeks, "strses_file_seeks"),
+    SD_DEF_L   (strses_file_wait_msec, "strses_file_wait_msec"),
+    SD_DEF_L   (tc_dive_would_deadlock, "tc_dive_would_deadlock"),
+    SD_DEF_L   (tc_get_buffer_while_stat, "tc_get_buffer_while_stat"),
+    SD_DEF_L   (tc_bp_wait_flush, "tc_bp_wait_flush"),
+    SD_DEF_L   (tc_page_fill_hash_overflow, "tc_page_fill_hash_overflow"),
+    SD_DEF_L   (tc_autocompact_split, "tc_autocompact_split"),
+    SD_DEF_L   (tc_key_sample_reset, "tc_key_sample_reset"),
+    SD_DEF_L   (tc_part_hash_join, "tc_part_hash_join"),
+    SD_DEF_L   (tc_pl_moved_in_reentry, "tc_pl_moved_in_reentry"),
+    SD_DEF_L   (tc_enter_transiting_bm_inx, "tc_enter_transiting_bm_inx"),
+    SD_DEF_L   (tc_geo_delete_retry, "tc_geo_delete_retry"),
+    SD_DEF_L   (tc_geo_delete_missed, "tc_geo_delete_missed"),
+    SD_DEF_L   (tc_aio_seq_write, "tc_aio_seq_write"),
+    SD_DEF_L   (tc_aio_seq_read, "tc_aio_seq_read"),
+    SD_DEF_L   (tc_read_absent_while_finalize, "tc_read_absent_while_finalize"),
+    SD_DEF_L   (tc_fix_outdated_leaf_ptr, "tc_fix_outdated_leaf_ptr"),
+    SD_DEF_L   (tc_bm_split_left_separate_but_no_split, "tc_bm_split_left_separate_but_no_split"),
+    SD_DEF_L   (tc_aq_sleep, "tc_aq_sleep"),
+    SD_DEF_L   (tc_root_image_miss, "tc_root_image_miss"),
+    SD_DEF_L   (tc_root_image_ref_deleted, "tc_root_image_ref_deleted"),
+    SD_DEF_L   (tc_uncommit_cpt_page, "tc_uncommit_cpt_page"),
+    SD_DEF_L   (tc_root_write, "tc_root_write"),
+    SD_DEF_L   (tc_unregister_enter, "tc_unregister_enter"),
+    SD_DEF_L   (tc_root_cache_miss, "tc_root_cache_miss"),
 
 
-    {"tc_initial_while_closing", &tc_initial_while_closing , NULL},
-    {"tc_initial_while_closing_died", &tc_initial_while_closing_died , NULL},
-    {"tc_client_dropped_connection", &tc_client_dropped_connection , NULL},
-    {"tc_no_client_in_tp_data", &tc_no_client_in_tp_data , NULL},
-    {"tc_bp_get_buffer", &tc_bp_get_buffer , NULL},
+    SD_DEF_L   (tc_initial_while_closing , "tc_initial_while_closing"),
+    SD_DEF_L   (tc_initial_while_closing_died , "tc_initial_while_closing_died"),
+    SD_DEF_L   (tc_client_dropped_connection , "tc_client_dropped_connection"),
+    SD_DEF_L   (tc_no_client_in_tp_data , "tc_no_client_in_tp_data"),
+    SD_DEF_L   (tc_bp_get_buffer , "tc_bp_get_buffer"),
 
-    {"tc_bp_get_buffer_loop", &tc_bp_get_buffer_loop , NULL},
+    SD_DEF_L   (tc_bp_get_buffer_loop , "tc_bp_get_buffer_loop"),
 
-    {"tc_unused_read_aside", &tc_unused_read_aside, NULL},
-    {"tc_adjust_batch_sz", &tc_adjust_batch_sz, NULL},
-    {"tc_cum_batch_sz", &tc_cum_batch_sz, NULL},
-    {"tc_no_mem_for_longer_batch", &tc_no_mem_for_longer_batch, NULL},
-    {"tc_slow_temp_lookup", &tc_slow_temp_lookup, NULL},
-    {"tc_slow_temp_insert", &tc_slow_temp_insert, NULL},
-    {"tc_dc_max_alloc", &tc_dc_max_alloc, NULL},
-    {"tc_dc_default_alloc", &tc_dc_default_alloc, NULL},
-    {"tc_dc_alloc", &tc_dc_alloc, NULL},
-    {"tc_dc_size", &tc_dc_size, NULL},
-    {"tc_dc_extend", &tc_dc_extend, NULL},
-    {"tc_dc_extend_values", &tc_dc_extend_values, NULL},
-    {"mp_large_in_use", (long *)&mp_large_in_use, NULL},
-    {"mp_max_large_in_use", (long *)&mp_max_large_in_use, NULL},
-    {"mp_mmap_clocks", &mp_mmap_clocks, NULL},
-    {"dict_max_mp_bytes_in_use", &dict_max_mp_bytes_in_use, SD_INT64},
-    {"tc_read_aside", &tc_read_aside, NULL},
-    {"tc_merge_reads", &tc_merge_reads, NULL},
-    {"tc_merge_read_pages", &tc_merge_read_pages, NULL},
-    {"ra_count", &ra_count, NULL},
-    {"ra_pages", &ra_pages, NULL},
-    {"tc_first_free_replace", &tc_first_free_replace , NULL},
-    {"tc_hi_lock_new_lock", &tc_hi_lock_new_lock , NULL},
-    {"tc_hi_lock_old_dp_no_lock", &tc_hi_lock_old_dp_no_lock , NULL},
-    {"tc_hi_lock_old_dp_no_lock_deadlock", &tc_hi_lock_old_dp_no_lock_deadlock , NULL},
-    {"tc_hi_lock_old_dp_no_lock_put_lock", &tc_hi_lock_old_dp_no_lock_put_lock , NULL},
-    {"tc_hi_lock_lock", &tc_hi_lock_lock , NULL},
-    {"tc_hi_lock_lock_deadlock", &tc_hi_lock_lock_deadlock , NULL},
-    {"tc_write_cancel", &tc_write_cancel , NULL},
-    {"tc_write_scrapped_buf", &tc_write_scrapped_buf , NULL},
-    {"tc_serializable_land_reset", &tc_serializable_land_reset , NULL},
-    {"tc_dive_cache_compares", &tc_dive_cache_compares , NULL},
-    {"tc_desc_serial_reset", &tc_desc_serial_reset , NULL},
-    {"tc_dp_set_parent_being_read", &tc_dp_set_parent_being_read , NULL},
-    {"tc_reentry_split", &tc_reentry_split , NULL},
-    {"tc_kill_closing", &tc_kill_closing , NULL},
-    {"tc_get_buf_failed", &tc_get_buf_failed , NULL},
-    {"tc_log_write_clocks", &tc_log_write_clocks, NULL},
+    SD_DEF_L   (tc_unused_read_aside, "tc_unused_read_aside"),
+    SD_DEF_L   (tc_adjust_batch_sz, "tc_adjust_batch_sz"),
+    SD_DEF_L   (tc_cum_batch_sz, "tc_cum_batch_sz"),
+    SD_DEF_L   (tc_no_mem_for_longer_batch, "tc_no_mem_for_longer_batch"),
+    SD_DEF_L   (tc_slow_temp_lookup, "tc_slow_temp_lookup"),
+    SD_DEF_L   (tc_slow_temp_insert, "tc_slow_temp_insert"),
+    SD_DEF_L   (tc_dc_max_alloc, "tc_dc_max_alloc"),
+    SD_DEF_L   (tc_dc_default_alloc, "tc_dc_default_alloc"),
+    SD_DEF_L   (tc_dc_alloc, "tc_dc_alloc"),
+    SD_DEF_L   (tc_dc_size, "tc_dc_size"),
+    SD_DEF_L   (tc_dc_extend, "tc_dc_extend"),
+    SD_DEF_L   (tc_dc_extend_values, "tc_dc_extend_values"),
+    SD_DEF_L   (mp_large_in_use, "mp_large_in_use"),
+    SD_DEF_L   (mp_max_large_in_use, "mp_max_large_in_use"),
+    SD_DEF_I64 (mp_mmap_clocks, "mp_mmap_clocks"),
+    SD_DEF_I64 (dict_max_mp_bytes_in_use, "dict_max_mp_bytes_in_use"),
+    SD_DEF_L   (tc_read_aside, "tc_read_aside"),
+    SD_DEF_L   (tc_merge_reads, "tc_merge_reads"),
+    SD_DEF_L   (tc_merge_read_pages, "tc_merge_read_pages"),
+    SD_DEF_L   (ra_count, "ra_count"),
+    SD_DEF_L   (ra_pages, "ra_pages"),
+    SD_DEF_L   (tc_first_free_replace , "tc_first_free_replace"),
+    SD_DEF_L   (tc_hi_lock_new_lock , "tc_hi_lock_new_lock"),
+    SD_DEF_L   (tc_hi_lock_old_dp_no_lock , "tc_hi_lock_old_dp_no_lock"),
+    SD_DEF_L   (tc_hi_lock_old_dp_no_lock_deadlock , "tc_hi_lock_old_dp_no_lock_deadlock"),
+    SD_DEF_L   (tc_hi_lock_old_dp_no_lock_put_lock , "tc_hi_lock_old_dp_no_lock_put_lock"),
+    SD_DEF_L   (tc_hi_lock_lock , "tc_hi_lock_lock"),
+    SD_DEF_L   (tc_hi_lock_lock_deadlock , "tc_hi_lock_lock_deadlock"),
+    SD_DEF_L   (tc_write_cancel , "tc_write_cancel"),
+    SD_DEF_L   (tc_write_scrapped_buf , "tc_write_scrapped_buf"),
+    SD_DEF_L   (tc_serializable_land_reset , "tc_serializable_land_reset"),
+    SD_DEF_L   (tc_dive_cache_compares , "tc_dive_cache_compares"),
+    SD_DEF_L   (tc_desc_serial_reset , "tc_desc_serial_reset"),
+    SD_DEF_L   (tc_dp_set_parent_being_read , "tc_dp_set_parent_being_read"),
+    SD_DEF_L   (tc_reentry_split , "tc_reentry_split"),
+    SD_DEF_L   (tc_kill_closing , "tc_kill_closing"),
+    SD_DEF_L   (tc_get_buf_failed , "tc_get_buf_failed"),
+    SD_DEF_L   (tc_log_write_clocks, "tc_log_write_clocks"),
 
-    {"tc_release_pl_on_deleted_dp", &tc_release_pl_on_deleted_dp, NULL},
-    {"tc_release_pl_on_absent_dp", &tc_release_pl_on_absent_dp, NULL},
-    {"tc_cpt_lt_start_wait", &tc_cpt_lt_start_wait, NULL},
-    {"tc_cpt_rollback", &tc_cpt_rollback, NULL},
-    {"tc_cpt_unremap_dirty", &tc_cpt_unremap_dirty, NULL},
-    {"tc_cpt_restore_uncommitted", &tc_cpt_restore_uncommitted, NULL},
-    {"tc_wait_for_closing_lt", &tc_wait_for_closing_lt, NULL},
-    {"tc_pl_non_owner_wait_ref_deld", &tc_pl_non_owner_wait_ref_deld, NULL},
-    {"tc_pl_split", &tc_pl_split, NULL},
-    {"tc_pl_split_multi_owner_page", &tc_pl_split_multi_owner_page, NULL},
-    {"tc_pl_split_while_wait", &tc_pl_split_while_wait, NULL},
-    {"tc_insert_follow_wait", &tc_insert_follow_wait, NULL},
-    {"tc_history_itc_delta_wait", &tc_history_itc_delta_wait, NULL},
-    {"tc_page_wait_reset", &tc_page_wait_reset, NULL},
+    SD_DEF_L   (tc_release_pl_on_deleted_dp, "tc_release_pl_on_deleted_dp"),
+    SD_DEF_L   (tc_release_pl_on_absent_dp, "tc_release_pl_on_absent_dp"),
+    SD_DEF_L   (tc_cpt_lt_start_wait, "tc_cpt_lt_start_wait"),
+    SD_DEF_L   (tc_cpt_rollback, "tc_cpt_rollback"),
+    SD_DEF_L   (tc_cpt_unremap_dirty, "tc_cpt_unremap_dirty"),
+    SD_DEF_L   (tc_cpt_restore_uncommitted, "tc_cpt_restore_uncommitted"),
+    SD_DEF_L   (tc_wait_for_closing_lt, "tc_wait_for_closing_lt"),
+    SD_DEF_L   (tc_pl_non_owner_wait_ref_deld, "tc_pl_non_owner_wait_ref_deld"),
+    SD_DEF_L   (tc_pl_split, "tc_pl_split"),
+    SD_DEF_L   (tc_pl_split_multi_owner_page, "tc_pl_split_multi_owner_page"),
+    SD_DEF_L   (tc_pl_split_while_wait, "tc_pl_split_while_wait"),
+    SD_DEF_L   (tc_insert_follow_wait, "tc_insert_follow_wait"),
+    SD_DEF_L   (tc_history_itc_delta_wait, "tc_history_itc_delta_wait"),
+    SD_DEF_L   (tc_page_wait_reset, "tc_page_wait_reset"),
 
-    {"tc_posthumous_lock", &tc_posthumous_lock, NULL},
-    {"tc_finalize_while_being_read", &tc_finalize_while_being_read, NULL},
-    {"tc_rollback_cpt_page", &tc_rollback_cpt_page, NULL},
-    {"tc_dive_cache_hits", &tc_dive_cache_hits, NULL},
-    {"tc_deadlock_win_get_lock", &tc_deadlock_win_get_lock, NULL},
-    {"tc_double_deadlock", &tc_double_deadlock, NULL},
-    {"tc_update_wait_move", &tc_update_wait_move, NULL},
+    SD_DEF_L   (tc_posthumous_lock, "tc_posthumous_lock"),
+    SD_DEF_L   (tc_finalize_while_being_read, "tc_finalize_while_being_read"),
+    SD_DEF_L   (tc_rollback_cpt_page, "tc_rollback_cpt_page"),
+    SD_DEF_L   (tc_dive_cache_hits, "tc_dive_cache_hits"),
+    SD_DEF_L   (tc_deadlock_win_get_lock, "tc_deadlock_win_get_lock"),
+    SD_DEF_L   (tc_double_deadlock, "tc_double_deadlock"),
+    SD_DEF_L   (tc_update_wait_move, "tc_update_wait_move"),
 
-    {"tc_blob_read", &tc_blob_read, NULL},
-    {"tc_blob_write", &tc_blob_write, NULL},
-    {"tc_blob_ra", &tc_blob_ra, NULL},
-    {"tc_blob_ra_size", &tc_blob_ra_size, NULL},
+    SD_DEF_L   (tc_blob_read, "tc_blob_read"),
+    SD_DEF_L   (tc_blob_write, "tc_blob_write"),
+    SD_DEF_L   (tc_blob_ra, "tc_blob_ra"),
+    SD_DEF_L   (tc_blob_ra_size, "tc_blob_ra_size"),
 
-    {"tc_cpt_rollback_retry", &tc_cpt_rollback_retry, NULL},
-    {"tc_repl_cycle", &tc_repl_cycle, NULL},
-    {"tc_repl_connect_quick_reuse", &tc_repl_connect_quick_reuse, NULL},
-    {"tc_no_thread_kill_idle", &tc_no_thread_kill_idle, NULL},
-    {"tc_no_thread_kill_vdb", &tc_no_thread_kill_vdb, NULL},
-    {"tc_no_thread_kill_running", &tc_no_thread_kill_running, NULL},
-    {"tc_deld_row_rl_rb", &tc_deld_row_rl_rb, NULL},
-    {"tc_pg_write_compact", &tc_pg_write_compact, NULL},
-    {"tft_random_seek", &tft_random_seek, NULL},
-    {"tft_seq_seek", &tft_seq_seek, NULL},
+    SD_DEF_L   (tc_cpt_rollback_retry, "tc_cpt_rollback_retry"),
+    SD_DEF_L   (tc_repl_cycle, "tc_repl_cycle"),
+    SD_DEF_L   (tc_repl_connect_quick_reuse, "tc_repl_connect_quick_reuse"),
+    SD_DEF_L   (tc_no_thread_kill_idle, "tc_no_thread_kill_idle"),
+    SD_DEF_L   (tc_no_thread_kill_vdb, "tc_no_thread_kill_vdb"),
+    SD_DEF_L   (tc_no_thread_kill_running, "tc_no_thread_kill_running"),
+    SD_DEF_L   (tc_deld_row_rl_rb, "tc_deld_row_rl_rb"),
+    SD_DEF_L   (tc_pg_write_compact, "tc_pg_write_compact"),
+    SD_DEF_L   (tft_random_seek, "tft_random_seek"),
+    SD_DEF_L   (tft_seq_seek, "tft_seq_seek"),
 
-    {"tws_connections", &tws_connections , NULL},
-    {"tws_requests", &tws_requests , NULL},
-    {"tws_1_1_requests", &tws_1_1_requests , NULL},
-    {"tws_slow_keep_alives", &tws_slow_keep_alives , NULL},
-    {"tws_immediate_reuse", &tws_immediate_reuse , NULL},
-    {"tws_slow_reuse", &tws_slow_reuse , NULL},
-    {"tws_accept_queued", &tws_accept_queued , NULL},
-    {"tws_accept_requeued", &tws_accept_requeued , NULL},
-    {"tws_keep_alive_ready_queued", &tws_keep_alive_ready_queued , NULL},
-    {"tws_early_timeout", &tws_early_timeout, NULL},
-    {"tws_disconnect_while_check_in", &tws_disconnect_while_check_in, NULL},
-    {"tws_done_while_check_in", &tws_done_while_check_in, NULL},
-    {"tws_cancel", &tws_cancel, NULL},
+    SD_DEF_L   (tws_connections , "tws_connections"),
+    SD_DEF_L   (tws_requests , "tws_requests"),
+    SD_DEF_L   (tws_1_1_requests , "tws_1_1_requests"),
+    SD_DEF_L   (tws_slow_keep_alives , "tws_slow_keep_alives"),
+    SD_DEF_L   (tws_immediate_reuse , "tws_immediate_reuse"),
+    SD_DEF_L   (tws_slow_reuse , "tws_slow_reuse"),
+    SD_DEF_L   (tws_accept_queued , "tws_accept_queued"),
+    SD_DEF_L   (tws_accept_requeued , "tws_accept_requeued"),
+    SD_DEF_L   (tws_keep_alive_ready_queued , "tws_keep_alive_ready_queued"),
+    SD_DEF_L   (tws_early_timeout, "tws_early_timeout"),
+    SD_DEF_L   (tws_disconnect_while_check_in, "tws_disconnect_while_check_in"),
+    SD_DEF_L   (tws_done_while_check_in, "tws_done_while_check_in"),
+    SD_DEF_L   (tws_cancel, "tws_cancel"),
 
-    {"tws_cached_connections_in_use", &tws_cached_connections_in_use , NULL},
-    {"tws_cached_connections", &tws_cached_connections , NULL},
-    {"tws_cached_connection_hits", &tws_cached_connection_hits , NULL},
-    {"tws_cached_connection_miss", &tws_cached_connection_miss , NULL},
-    {"tws_bad_request", &tws_bad_request , NULL},
-    {"tws_max_connects", &tws_max_connects , NULL},
+    SD_DEF_L   (tws_cached_connections_in_use , "tws_cached_connections_in_use"),
+    SD_DEF_L   (tws_cached_connections , "tws_cached_connections"),
+    SD_DEF_L   (tws_cached_connection_hits , "tws_cached_connection_hits"),
+    SD_DEF_L   (tws_cached_connection_miss , "tws_cached_connection_miss"),
+    SD_DEF_L   (tws_bad_request , "tws_bad_request"),
+    SD_DEF_L   (tws_max_connects , "tws_max_connects"),
 
-    {"vt_batch_size_limit", &vt_batch_size_limit, NULL},
+    SD_DEF_L   (vt_batch_size_limit, "vt_batch_size_limit"),
 
-    {"prof_avg_exec", (long *) &prof_avg_exec, NULL},
-    {"prof_n_exec", (long *) &prof_n_exec, NULL},
-    {"prof_compile_time", &prof_compile_time, SD_INT64},
+    SD_DEF_L   (prof_avg_exec, "prof_avg_exec"),
+    SD_DEF_L   (prof_n_exec, "prof_n_exec"),
+    SD_DEF_I64 (prof_compile_time, "prof_compile_time"),
 
-    {"st_dbms_name", NULL, &st_dbms_name},
-    {"st_dbms_ver", NULL, &st_dbms_ver},
-    {"st_build_thread_model", NULL, &build_thread_model},
-    {"st_build_opsys_id", NULL, &build_opsys_id},
-    {"st_build_date", NULL, &build_date},
+    SD_DEF_STR (st_dbms_name, "st_dbms_name"),
+    SD_DEF_STR (st_dbms_ver, "st_dbms_ver"),
+    SD_DEF_STR (build_thread_model, "st_build_thread_model"),
+    SD_DEF_STR (build_opsys_id, "st_build_opsys_id"),
+    SD_DEF_STR (build_date, "st_build_date"),
 
-    {"st_proc_served", &st_proc_served, NULL},
-    {"st_proc_active", &st_proc_active, NULL},
-    {"st_proc_running", &st_proc_running, NULL},
-    {"st_proc_queued_req", &st_proc_queued_req, NULL},
-    {"st_proc_brk", (long *)&st_proc_brk, NULL},
+    SD_DEF_L   (st_proc_served, "st_proc_served"),
+    SD_DEF_L   (st_proc_active, "st_proc_active"),
+    SD_DEF_L   (st_proc_running, "st_proc_running"),
+    SD_DEF_L   (st_proc_queued_req, "st_proc_queued_req"),
+    SD_DEF_L   (st_proc_brk, "st_proc_brk"),
 
-    {"st_db_file_size", NULL, &st_db_file_size},
-    {"st_db_pages", &st_db_pages, NULL},
-    {"st_db_page_size", &st_db_page_size, NULL},
-    {"st_db_page_data_size", &st_db_page_data_size, NULL},
-    {"st_db_free_pages", &st_db_free_pages, NULL},
-    {"st_db_buffers", &st_db_buffers, NULL},
-    {"st_db_used_buffers", &st_db_used_buffers, NULL},
-    {"st_db_read_aside_buffers", &st_db_read_aside_buffers, NULL},
-    {"st_db_dirty_buffers", &st_db_dirty_buffers, NULL},
-    {"st_db_wired_buffers", &st_db_wired_buffers, NULL},
-    {"st_db_disk_read_avg", &st_db_disk_read_avg, NULL},
-    {"st_db_disk_read_pct", &st_db_disk_read_pct, NULL},
-    {"st_db_disk_read_last", &st_db_disk_read_last, NULL},
-    {"st_db_disk_read_aheads", &st_db_disk_read_aheads, NULL},
-    {"st_db_disk_read_ahead_batch", &st_db_disk_read_ahead_batch, NULL},
-    {"st_db_disk_second_reads", &st_db_disk_second_reads, NULL},
-    {"st_db_disk_in_while_read", &st_db_disk_in_while_read, NULL},
-    {"st_db_disk_mt_write", NULL, &st_db_disk_mt_write},
-    {"st_db_log_name", NULL, &st_db_log_name},
-    {"st_db_log_length", NULL, &st_db_log_length},
-    {"st_db_temp_pages", &st_db_temp_pages, NULL},
-    {"st_db_temp_free_pages", &st_db_temp_free_pages, NULL},
+    SD_DEF_STR (st_db_file_size, "st_db_file_size"),
+    SD_DEF_L   (st_db_pages, "st_db_pages"),
+    SD_DEF_L   (st_db_page_size, "st_db_page_size"),
+    SD_DEF_L   (st_db_page_data_size, "st_db_page_data_size"),
+    SD_DEF_L   (st_db_free_pages, "st_db_free_pages"),
+    SD_DEF_L   (st_db_buffers, "st_db_buffers"),
+    SD_DEF_L   (st_db_used_buffers, "st_db_used_buffers"),
+    SD_DEF_L   (st_db_read_aside_buffers, "st_db_read_aside_buffers"),
+    SD_DEF_L   (st_db_dirty_buffers, "st_db_dirty_buffers"),
+    SD_DEF_L   (st_db_wired_buffers, "st_db_wired_buffers"),
+    SD_DEF_L   (st_db_disk_read_avg, "st_db_disk_read_avg"),
+    SD_DEF_L   (st_db_disk_read_pct, "st_db_disk_read_pct"),
+    SD_DEF_L   (st_db_disk_read_last, "st_db_disk_read_last"),
+    SD_DEF_L   (st_db_disk_read_aheads, "st_db_disk_read_aheads"),
+    SD_DEF_L   (st_db_disk_read_ahead_batch, "st_db_disk_read_ahead_batch"),
+    SD_DEF_L   (st_db_disk_second_reads, "st_db_disk_second_reads"),
+    SD_DEF_L   (st_db_disk_in_while_read, "st_db_disk_in_while_read"),
+    SD_DEF_STR (st_db_disk_mt_write, "st_db_disk_mt_write"),
+    SD_DEF_STR (st_db_log_name, "st_db_log_name"),
+    SD_DEF_STR (st_db_log_length, "st_db_log_length"),
+    SD_DEF_L   (st_db_temp_pages, "st_db_temp_pages"),
+    SD_DEF_L   (st_db_temp_free_pages, "st_db_temp_free_pages"),
 
-    {"st_cli_connects", &srv_connect_ctr, NULL},
-    {"st_cli_max_connected", &srv_max_clients, NULL},
-    {"st_cli_n_current_connections", &st_cli_n_current_connections, NULL},
-    {"st_cli_n_http_threads", (long *)&http_threads, SD_INT32},
+    SD_DEF_L   (srv_connect_ctr, "st_cli_connects"),
+    SD_DEF_L   (srv_max_clients, "st_cli_max_connected"),
+    SD_DEF_L   (st_cli_n_current_connections, "st_cli_n_current_connections"),
+    SD_DEF_I32 (http_threads, "st_cli_n_http_threads"),
 
-    {"st_rpc_stat", NULL, &st_rpc_stat},
-    {"st_inx_pages_changed", &isp_r_delta, NULL},
-    {"st_inx_pages_new", &isp_r_new, NULL},
+    SD_DEF_STR (st_rpc_stat, "st_rpc_stat"),
+    SD_DEF_L   (isp_r_delta, "st_inx_pages_changed"),
+    SD_DEF_L   (isp_r_new, "st_inx_pages_new"),
 
-    {"st_chkp_remap_pages", &st_chkp_remap_pages, NULL},
-    {"st_chkp_mapback_pages", &st_chkp_mapback_pages, NULL},
-    {"st_chkp_atomic_time", &st_chkp_atomic_time, NULL},
-    {"st_chkp_autocheckpoint", (long *) &cfg_autocheckpoint, NULL},
-    {"st_chkp_last_checkpointed", (long *) &checkpointed_last_time, SD_INT64},
+    SD_DEF_L   (st_chkp_remap_pages, "st_chkp_remap_pages"),
+    SD_DEF_L   (st_chkp_mapback_pages, "st_chkp_mapback_pages"),
+    SD_DEF_L   (st_chkp_atomic_time, "st_chkp_atomic_time"),
+    SD_DEF_L   (cfg_autocheckpoint, "st_chkp_autocheckpoint"),
+    SD_DEF_I64 (checkpointed_last_time, "st_chkp_last_checkpointed"),
 
-    {"st_started_since_year", &st_started_since_year, NULL},
-    {"st_started_since_month", &st_started_since_month, NULL},
-    {"st_started_since_day", &st_started_since_day, NULL},
-    {"st_started_since_hour", &st_started_since_hour, NULL},
-    {"st_started_since_minute", &st_started_since_minute, NULL},
+    SD_DEF_L   (st_started_since_year, "st_started_since_year"),
+    SD_DEF_L   (st_started_since_month, "st_started_since_month"),
+    SD_DEF_L   (st_started_since_day, "st_started_since_day"),
+    SD_DEF_L   (st_started_since_hour, "st_started_since_hour"),
+    SD_DEF_L   (st_started_since_minute, "st_started_since_minute"),
 
-    {"st_sys_ram", &st_sys_ram, SD_INT64},
+    SD_DEF_I64 (st_sys_ram, "st_sys_ram"),
 
-    {"prof_on", &prof_on, NULL},
-    {"prof_start_time", &prof_start_time, NULL},
+    SD_DEF_L   (prof_on, "prof_on"),
+    SD_DEF_L   (prof_start_time, "prof_start_time"),
 
-    {"fe_replication_support", &fe_replication_support, NULL},
+    SD_DEF_L   (fe_replication_support, "fe_replication_support"),
 
-    {"vdb_attach_autocommit", &vdb_attach_autocommit, NULL},
-    {"vdb_stat_refresh_disabled", &cfg_disable_vdb_stat_refresh, NULL},
-    {"vsp_in_dav_enabled", &vsp_in_dav_enabled, NULL},
+    SD_DEF_L   (vdb_attach_autocommit, "vdb_attach_autocommit"),
+    SD_DEF_L   (cfg_disable_vdb_stat_refresh, "vdb_stat_refresh_disabled"),
+    SD_DEF_L   (vsp_in_dav_enabled, "vsp_in_dav_enabled"),
 
-    {"dbev_enable", &dbev_enable, NULL},
-    {"sql_encryption_on_password", &cli_encryption_on_password, NULL},
+    SD_DEF_L   (dbev_enable, "dbev_enable"),
+    SD_DEF_L   (cli_encryption_on_password, "sql_encryption_on_password"),
 
-    {"blob_releases", &blob_releases, NULL},
-    {"blob_releases_noread", &blob_releases_noread, NULL},
-    {"blob_releases_dir", &blob_releases_dir, NULL},
+    SD_DEF_L   (blob_releases, "blob_releases"),
+    SD_DEF_L   (blob_releases_noread, "blob_releases_noread"),
+    SD_DEF_L   (blob_releases_dir, "blob_releases_dir"),
 
     /* Threading values */
-    {"thr_thread_num_total", &my_thread_num_total, NULL},
-    {"thr_thread_num_wait", &my_thread_num_wait, NULL},
-    {"thr_thread_num_dead", &my_thread_num_dead, NULL},
-    {"thr_thread_sched_preempt", &my_thread_sched_preempt, NULL},
+    SD_DEF_L   (my_thread_num_total, "thr_thread_num_total"),
+    SD_DEF_L   (my_thread_num_wait, "thr_thread_num_wait"),
+    SD_DEF_L   (my_thread_num_dead, "thr_thread_num_dead"),
+    SD_DEF_L   (my_thread_sched_preempt, "thr_thread_sched_preempt"),
 
-    {"thr_cli_running", &thr_cli_running, NULL},
-    {"thr_cli_waiting", &thr_cli_waiting, NULL},
-    {"thr_cli_vdb", &thr_cli_vdb, NULL},
+    SD_DEF_L   (thr_cli_running, "thr_cli_running"),
+    SD_DEF_L   (thr_cli_waiting, "thr_cli_waiting"),
+    SD_DEF_L   (thr_cli_vdb, "thr_cli_vdb"),
 
-    {"sqlc_add_views_qualifiers", &sqlc_add_views_qualifiers, NULL},
+    SD_DEF_L   (sqlc_add_views_qualifiers, "sqlc_add_views_qualifiers"),
 
-    {"db_ver_string", NULL, &db_version_string},
+    SD_DEF_STR (db_version_string, "db_ver_string"),
 
-    {"git_head", NULL, &git_head},
+    SD_DEF_STR (git_head, "git_head"),
 
-    {"db_max_col_bytes", &db_max_col_bytes, NULL},
-    {"db_sizeof_wide_char", &db_sizeof_wide_char, NULL},
+    SD_DEF_L   (db_max_col_bytes, "db_max_col_bytes"),
+    SD_DEF_L   (db_sizeof_wide_char, "db_sizeof_wide_char"),
 
-    {"st_host_name", NULL, &dns_host_name},
-    {"st_cpu_count", &srv_cpu_count, NULL},
-    {"st_default_language", NULL, &server_default_language_name},
+    SD_DEF_STR (dns_host_name, "st_host_name"),
+    SD_DEF_L   (srv_cpu_count, "st_cpu_count"),
+    SD_DEF_STR (server_default_language_name, "st_default_language"),
 
-    {"st_os_user_name", NULL, &_st_os_user_name},
+    SD_DEF_STR (_st_os_user_name, "st_os_user_name"),
 
-    {"__internal_first_id", &first_id, NULL},
-    {"st_os_fd_setsize", &my_fd_setsize, NULL},
-    {"st_case_mode", &my_case_mode, NULL},
-    {"enable_qp", (long *)&enable_qp, SD_INT32},
-    {"cl_run_local_only", (long *)&cl_run_local_only, SD_INT32},
-    {"cluster_enable", (long *)&cluster_enable, SD_INT32},
-    {"cl_master_host", (long *)&local_cll.cll_master_host, SD_INT32},
-    {"cl_max_host", (long *)&local_cll.cll_max_host, SD_INT32},
-    {"cl_stage", (long *)&cl_stage, SD_INT32},
-    {"in_log_replay", (long *)&in_log_replay, SD_INT32},
-    {"cl_log_from_sync", (long *)&cl_log_from_sync, SD_INT32},
-    {"cl_this_host", (long *)&local_cll.cll_this_host, SD_INT32},
-    {"cl_n_hosts", (long *)&cl_n_hosts, SD_INT32},
-    {"cl_cum_messages", (long *)&cl_cum_messages, SD_INT64},
-    {"cl_cum_bytes", (long *)&cl_cum_bytes, SD_INT64},
-    {"cl_batch_bytes", (long *)&cl_batch_bytes, SD_INT32},
-    {"iri_range_size", (long *)&iri_range_size, SD_INT32},
-    {"cl_req_batch_size", (long *)&cl_req_batch_size, SD_INT32},
-    {"db_exists", (long *)&db_exists, SD_INT32},
-    {"st_lite_mode", &my_lite_mode, NULL},
-    {"db_default_columnstore", (long *)&enable_col_by_default, SD_INT32},
-    {"enable_col_by_default", (long *)&enable_col_by_default, SD_INT32},
-    {"enable_mt_ft_inx", (long *)&enable_mt_ft_inx, SD_INT32},
-    {"disable_rdf_init", (long *)&disable_rdf_init, SD_INT32},
+    SD_DEF_L   (first_id, "__internal_first_id"),
+    SD_DEF_L   (my_fd_setsize, "st_os_fd_setsize"),
+    SD_DEF_L   (my_case_mode, "st_case_mode"),
+    SD_DEF_I32 (enable_qp, "enable_qp"),
+    SD_DEF_I32 (cl_run_local_only, "cl_run_local_only"),
+    SD_DEF_I32 (cluster_enable, "cluster_enable"),
+    SD_DEF_I32 (local_cll.cll_master_host, "cl_master_host"),
+    SD_DEF_I32 (local_cll.cll_max_host, "cl_max_host"),
+    SD_DEF_I32 (cl_stage, "cl_stage"),
+    SD_DEF_I32 (in_log_replay, "in_log_replay"),
+    SD_DEF_I32 (cl_log_from_sync, "cl_log_from_sync"),
+    SD_DEF_I32 (local_cll.cll_this_host, "cl_this_host"),
+    SD_DEF_I32 (cl_n_hosts, "cl_n_hosts"),
+    SD_DEF_I64 (cl_cum_messages, "cl_cum_messages"),
+    SD_DEF_I64 (cl_cum_bytes, "cl_cum_bytes"),
+    SD_DEF_I32 (cl_batch_bytes, "cl_batch_bytes"),
+    SD_DEF_I32 (iri_range_size, "iri_range_size"),
+    SD_DEF_I32 (cl_req_batch_size, "cl_req_batch_size"),
+    SD_DEF_I32 (db_exists, "db_exists"),
+    SD_DEF_L   (my_lite_mode, "st_lite_mode"),
+    SD_DEF_I32 (enable_col_by_default, "db_default_columnstore"),
+    SD_DEF_I32 (enable_col_by_default, "enable_col_by_default"),
+    SD_DEF_I32 (enable_mt_ft_inx, "enable_mt_ft_inx"),
+    SD_DEF_I32 (disable_rdf_init, "disable_rdf_init"),
 
     /* backup vars */
-    {"backup_prefix_name", NULL, &my_bp_prefix},
-    {"backup_file_index", (long *)&bp_ctx.db_bp_num, NULL},
-    {"backup_dir_index", (long *)&bp_ctx.db_bp_index, NULL},
-    {"backup_dir_bytes", (long *)&bp_ctx.db_bp_wr_bytes, NULL},
-    {"backup_processed_pages", (long *)&bp_ctx.db_bp_pages, NULL},
+    SD_DEF_STR (my_bp_prefix, "backup_prefix_name"),
+    SD_DEF_L   (bp_ctx.db_bp_num, "backup_file_index"),
+    SD_DEF_L   (bp_ctx.db_bp_index, "backup_dir_index"),
+    SD_DEF_L   (bp_ctx.db_bp_wr_bytes, "backup_dir_bytes"),
+    SD_DEF_L   (bp_ctx.db_bp_pages, "backup_processed_pages"),
 
     /* sparql vars */
-    {"sparql_result_set_max_rows", &sparql_result_set_max_rows, NULL},
-    {"sparql_construct_max_triples", &sparql_construct_max_triples, SD_INT32},
-    {"sparql_max_mem_in_use", &sparql_max_mem_in_use, SD_INT64},
-    {"rdf_create_graph_keywords", &rdf_create_graph_keywords, SD_INT32},
-    {"rdf_query_graph_keywords", &rdf_query_graph_keywords, SD_INT32},
-    {"enable_vec", (long *)&enable_vec, SD_INT32},
-    {"srv_init", (long *)&in_srv_global_init, SD_INT32},
-    {"ac_real_time", (long *)&ac_real_time, SD_INT64},
-    {"ac_cpu_time", (long *)&ac_cpu_time, SD_INT64},
-    {"ac_n_times", (long *)&ac_n_times, SD_INT32},
-    {"col_ac_last_duration", (long *)&col_ac_last_duration, SD_INT32},
-    {"col_ins_error", (long *)&col_ins_error, SD_INT32},
-    {"cl_rdf_inf_inited", (long *)&cl_rdf_inf_inited, SD_INT32},
-    {"chash_mempool_size_max_used", (long *)&chash_mempool_size_max_used, SD_INT64},
-    {NULL, NULL, NULL}
+    SD_DEF_L   (sparql_result_set_max_rows, "sparql_result_set_max_rows"),
+    SD_DEF_I32 (sparql_construct_max_triples, "sparql_construct_max_triples"),
+    SD_DEF_L   (sparql_max_mem_in_use, "sparql_max_mem_in_use"),
+    SD_DEF_I32 (rdf_create_graph_keywords, "rdf_create_graph_keywords"),
+    SD_DEF_I32 (rdf_query_graph_keywords, "rdf_query_graph_keywords"),
+    SD_DEF_I32 (enable_vec, "enable_vec"),
+    SD_DEF_I32 (in_srv_global_init, "srv_init"),
+    SD_DEF_I64 (ac_real_time, "ac_real_time"),
+    SD_DEF_I64 (ac_cpu_time, "ac_cpu_time"),
+    SD_DEF_I32 (ac_n_times, "ac_n_times"),
+    SD_DEF_I32 (col_ac_last_duration, "col_ac_last_duration"),
+    SD_DEF_I32 (col_ins_error, "col_ins_error"),
+    SD_DEF_I32 (cl_rdf_inf_inited, "cl_rdf_inf_inited"),
+    SD_DEF_I64 (chash_mempool_size_max_used, "chash_mempool_size_max_used"),
+    {0}
 };
+/**INDENT-ON**/
+
+
+/**INDENT-OFF**/
+stat_desc_t dbf_descs [] =
+{
+    SD_DEF_L   (dbf_no_disk, "dbf_no_disk"),
+    SD_DEF_I64 (dbs_max_temp_db_pages, "dbs_max_temp_db_pages"),
+    SD_DEF_L   (dbf_2pc_prepare_wait, "dbf_2pc_prepare_wait"),
+    SD_DEF_L   (dbf_2pc_wait, "dbf_2pc_wait"),
+    SD_DEF_L   (dbf_branch_transact_wait, "dbf_branch_transact_wait"),
+    SD_DEF_L   (dbf_log_no_disk, "dbf_log_no_disk"),
+    SD_DEF_I32 (dbf_log_always, "dbf_log_always"),
+    SD_DEF_I32 (dbf_no_atomic, "dbf_no_atomic"),
+    SD_DEF_L   (txn_after_image_limit, "txn_after_image_limit"),
+    SD_DEF_L   (dbf_clop_enter_wait, "dbf_clop_enter_wait"),
+    SD_DEF_L   (dbf_cl_skip_wait_notify, "dbf_cl_skip_wait_notify"),
+    SD_DEF_L   (dbf_cpt_rb, "dbf_cpt_rb"),
+    SD_DEF_I32 (cl_no_auto_remove, "cl_no_auto_remove"),
+    SD_DEF_L   (dbf_cl_blob_autosend_limit, "dbf_cl_blob_autosend_limit"),
+    SD_DEF_L   (dbf_no_sample_timeout, "dbf_no_sample_timeout"),
+    SD_DEF_I32 (dbf_fast_cpt, "dbf_fast_cpt"),
+    SD_DEF_I32 (enable_flush_all, "enable_flush_all"),
+    SD_DEF_I32 (cl_req_batch_size, "cl_req_batch_size"),
+    SD_DEF_I32 (cl_dfg_batch_bytes, "cl_dfg_batch_bytes"),
+    SD_DEF_I32 (cl_res_buffer_bytes, "cl_res_buffer_bytes"),
+    SD_DEF_I32 (cl_batches_per_rpc, "cl_batches_per_rpc"),
+    SD_DEF_I32 (cl_rdf_inf_inited, "cl_rdf_inf_inited"),
+    SD_DEF_I32 (enable_g_inf_opt, "enable_g_inf_opt"),
+    SD_DEF_I32 (enable_mem_hash_join, "enable_mem_hash_join"),
+    SD_DEF_I32 (sqlo_max_layouts, "sqlo_max_layouts"),
+    SD_DEF_I64 (sqlo_max_mp_size, "sqlo_max_mp_size"),
+    SD_DEF_I32 (enable_initial_plan, "enable_initial_plan"),
+    SD_DEF_I32 (enable_dt_leaf, "enable_dt_leaf"),
+    SD_DEF_I32 (enable_rq_obvious, "enable_rq_obvious"),
+    SD_DEF_I32 (sqlo_n_layout_steps, "sqlo_n_layout_steps"),
+    SD_DEF_I32 (sqlo_n_best_layouts, "sqlo_n_best_layouts"),
+    SD_DEF_I32 (sqlo_n_full_layouts, "sqlo_n_full_layouts"),
+    SD_DEF_I32 (sqlo_compiler_exceeds_run_factor, "sqlo_compiler_exceeds_run_factor"),
+    SD_DEF_I32 (enable_n_best_plans, "enable_n_best_plans"),
+    SD_DEF_I32 (enable_hash_merge, "enable_hash_merge"),
+    SD_DEF_I32 (enable_hash_fill_join, "enable_hash_fill_join"),
+    SD_DEF_I32 (enable_subscore, "enable_subscore"),
+
+    SD_DEF_I32 (setp_distinct_max_keys, "setp_distinct_max_keys"),
+    SD_DEF_I32 (enable_iri_nic_n, "enable_iri_nic_n"),
+    SD_DEF_I32 (enable_iri_prefix_nic_n, "enable_iri_prefix_nic_n"),
+    SD_DEF_I32 (enable_at_print, "enable_at_print"),
+    SD_DEF_I32 (enable_min_card, "enable_min_card"),
+    SD_DEF_I32 (enable_distinct_sas, "enable_distinct_sas"),
+    SD_DEF_I32 (enable_inline_sqs, "enable_inline_sqs"),
+    SD_DEF_I32 (hash_join_enable, "hash_join_enable"),
+    SD_DEF_I32 (enable_chash_join, "enable_chash_join"),
+    SD_DEF_I32 (enable_joins_only, "enable_joins_only"),
+    SD_DEF_I32 (enable_exact_p_stat, "enable_exact_p_stat"),
+    SD_DEF_I32 (em_ra_window, "em_ra_window"),
+    SD_DEF_I32 (em_ra_threshold, "em_ra_threshold"),
+    SD_DEF_I32 (em_ra_startup_threshold, "em_ra_startup_threshold"),
+
+    SD_DEF_I32 (atomic_timeout.to_sec, "timeout_resolution_sec"),
+    SD_DEF_I32 (atomic_timeout.to_usec, "timeout_resolution_usec"),
+    SD_DEF_I32 (ha_rehash_pct, "ha_rehash_pct"),
+    SD_DEF_I32 (c_use_aio, "c_use_aio"),
+    SD_DEF_L   (callstack_on_exception, "callstack_on_exception"),
+#ifndef NDEBUG
+    SD_DEF_I32 (sql_warning_mode, "sql_warning_mode"),
+#endif
+    SD_DEF_L   (public_debug, "public_debug"),
+    SD_DEF_I32 (enable_vec, "enable_vec"),
+    SD_DEF_I32 (enable_qp, "enable_qp"),
+    SD_DEF_I32 (enable_mt_txn, "enable_mt_txn"),
+    SD_DEF_I32 (enable_mt_transact, "enable_mt_transact"),
+    SD_DEF_I32 (enable_qn_cache, "enable_qn_cache"),
+    SD_DEF_I32 (aq_max_threads, "aq_max_threads"),
+    SD_DEF_I32 (qp_thread_min_usec, "qp_thread_min_usec"),
+    SD_DEF_I32 (qp_range_split_min_rows, "qp_range_split_min_rows"),
+    SD_DEF_I32 (qp_even_if_lock, "qp_even_if_lock"),
+    SD_DEF_I32 (enable_ro_rc, "enable_ro_rc"),
+    SD_DEF_I32 (dc_batch_sz, "dc_batch_sz"),
+    SD_DEF_I32 (dc_max_batch_sz, "dc_max_batch_sz"),
+    SD_DEF_I32 (enable_dyn_batch_sz, "enable_dyn_batch_sz"),
+    SD_DEF_I32 (enable_vec_reuse, "enable_vec_reuse"),
+    SD_DEF_I32 (dc_adjust_batch_sz_min_anytime, "dc_adjust_batch_sz_min_anytime"),
+    SD_DEF_I32 (enable_split_range, "enable_split_range"),
+    SD_DEF_I32 (enable_split_sets, "enable_split_sets"),
+    SD_DEF_I32 (dbf_compress_mask, "dbf_compress_mask"),
+    SD_DEF_I32 (dbf_ce_insert_mask, "dbf_ce_insert_mask"),
+    SD_DEF_I32 (dbf_ce_del_mask, "dbf_ce_del_mask"),
+    SD_DEF_I32 (dbf_col_ins_dbg_log, "dbf_col_ins_dbg_log"),
+    SD_DEF_I32 (dbf_col_del_leaf, "dbf_col_del_leaf"),
+    SD_DEF_I32 (enable_pogs_check, "enable_pogs_check"),
+    SD_DEF_I32 (enable_sslr_check, "enable_sslr_check"),
+    SD_DEF_I64 (chash_space_avail, "chash_space_avail"),
+    SD_DEF_I32 (chash_per_query_pct, "chash_per_query_pct"),
+    SD_DEF_I32 (enable_chash_gb, "enable_chash_gb"),
+    SD_DEF_I64 (chash_mempool_size_limit, "chash_mempool_size_limit"),
+    SD_DEF_I32 (enable_ksp_fast, "enable_ksp_fast"),
+    SD_DEF_I32 (enable_ac, "enable_ac"),
+    SD_DEF_I32 (enable_col_ac, "enable_col_ac"),
+    SD_DEF_I32 (col_ins_error, "col_ins_error"),
+    SD_DEF_I32 (col_seg_max_bytes, "col_seg_max_bytes"),
+    SD_DEF_I32 (col_seg_max_rows, "col_seg_max_rows"),
+    SD_DEF_I32 (cl_ac_interval, "cl_ac_interval"),
+    SD_DEF_I32 (enable_buf_mprotect, "enable_buf_mprotect"),
+    SD_DEF_I32 (local_cll.cll_no_disable_of_unavailable, "cl_no_disable_of_unavailable"),
+    SD_DEF_I32 (dbf_log_fsync, "dbf_log_fsync"),
+    SD_DEF_I32 (cls_rollback_no_finish_if_thread, "cls_rollback_no_finish_if_thread"),
+    SD_DEF_I32 (sqlo_sample_dep_cols, "sqlo_sample_dep_cols"),
+    SD_DEF_I32 (default_txn_isolation, "default_txn_isolation"),
+    SD_DEF_L   (tc_dc_max_alloc, "tc_dc_max_alloc"),
+    SD_DEF_L   (tc_dc_default_alloc, "tc_dc_default_alloc"),
+    SD_DEF_L   (tc_dc_alloc, "tc_dc_alloc"),
+    SD_DEF_L   (tc_dc_size, "tc_dc_size"),
+    SD_DEF_L   (tc_dc_extend, "tc_dc_extend"),
+    SD_DEF_L   (tc_dc_extend_values, "tc_dc_extend_values"),
+
+    SD_DEF_L   (c_max_large_vec, "c_max_large_vec"),
+    SD_DEF_L   (cha_max_gb_bytes, "cha_max_gb_bytes"),
+    SD_DEF_L   (mp_large_reserved, "mp_large_reserved"),
+    SD_DEF_L   (mp_max_large_reserved, "mp_max_large_reserved"),
+    SD_DEF_L   (mp_large_reserve_limit, "mp_large_reserve_limit"),
+    SD_DEF_L   (mp_large_soft_cap, "mp_large_soft_cap"),
+    SD_DEF_L   (mp_large_hard_cap, "mp_large_hard_cap"),
+    SD_DEF_L   (mp_sparql_cap, "mp_sparql_cap"),
+
+    SD_DEF_I32 (iri_range_size, "iri_range_size"),
+    SD_DEF_I64 (tn_max_memory, "tn_max_memory"),
+    SD_DEF_I64 (tn_at_mem_cutoff, "tn_at_mem_cutoff"),
+    SD_DEF_I64 (tn_mem_cutoff, "tn_mem_cutoff"),
+    SD_DEF_I64 (tn_at_card_cutoff, "tn_at_card_cutoff"),
+    SD_DEF_I64 (tn_card_cutoff, "tn_card_cutoff"),
+    SD_DEF_I32 (dbf_max_itc_samples, "dbf_max_itc_samples"),
+    SD_DEF_I32 (enable_mt_ft_inx, "enable_mt_ft_inx"),
+    SD_DEF_I32 (disable_rdf_init, "disable_rdf_init"),
+    SD_DEF_I32 (enable_rdf_trig, "enable_rdf_trig"),
+    SD_DEF_I32 (enable_pg_card, "enable_pg_card"),
+    SD_DEF_I32 (enable_ce_ins_check, "enable_ce_ins_check"),
+    SD_DEF_I32 (dbf_ignore_uneven_col, "dbf_ignore_uneven_col"),
+    SD_DEF_I32 (c_no_dbg_print, "c_no_dbg_print"),
+    SD_DEF_I32 (dbf_explain_level, "dbf_explain_level"),
+    SD_DEF_I32 (mp_local_rc_sz, "mp_local_rc_sz"),
+    SD_DEF_L   (dbf_user_1, "dbf_user_1"),
+    SD_DEF_L   (dbf_user_2, "dbf_user_2"),
+    SD_DEF_I32 (dbs_stop_cp, "dbs_stop_cp"),
+#ifdef CACHE_MALLOC
+    SD_DEF_I32 (enable_no_free, "enable_no_free"),
+#endif
+    SD_DEF_I32 (enable_rdf_box_const, "enable_rdf_box_const"),
+    SD_DEF_I32 (rdf_rpid64_mode, "rdf_rpid64_mode"),
+    SD_DEF_I32 (rdf_geo_use_wkt, "rdf_geo_use_wkt"),
+    SD_DEF_I32 (simple_rdf_numbers, "simple_rdf_numbers"),
+    SD_DEF_I32 (c_pcre_match_limit, "pcre_match_limit"),
+    SD_DEF_I32 (c_pcre_match_limit_recursion, "pcre_match_limit_recursion"),
+    SD_DEF_I32 (pcre_max_cache_sz, "pcre_max_cache_sz"),
+    SD_DEF_I32 (shcompo_max_cache_sz, "shcompo_max_cache_sz"),
+    SD_DEF_I32 (debug_invalid_iri_id, "debug_invalid_iri_id"),
+    SD_DEF_I32 (enable_qr_comment, "enable_qr_comment"),
+    SD_DEF_I32 (timezoneless_datetimes, "timezoneless_datetimes"),
+    SD_DEF_I32 (lock_escalation_pct, "lock_escalation_pct"),
+    SD_DEF_I32 (enable_spar_logfile, "enable_spar_logfile"),
+    SD_DEF_I32 (enable_sqlc_logfile, "enable_sqlc_logfile"),
+    SD_DEF_I32 (http_connect_timeout, "http_connect_timeout"),
+    SD_DEF_I64 (users_cache_sz, "users_cache_sz"),
+    SD_DEF_I32 (enable_cpt_rb_ck, "enable_cpt_rb_ck"),
+    SD_DEF_I64 (swap_guard_threshold, "swap_guard_threshold"),
+    SD_DEF_I64 (max_proc_vm_size, "max_proc_vm_size"),
+    SD_DEF_I64 (vm_size_wd_threshold, "vm_size_wd_threshold"),
+{0}
+};
+/**INDENT-ON**/
+
 
 /*
- the following are ptrs of protected system wide params, once are set to a value greater than zero
- cannot be changed until server is running, also if they written in DB cfg page,
- cannot be changed even after server restart.
-*/
+ * the following are ptrs of protected system wide params, once are set to a value greater than zero
+ * cannot be changed until server is running, also if they written in DB cfg page,
+ * cannot be changed even after server restart.
+ */
 static void *
 dbf_protected_params[] = {
   &timezoneless_datetimes,
@@ -1858,7 +2030,7 @@ dbf_protected_params[] = {
   NULL
 };
 
-int
+static int
 dbf_protected_param (stat_desc_t * sd)
 {
   int inx;
@@ -1867,179 +2039,20 @@ dbf_protected_param (stat_desc_t * sd)
     if (sd->sd_value == ptr)
       {
 	int64 val = 0;
-	if (SD_INT32 == (char **) sd->sd_str_value)
+        switch (sd->sd_type)
+          {
+          case SD_TYPE_INT32:
 	  val = *((int32 *) sd->sd_value);
-	else if (SD_INT64 == (char **) sd->sd_str_value)
+            break;
+          case SD_TYPE_INT64:
 	  val = *((int64 *) sd->sd_value);
+            break;
+          }
 	return (val != 0);
       }
   return 0;
 }
 
-
-stat_desc_t dbf_descs [] =
-  {
-    {"dbf_no_disk", &dbf_no_disk, NULL},
-    {"dbs_max_temp_db_pages", &dbs_max_temp_db_pages, SD_INT64},
-    {"dbf_2pc_prepare_wait", &dbf_2pc_prepare_wait, NULL},
-    {"dbf_2pc_wait", &dbf_2pc_wait, NULL},
-    {"dbf_branch_transact_wait", &dbf_branch_transact_wait, NULL},
-    {"dbf_log_no_disk", &dbf_log_no_disk, NULL},
-    {"dbf_log_always", &dbf_log_always, SD_INT32},
-    {"dbf_no_atomic", &dbf_no_atomic, SD_INT32},
-    {"txn_after_image_limit", &txn_after_image_limit, NULL},
-    {"dbf_clop_enter_wait", &dbf_clop_enter_wait, NULL},
-    {"dbf_cl_skip_wait_notify", &dbf_cl_skip_wait_notify, NULL},
-    {"dbf_cpt_rb", &dbf_cpt_rb, NULL},
-    {"cl_no_auto_remove", (long *)&cl_no_auto_remove, SD_INT32},
-    {"dbf_cl_blob_autosend_limit", &dbf_cl_blob_autosend_limit, NULL},
-    {"dbf_no_sample_timeout", &dbf_no_sample_timeout, NULL},
-    {"dbf_fast_cpt", (long *)&dbf_fast_cpt, SD_INT32},
-    {"enable_flush_all", &enable_flush_all, SD_INT32},
-    {"cl_req_batch_size", (long *)&cl_req_batch_size, SD_INT32},
-    {"cl_dfg_batch_bytes", (long *)&cl_dfg_batch_bytes, SD_INT32},
-    {"cl_res_buffer_bytes", (long *)&cl_res_buffer_bytes, SD_INT32},
-    {"cl_batches_per_rpc", (long *)&cl_batches_per_rpc, SD_INT32},
-    {"cl_rdf_inf_inited", (long *)&cl_rdf_inf_inited, SD_INT32},
-    {"enable_g_inf_opt", (long *)&enable_g_inf_opt, SD_INT32},
-    {"enable_mem_hash_join", (long *)&    enable_mem_hash_join, SD_INT32},
-    {"sqlo_max_layouts", &sqlo_max_layouts, SD_INT32},
-    {"sqlo_max_mp_size", &sqlo_max_mp_size},
-    {"enable_initial_plan", &enable_initial_plan, SD_INT32},
-    {"enable_dt_leaf", &enable_dt_leaf, SD_INT32},
-    {"enable_rq_obvious", &enable_rq_obvious, SD_INT32},
-    {"sqlo_n_layout_steps", &sqlo_n_layout_steps, SD_INT32},
-    {"sqlo_n_best_layouts", &sqlo_n_best_layouts, SD_INT32},
-    {"sqlo_n_full_layouts", &sqlo_n_full_layouts, SD_INT32},
-    {"sqlo_compiler_exceeds_run_factor", &sqlo_compiler_exceeds_run_factor, SD_INT32},
-    {"enable_n_best_plans", &enable_n_best_plans, SD_INT32},
-    {"enable_hash_merge", (long *)&enable_hash_merge, SD_INT32},
-    {"enable_hash_fill_join", (long *)&enable_hash_fill_join, SD_INT32},
-    {"enable_subscore", (long *)&enable_subscore, SD_INT32},
-    {"setp_distinct_max_keys", (long *)&setp_distinct_max_keys, SD_INT32},
-    {"enable_iri_nic_n", (long *)&enable_iri_nic_n, SD_INT32},
-    {"enable_iri_prefix_nic_n", (long *) &enable_iri_prefix_nic_n, SD_INT32},
-    {"enable_at_print", (long *)&enable_at_print, SD_INT32},
-    {"enable_min_card", (long *)&enable_min_card},
-    {"enable_distinct_sas", (long *)&enable_distinct_sas, SD_INT32},
-    {"enable_inline_sqs", (long *)&enable_inline_sqs, SD_INT32},
-    {"hash_join_enable", (long *)&hash_join_enable, SD_INT32},
-    {"enable_chash_join", (long *)&enable_chash_join, SD_INT32},
-    {"enable_joins_only", &enable_joins_only, SD_INT32},
-    {"enable_exact_p_stat", &enable_exact_p_stat, SD_INT32},
-    {"em_ra_window", (long *)&em_ra_window, SD_INT32},
-    {"em_ra_threshold", (long *)&em_ra_threshold, SD_INT32},
-    {"em_ra_startup_threshold", (long *)&em_ra_startup_threshold, SD_INT32},
-    {"timeout_resolution_sec", (long *)&atomic_timeout.to_sec, SD_INT32},
-    {"timeout_resolution_usec", (long *)&atomic_timeout.to_usec, SD_INT32},
-    {"ha_rehash_pct", (long *)&ha_rehash_pct, SD_INT32},
-    {"c_use_aio", (long *)&c_use_aio, SD_INT32},
-    {"callstack_on_exception", &callstack_on_exception, NULL},
-#ifndef NDEBUG
-    {"sql_warning_mode", (long *)&sql_warning_mode, SD_INT32},
-#endif
-    {"public_debug", &public_debug, NULL},
-    {"enable_vec", (long *)&enable_vec, SD_INT32},
-    {"enable_qp", (long *)&enable_qp, SD_INT32},
-    {"enable_mt_txn", (long *)&enable_mt_txn, SD_INT32},
-    {"enable_mt_transact", (long *)&enable_mt_transact, SD_INT32},
-    {"enable_qn_cache", (long *)&enable_qn_cache, SD_INT32},
-    {"aq_max_threads", (long *)&aq_max_threads, SD_INT32},
-    {"qp_thread_min_usec", (long *)&qp_thread_min_usec, SD_INT32},
-    {"qp_range_split_min_rows", (long *)&qp_range_split_min_rows, SD_INT32},
-    {"qp_even_if_lock", (long *)&qp_even_if_lock, SD_INT32},
-    {"enable_ro_rc", (long *)&enable_ro_rc, SD_INT32},
-    {"dc_batch_sz", (long *)&dc_batch_sz, SD_INT32},
-    {"dc_max_batch_sz", (long *)&dc_max_batch_sz, SD_INT32},
-    {"enable_dyn_batch_sz", (long *)&enable_dyn_batch_sz, SD_INT32},
-    {"enable_vec_reuse", (long *)&enable_vec_reuse, SD_INT32},
-    {"dc_adjust_batch_sz_min_anytime", (long *)&dc_adjust_batch_sz_min_anytime, SD_INT32},
-    {"enable_split_range", (long *)&enable_split_range, SD_INT32},
-    {"enable_split_sets", (long *)&enable_split_sets, SD_INT32},
-    {"dbf_compress_mask", (long *)&dbf_compress_mask, SD_INT32},
-    {"dbf_ce_insert_mask", (long *)&dbf_ce_insert_mask, SD_INT32},
-    {"dbf_ce_del_mask", (long *)&dbf_ce_del_mask, SD_INT32},
-    {"dbf_col_ins_dbg_log", (long *)&dbf_col_ins_dbg_log, SD_INT32},
-    {"dbf_col_del_leaf", (long *)&dbf_col_del_leaf, SD_INT32},
-    {"enable_pogs_check", (long *)&enable_pogs_check, SD_INT32},
-    {"enable_sslr_check", (long *)&enable_sslr_check, SD_INT32},
-    {"chash_space_avail", (long *)&chash_space_avail, SD_INT64},
-    {"chash_per_query_pct", (long *)&chash_per_query_pct, SD_INT32},
-    {"enable_chash_gb", (long *)&enable_chash_gb, SD_INT32},
-    {"chash_mempool_size_limit", (long *)&chash_mempool_size_limit, SD_INT64},
-    {"enable_ksp_fast", (long *)&enable_ksp_fast, SD_INT32},
-    {"enable_ac", (long *)&enable_ac, SD_INT32},
-    {"enable_col_ac", (long *)&enable_col_ac, SD_INT32},
-    {"col_ins_error", (long *)&col_ins_error, SD_INT32},
-    {"col_seg_max_bytes", (long *)&col_seg_max_bytes, SD_INT32},
-    {"col_seg_max_rows", (long *)&col_seg_max_rows, SD_INT32},
-    {"cl_ac_interval", (long *)&cl_ac_interval, SD_INT32},
-    {"enable_buf_mprotect", (long *)&enable_buf_mprotect, SD_INT32},
-    {"cl_no_disable_of_unavailable", (long *)&local_cll.cll_no_disable_of_unavailable, SD_INT32},
-    {"dbf_log_fsync", (long *)&dbf_log_fsync, SD_INT32},
-    { "cls_rollback_no_finish_if_thread", (long *)&cls_rollback_no_finish_if_thread, SD_INT32},
-    {"sqlo_sample_dep_cols", (long *)&sqlo_sample_dep_cols},
-    {"default_txn_isolation", (long *)&default_txn_isolation, SD_INT32},
-    {"tc_dc_max_alloc", &tc_dc_max_alloc, NULL},
-    {"tc_dc_default_alloc", &tc_dc_default_alloc, NULL},
-    {"tc_dc_alloc", &tc_dc_alloc, NULL},
-    {"tc_dc_size", &tc_dc_size, NULL},
-    {"tc_dc_extend", &tc_dc_extend, NULL},
-    {"tc_dc_extend_values", &tc_dc_extend_values, NULL},
-
-    {"c_max_large_vec", (long *)&c_max_large_vec, NULL},
-    {"cha_max_gb_bytes", (long *)&cha_max_gb_bytes, NULL},
-    {"mp_large_reserved", &mp_large_reserved},
-    {"mp_max_large_reserved", &mp_max_large_reserved},
-    {"mp_large_reserve_limit", &mp_large_reserve_limit},
-    {"mp_large_soft_cap", &mp_large_soft_cap},
-    {"mp_large_hard_cap", &mp_large_hard_cap},
-    {"mp_sparql_cap", &mp_sparql_cap, NULL},
-    {"sparql_max_mem_in_use", &sparql_max_mem_in_use, SD_INT64},
-    {"iri_range_size", (long *)&iri_range_size, SD_INT32},
-    {"tn_max_memory",  (long *)&tn_max_memory, SD_INT64},
-    {"tn_at_mem_cutoff", (long *)&tn_at_mem_cutoff, SD_INT64},
-    {"tn_mem_cutoff", (long *)&tn_mem_cutoff, SD_INT64},
-    {"tn_at_card_cutoff", (long *)&tn_at_card_cutoff, SD_INT64},
-    {"tn_card_cutoff", (long *)&tn_card_cutoff, SD_INT64},
-    {"dbf_max_itc_samples", (long *)&dbf_max_itc_samples, SD_INT32},
-    {"enable_mt_ft_inx", (long *)&enable_mt_ft_inx, SD_INT32},
-    {"disable_rdf_init", (long *)&disable_rdf_init, SD_INT32},
-    {"enable_rdf_trig", (long *)&enable_rdf_trig, SD_INT32},
-    {"enable_pg_card", (long *)&enable_pg_card, SD_INT32},
-    {"enable_ce_ins_check",  (long *)&enable_ce_ins_check, SD_INT32},
-    {"dbf_ignore_uneven_col", (long *)&dbf_ignore_uneven_col, SD_INT32},
-    {"c_no_dbg_print", (long *)&c_no_dbg_print, SD_INT32},
-    {"dbf_explain_level", (long *)&dbf_explain_level, SD_INT32},
-    {"mp_local_rc_sz", (long *)&mp_local_rc_sz, SD_INT32},
-    {"dbf_user_1", &dbf_user_1},
-    {"dbf_user_2", &dbf_user_2},
-    {"dbs_stop_cp", &dbs_stop_cp, SD_INT32},
-#ifdef CACHE_MALLOC
-    {"enable_no_free", &enable_no_free, SD_INT32},
-#endif
-    {"enable_rdf_box_const", &enable_rdf_box_const, SD_INT32},
-    {"simple_rdf_numbers", &simple_rdf_numbers, SD_INT32},
-    {"rdf_rpid64_mode", (long *)&rdf_rpid64_mode, SD_INT32},
-    {"rdf_geo_use_wkt", (long *)&rdf_geo_use_wkt, SD_INT32},
-    {"pcre_match_limit", &c_pcre_match_limit, SD_INT32},
-    {"pcre_match_limit_recursion", &c_pcre_match_limit_recursion, SD_INT32},
-    {"pcre_max_cache_sz", &pcre_max_cache_sz, SD_INT32},
-    {"shcompo_max_cache_sz", &shcompo_max_cache_sz, SD_INT32},
-    {"debug_invalid_iri_id", &debug_invalid_iri_id, SD_INT32},
-    {"enable_qr_comment", &enable_qr_comment, SD_INT32},
-    {"timezoneless_datetimes", &timezoneless_datetimes, SD_INT32},
-    {"lock_escalation_pct", &lock_escalation_pct, SD_INT32},
-    {"enable_spar_logfile", (long *) &enable_spar_logfile, SD_INT32},
-    {"enable_sqlc_logfile", (long *) &enable_sqlc_logfile, SD_INT32},
-    {"http_connect_timeout", &http_connect_timeout, SD_INT32},
-    {"users_cache_sz", &users_cache_sz, SD_INT64},
-    {"enable_cpt_rb_ck", &enable_cpt_rb_ck, SD_INT32},
-    {"swap_guard_threshold", (long *)&swap_guard_threshold,  SD_INT64},
-    {"max_proc_vm_size", (long *)&max_proc_vm_size,  SD_INT64},
-    {"vm_size_wd_threshold", (long *)&vm_size_wd_threshold,  SD_INT64},
-    {NULL, NULL, NULL}
-  };
 
 caddr_t
 dbs_list ()
@@ -2140,14 +2153,17 @@ sys_stat_impl (const char *name)
   if (place)
             {
 	      stat_desc_t * sd = *place;
-              if (SD_INT32 == (char **) sd->sd_str_value)
+      switch (sd->sd_type)
+       {
+       case SD_TYPE_LONG:
+         return box_num_nonull (*(long *) (sd->sd_value));
+       case SD_TYPE_INT32:
                 return box_num_nonull (*(int32*)sd->sd_value);
-              if (SD_INT64 == (char **) sd->sd_str_value)
+       case SD_TYPE_INT64:
                 return box_num_nonull (*(int64*)sd->sd_value);
-              else if (sd->sd_value)
-                return (box_num_nonull (*(sd->sd_value)));
-              else if (sd->sd_str_value)
-                return (box_dv_short_string (*(sd->sd_str_value)));
+       case SD_TYPE_STRING:
+         return box_dv_short_string (*(char **) sd->sd_value);
+       }
             }
   return NULL;
 }
@@ -2174,24 +2190,34 @@ bif_dbf_set (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   if (!place)
     sqlr_new_error ("42000", "SR...", "__dbf_set, parameter does not exist");
 
-
   sd = *place;
+
   if (dbf_protected_param (sd))
-    sqlr_new_error ("42000", "SR...", "sys_stat parameter '%.300s' is already set and cannot be changed", name);
-  if (SD_INT32 == (char **) sd->sd_str_value)
+    sqlr_new_error ("42000", "SR...", "__dbf_set: parameter '%.300s' is already set and cannot be changed", name);
+
+  switch (sd->sd_type)
+    {
+    case SD_TYPE_INT32:
 	    {
 	      int32 ov = *((int32*)sd->sd_value);
 	      *((int32*)sd->sd_value) = v;
 	      return (box_num (ov));
 	    }
-	  if (sd->sd_value)
+    case SD_TYPE_INT64:
 	    {
-	      long ov = *(sd->sd_value);
-	      *(sd->sd_value) = v;
+	int64 ov = *((int64 *) sd->sd_value);
+	*((int64 *) sd->sd_value) = v;
 	      return (box_num (ov));
 	    }
-	  else
-	    sqlr_new_error ("42000", "SR...", "sys_stat_set, parameter not settable");
+    case SD_TYPE_LONG:
+      {
+	long ov = *((long *) sd->sd_value);
+	*((long *) sd->sd_value) = v;
+	return (box_num (ov));
+      }
+    }
+
+  sqlr_new_error ("42000", "SR...", "__dbf_set: parameter '%.300s' not settable", name);
   return NULL; /*dummy*/
 }
 
@@ -4741,7 +4767,7 @@ sc_data_to_ext (query_instance_t * qi, caddr_t dt)
 	  arr[inx] = sc_data_to_ext (qi, a);
 	}
       END_DO_BOX;
-      return arr;
+      return (caddr_t) arr;
     }
   else
     return box_copy_tree (dt);
@@ -4754,7 +4780,7 @@ sc_ext_to_data (query_instance_t * qi, caddr_t dt)
   dtp_t dtp = DV_TYPE_OF (dt);
   caddr_t err = NULL;
   if (DV_STRING == dtp && box_flags (dt))
-    return iri_to_id (qi, dt, 1, &err);
+    return iri_to_id ((caddr_t *) qi, dt, 1, &err);
   else if (DV_ARRAY_OF_POINTER == dtp)
     {
       caddr_t * arr = (caddr_t*)dk_alloc_box (box_length (dt), DV_ARRAY_OF_POINTER);
@@ -4763,7 +4789,7 @@ sc_ext_to_data (query_instance_t * qi, caddr_t dt)
 	  arr[inx] = sc_ext_to_data (qi, a);
 	}
       END_DO_BOX;
-      return arr;
+      return (caddr_t) arr;
     }
   else
     return box_copy_tree (dt);
@@ -4775,7 +4801,7 @@ bif_stat_export (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   QNCAST (QI, qi, qst);
   int inx, inx2;
   dbe_schema_t * sc = wi_inst.wi_schema;
-  dk_set_t * cols = NULL, keys = NULL, rics = NULL;
+  dk_set_t cols = NULL, keys = NULL, rics = NULL;
   DO_HT (ptrlong, id, dbe_column_t *, col, sc->sc_id_to_col)
     {
       dk_set_push (&cols, list (6, box_string (col->col_defined_in->tb_name), box_string (col->col_name),
@@ -4812,12 +4838,12 @@ bif_stat_export (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
       id_hash_iterator (&hit, ric->ric_samples);
       while (hit_next (&hit, (caddr_t*)&s_key, (caddr_t*)&smp))
 	{
-	  caddr_t * ent = sc_data_to_ext (qi, *(caddr_t*)s_key);
-	  dbe_key_t * key = sch_id_to_key (wi_inst.wi_schema, unbox (ent[0]));
+	  caddr_t ent = sc_data_to_ext (qi, *(caddr_t*)s_key);
+         dbe_key_t * key = sch_id_to_key (wi_inst.wi_schema, unbox (ent));
 	  if (key)
 	    {
-	      dk_free_box (ent[0]);
-	      ent[0] = box_dv_short_string (key->key_name);
+	      dk_free_box (ent);
+	      ent = box_dv_short_string (key->key_name);
 	    }
 	  dk_set_push (&smps, list (3, ent, box_float (smp->smp_card), box_float (smp->smp_inx_card)));
 	}
@@ -4905,7 +4931,7 @@ bif_stat_import (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   DO_BOX (caddr_t *, ks, inx, stats[1])
     {
       dbe_table_t * tb = sch_name_to_table (sc, ks[0]);
-      caddr_t * ps = ks[3];
+      caddr_t ps = ks[3];
       if (!tb)
 	continue;
       key = tb_name_to_key (tb, ks[1], 0);
@@ -4959,7 +4985,7 @@ bif_stat_import (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	  smpl.smp_time = approx_msec_real_time ();
 	  smpl.smp_card = unbox_float (smp[1]);
 	  smpl.smp_inx_card = unbox_float (smp[2]);
-	  id_hash_set (ric->ric_samples, (caddr_t)&k, (caddr_t*)&smpl);
+	  id_hash_set (ric->ric_samples, (caddr_t)&k, (caddr_t)&smpl);
 	}
       END_DO_BOX;
     }

@@ -707,7 +707,7 @@ strses_chars_length (dk_session_t * ses)
       virt_mbstate_t mb;
       unsigned char *ptr = (unsigned char *) ses->dks_out_buffer;
       memset (&mb, 0, sizeof (mb));
-      last_len = virt_mbsnrtowcs (NULL, &ptr, ses->dks_out_fill, 0, &mb);
+      last_len = virt_mbsnrtowcs (NULL, (const unsigned char **) &ptr, ses->dks_out_fill, 0, &mb);
       if (last_len != (size_t) - 1)
 	len += (long) last_len;
     }
@@ -1370,7 +1370,7 @@ strses_get_part_1 (dk_session_t * ses, void *buf2, int64 starting_ofs, long nbyt
 	  virt_mbstate_t mb;
 	  unsigned char *ptr = (unsigned char *) ses->dks_out_buffer;
 	  memset (&mb, 0, sizeof (mb));
-	  last_len_chars = virt_mbsnrtowcs (NULL, &ptr, ses->dks_out_fill, 0, &mb);
+	  last_len_chars = virt_mbsnrtowcs (NULL, (const unsigned char **) &ptr, ses->dks_out_fill, 0, &mb);
 	  if (last_len_chars == (size_t) - 1)
 	    GPF_T;
 	}
@@ -1458,7 +1458,7 @@ read_wides_from_utf8_file (
 	}
       else
 	{
-	  converted = virt_mbsnrtowcs ((wchar_t *) dest, &data_ptr, readed, nchars, &mb);
+	  converted = virt_mbsnrtowcs ((wchar_t *) dest, (const unsigned char **) &data_ptr, readed, nchars, &mb);
 	  if (converted == (size_t) - 1)
 	    {
 	      log_error ("Invalid utf-8 data in file %s", ses->dks_session->ses_file->ses_temp_file_name);
@@ -1502,7 +1502,7 @@ strses_get_wide_part (dk_session_t * ses, wchar_t * buf, long starting_ofs, long
 	    return 0;
 
 	  /* get the copychars worth of wides into the buffer */
-	  if (virt_mbsnrtowcs (buf, &data_ptr,
+	  if (virt_mbsnrtowcs (buf, (const unsigned char **) &data_ptr,
 		elt->fill - (data_ptr - (unsigned char *) elt->data), copychars, &mb) == (size_t) -1)
 	    return 0;
 
@@ -1575,7 +1575,7 @@ strses_get_wide_part (dk_session_t * ses, wchar_t * buf, long starting_ofs, long
       if ((data_ptr - data_ptr_start) < ses->dks_out_fill)
 	{
 	  /* get the copychars worth of wides into the buffer */
-	  if ((converted = virt_mbsnrtowcs (buf, &data_ptr_start,
+	  if ((converted = virt_mbsnrtowcs (buf, (const unsigned char **) &data_ptr_start,
 	  	ses->dks_out_fill - (data_ptr - data_ptr_start), nchars, &mb) == (size_t) - 1))
 	    return 0;
 	}

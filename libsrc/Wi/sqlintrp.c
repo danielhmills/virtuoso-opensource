@@ -882,7 +882,7 @@ ins_call_vec (instruction_t * ins, caddr_t * inst, code_vec_t code_vec, int firs
 	  rets[set] = qi->qi_proc_ret;
       }
     END_SET_LOOP;
-    qi->qi_proc_ret = rets;
+    qi->qi_proc_ret = (caddr_t) rets;
   }
 }
 
