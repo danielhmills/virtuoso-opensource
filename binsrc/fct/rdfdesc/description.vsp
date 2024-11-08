@@ -69,6 +69,7 @@
   declare auto_sponge_on_empty_graph int;
   declare q_txt any;
   declare safetolink integer;
+  declare triples_found integer;
   declare jsses any;
 
   set http_charset='utf-8';
@@ -379,13 +380,17 @@ again:
 --    dbg_obj_print (qry_str);
 
   b3s_dbg_out (dbg_out, 'qry: ' || qry_str);
-
   exec (qry_str, null, null, vector (), 0, meta, data);
 
   _subject := b3s_label_get (data, langs);
 
   rdf_link := sprintf ('/sparql?query=%U', __box_flags_tweak (sprintf ('define sql:describe-mode "CBD" %s DESCRIBE <%s>', b3s_render_inf_clause(), _S), 2)); 
   __box_flags_set (rdf_link, 2);
+
+  -- 404 ck
+  qry_str := sprintf ('sparql ask %s where { { <%s> ?p1 ?o1 } union { ?s ?p2 <%s> } }', _F, _S, _S);
+  exec (qry_str, null, null, vector (), 0, meta, data);
+  triples_found := case when isvector(data) and aref(aref(data,0),0) then 1 else 0 end;
 
   declare __res_desc, qs, qv, best_variant, accept, protocol varchar;
   declare best_q, curr float;
@@ -582,11 +587,11 @@ again:
         id="sp_link" rel="nofollow">Sponge
     </a>
     &nbsp;
-    <a class="desc_permalink" href="<?vsp http (fct_make_curie (sprintf ('%s&amp;distinct=%d',  plink_href, equ (dist, 0)), lines)); ?>" title="This link enables you toggle between normalized and un-normalized views of data using by applying or note applying a DISTINCT operator">
+    <a class="desc_permalink" href="<?vsp http (sprintf ('%s&amp;distinct=%d', plink_href, equ (dist, 0))); ?>" title="This link enables you toggle between normalized and un-normalized views of data using by applying or note applying a DISTINCT operator">
     <?vsp if (dist) http ('Not'); ?>Distinct
     </a>
     &nbsp;
-    <a class="desc_permalink" href="<?vsp http(fct_make_curie (sprintf ('%s&amp;distinct=%d', plink_href, dist), lines)); ?>" rel="nofollow">Permalink
+    <a class="desc_permalink" href="<?vsp http(fct_make_curie (sprintf ('%s&amp;distinct=%d', plink_href, dist), lines, triples_found)); ?>" rel="nofollow">Permalink
     </a>
 
     </h2>
@@ -669,6 +674,9 @@ if (_subject <> '') {
     <table class="description">
 
 <?vsp
+
+     if (0 = triples_found)
+       goto _404;
 
     --  gs_user_id := USER;
     --  gs_user_id := coalesce ((select U_ID from DB.DBA.SYS_USERS where U_NAME=gs_user_id and not U_ACCOUNT_DISABLED), http_nobody_uid());
@@ -807,6 +815,7 @@ if (_subject <> '') {
 	}
 	else
 	{
+        _404:
 	  http_request_status ('HTTP/1.1 404 Not Found');
 	http ('<tr><td colspan="2"><p>No further information is available.</p></td></tr>');
       }
