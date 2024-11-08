@@ -612,3 +612,7 @@ img.dicon { border-width:0; height:20px; vertical-align: middle; }
 
 div.content.embedded > iframe { resize: auto; }
 div.content.embedded { resize: auto; overflow: auto; }
+
+.text-nowrap {
+  white-space: nowrap;
+}

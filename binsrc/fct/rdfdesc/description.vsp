@@ -827,6 +827,7 @@ if (_subject <> '') {
 	      } } ?>
 	      <input type="hidden" name="lp" value="<?V _last ?>"/>
 	      <?vsp if (topof <> '' and _last > 0) {  if (1 or page > 0) { ?>
+	      <span class="text-nowrap">
 	      <button type="submit" value="" name="first" <?vsp if (page <= 0) { http ('disabled="disabled"'); } ?>>&#9666;&#9666; First</button>
 	      &nbsp;
 	      <input type="hidden" name="op" value="<?V page - 1 ?>"/>
@@ -836,10 +837,14 @@ if (_subject <> '') {
 	      <button type="submit" value="" name="next" <?vsp if (dis_next) { http ('disabled="disabled"'); } ?>>Next &#9656;</button>
 	       &nbsp;
 	      <button type="submit" value="" name="last" <?vsp if (dis_next) { http ('disabled="disabled"'); } ?>>Last &#9656;&#9656;</button>
-	       &nbsp;&nbsp;&nbsp;
-	       Page <?V page + 1 ?> of <?V _last + 1 ?>  &nbsp;&nbsp;&nbsp;
+	      </span>
+	      <span class="text-nowrap">
+	       Page <?V page + 1 ?> of <?V _last + 1 ?> &nbsp;&nbsp;&nbsp;
+	       </span>
+	      <span class="text-nowrap">
 	       <input type="text" value="<?V page + 1 ?>" size="5" name="gp" <?vsp if (page <= 0 AND dis_next) { http('disabled="disabled"'); }?> /> &nbsp; 
 	       <button type="submit" value="" name="go" <?vsp if (page <= 0 AND dis_next) { http('disabled="disabled"'); }?> >Go</button>
+	       </span>
 	<?vsp } } ?>
 	</div>
 	</form>
