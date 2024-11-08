@@ -710,12 +710,12 @@ dbms_status_report (void)
       rep_printf ("\nDatabase Status:\n"
 	  "  File size " OFF_T_PRINTF_FMT ", %ld pages, %ld free.\n"
 	  "  %d buffers, %d used, %d dirty %d wired down, repl age %d %d w. io %d w/crsr.\n",
-	  dbs->dbs_file_length ? (OFF_T_PRINTF_DTP) dbs->dbs_file_length : (dbs->dbs_n_pages * PAGE_SZ), dbs->dbs_n_pages,
+	  dbs->dbs_file_length ? (OFF_T_PRINTF_DTP) dbs->dbs_file_length : ((OFF_T) dbs->dbs_n_pages * PAGE_SZ), dbs->dbs_n_pages,
 	  st_db_free_pages,
 	  n_buffers, n_used, n_dirty, n_wired,
 		  bp_replace_count ? (int) (bp_replace_age / bp_replace_count) : 0, n_io, n_crsr );
       snprintf (st_db_file_size, sizeof (st_db_file_size_buffer), OFF_T_PRINTF_FMT,
-	  (OFF_T_PRINTF_DTP) (dbs->dbs_n_pages * PAGE_SZ));
+	  (OFF_T_PRINTF_DTP) ((OFF_T) dbs->dbs_n_pages * PAGE_SZ));
       st_db_pages = dbs->dbs_n_pages;
       st_db_buffers = n_buffers;
       st_db_used_buffers = n_used;
