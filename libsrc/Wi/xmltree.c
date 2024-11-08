@@ -10062,10 +10062,69 @@ caddr_t bif_xtree_tridgell32 (caddr_t * qst, caddr_t * err_ret, state_slot_t ** 
 }
 #endif
 
+/*
+ *  This setting controls whether a new database uses:
+ *
+ *  0 = old algorithm
+ *  2 = new murmur algorithm
+ */
+uint32 xte_use_mhash = 0;	/* use old algorithm for now */
+
+uint64
+murmur_hash_64a (const void * key, int len, uint64 seed)
+{
+  const uint64 m = 0xC6A4A7935BD1E995LLU; /* MURMURHASH 64A MAGIC */
+  const int r = 47;
+  uint64 h = seed ^ (len * m);
+  const uint64 * data = (const uint64 *)key;
+  const uint64 * end = (len >> 3) + data;
+  const unsigned char * data2;
+
+  while(data != end)
+    {
+      uint64 k = *data++;
+
+      k *= m;
+      k ^= k >> r;
+      k *= m;
+
+      h ^= k;
+      h *= m;
+    }
+
+  data2 = (const unsigned char *)data;
+
+  switch(len & 7)
+    {
+      case 7: h ^= (uint64)(data2[6]) << 48;
+      case 6: h ^= (uint64)(data2[5]) << 40;
+      case 5: h ^= (uint64)(data2[4]) << 32;
+      case 4: h ^= (uint64)(data2[3]) << 24;
+      case 3: h ^= (uint64)(data2[2]) << 16;
+      case 2: h ^= (uint64)(data2[1]) << 8;
+      case 1: h ^= (uint64)(data2[0]);
+              h *= m;
+    };
+
+  h ^= h >> r;
+  h *= m;
+  h ^= h >> r;
+
+  return h;
+}
+
 #define SUM64(data,lo,med,hi) \
+    if (xte_use_mhash) { \
+      mhash = murmur_hash_64a(data,  box_length_inline ((data)) - 1, 0); \
+      hi ^= (uint32_t)((mhash >> 42) & 0x3FFFFF); \
+      med ^= (uint32)((mhash >> 21) & 0x1FFFFF); \
+      lo ^= (uint32)(mhash & 0x1FFFFF); \
+    } else { \
       end = (data) + box_length_inline ((data)) - 1; \
       for (tail = (data); tail < end; tail++) \
-        { lo += tail[0]; med += lo; hi += med; }
+        { lo += tail[0]; med += lo; hi += med; } \
+    }
+
 
 static void
 xte_sum64_iter (caddr_t *tree, unsigned *lo_ptr, unsigned *med_ptr, unsigned *hi_ptr)
@@ -10073,6 +10132,7 @@ xte_sum64_iter (caddr_t *tree, unsigned *lo_ptr, unsigned *med_ptr, unsigned *hi
   unsigned lo = lo_ptr[0], med = med_ptr[0], hi = hi_ptr[0], loxor, medxor, hixor, lon, medn, hin;
   unsigned char *data;
   unsigned char *tail, *end;
+  uint64 mhash;
   if (DV_ARRAY_OF_POINTER == DV_TYPE_OF (tree))
     {
       int attrctr, head_len, cctr, ccount = BOX_ELEMENTS_INT (tree);

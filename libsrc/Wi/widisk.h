@@ -367,6 +367,7 @@ struct wi_database_s
     char 	db_id[16];
     char	db_timezoneless_datetimes; /* The values for timezoneless_datetimes global, overrides one in virtuoso.ini in case of conflict */
     char	db_rdf_id64;            /*!< The size of RI_NAME header */
+    char	db_xte_hash_mode;
   };
 
 #define DBS_INCOMPLETE 1 /*being copied or being created by split, can't open */

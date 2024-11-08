@@ -232,6 +232,7 @@ extern int enable_no_free;
 extern int32 enable_rdf_box_const;
 extern int32 simple_rdf_numbers;
 extern int32 rdf_rpid64_mode;
+extern int32 xte_use_mhash;
 extern int enable_subscore;
 extern int enable_dfg;
 extern int enable_feed_other_dfg;
@@ -1995,6 +1996,7 @@ stat_desc_t dbf_descs [] =
 #endif
     SD_DEF_I32 (enable_rdf_box_const, "enable_rdf_box_const"),
     SD_DEF_I32 (rdf_rpid64_mode, "rdf_rpid64_mode"),
+    SD_DEF_I32 (xte_use_mhash, "xte_use_mhash"),
     SD_DEF_I32 (rdf_geo_use_wkt, "rdf_geo_use_wkt"),
     SD_DEF_I32 (simple_rdf_numbers, "simple_rdf_numbers"),
     SD_DEF_I32 (c_pcre_match_limit, "pcre_match_limit"),
