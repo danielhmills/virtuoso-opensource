@@ -142,7 +142,6 @@
 
 <!-- header -->
 <head>
-    <base href="/fct/rdfdesc/" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Metadata about: <?vsp http (sprintf ('%s', label)); ?></title>
@@ -165,7 +164,7 @@
       <li id="mnu_usage" class="sel">
         <a href="javascript:void()" class="sel">Metadata</a>
       </li>
-      <li id="mnu_settings"><a href="settings.vsp?g=<?U b3s_u2w (page_resource_uri) ?><?V ses_params ?>">Settings</a></li>
+      <li id="mnu_settings"><a href="/fct/rdfdesc/settings.vsp?g=<?U b3s_u2w (page_resource_uri) ?><?V ses_params ?>">Settings</a></li>
     </ul>
 
   </div> <!-- #HD -->
@@ -195,7 +194,7 @@
     <a href="">
     </a>&nbsp;&nbsp;&nbsp;
     <?vsp
-	  http(sprintf('<a class="desc_permalink" href="usage.vsp?g=%U&amp;tp=%d%s" rel="nofollow">Permalink</a>\n',
+	  http(sprintf('<a class="desc_permalink" href="/fct/rdfdesc/usage.vsp?g=%U&amp;tp=%d%s" rel="nofollow">Permalink</a>\n',
 	    case when page_resource_uri like 'nodeID://%' then b3s_http_url (page_resource_uri) else page_resource_uri end,
 	    tp,
 	    b3s_render_ses_params (0,0)
@@ -231,7 +230,7 @@
            href="<?V http_path () ?>?g=<?U _S ?>&amp;tp=4<?V ses_params ?>">Implicit Coreferences</a>
       </div>
     </div> <!-- TAB_ROW -->
-    <form name="f" action="usage.vsp?g=<?U page_resource_uri ?><?V b3s_render_ses_params(0) ?>" method="post">
+    <form name="f" action="/fct/rdfdesc/usage.vsp?g=<?U page_resource_uri ?><?V b3s_render_ses_params(0) ?>" method="post">
     <div id="TAB_CTR">
       <div class="tab_page">
         <table class="description">

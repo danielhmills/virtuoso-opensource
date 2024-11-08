@@ -42,7 +42,6 @@
 ?>
 
 <head>
-  <base href="/fct/rdfdesc/" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
   <title>Settings</title>
@@ -62,9 +61,9 @@
         <?vsp } ?>
         <li id="mnu_descr"><a href="/describe/?uri=<?U b3s_u2w (_S) ?><?V ses_parms ?>">Description</a></li>
         <li id="mnu_usage" class="sel">
-          <a href="usage.vsp?g=<?U b3s_u2w (_S) ?><?V ses_parms ?>">Metadata</a>
+          <a href="/fct/rdfdesc/usage.vsp?g=<?U b3s_u2w (_S) ?><?V ses_parms ?>">Metadata</a>
         </li>
-        <li id="mnu_settings"><a href="settings.vsp?uri=<?U b3s_u2w (page_resource_uri) ?><?V ses_parms ?>">Settings</a></li>
+        <li id="mnu_settings"><a href="/fct/rdfdesc/settings.vsp?uri=<?U b3s_u2w (page_resource_uri) ?><?V ses_parms ?>">Settings</a></li>
       </ul>
 
     </div> <!-- #HD -->

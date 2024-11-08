@@ -462,7 +462,6 @@ again:
 
 ?>
 <head>
-    <base href="/fct/rdfdesc/" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>About: <?vsp if (length (label)) http_value (label); else http (b3s_uri_percent_decode(b3s_uri_curie (page_resource_uri)));?></title>
@@ -505,9 +504,9 @@ again:
       <?vsp } ?>
       <li id="mnu_descr" class="sel"><a href="/describe/?uri=<?U b3s_u2w(_S) ?><?V ses_parms ?>" class="sel" rel="nofollow">Description</a></li>
       <li id="mnu_usage">
-        <a href="usage.vsp?g=<?U _S ?><?V ses_parms ?>" rel="nofollow">Metadata</a>
+        <a href="/fct/rdfdesc/usage.vsp?g=<?U _S ?><?V ses_parms ?>" rel="nofollow">Metadata</a>
       </li>
-      <li id="mnu_settings"><a href="settings.vsp?g=<?U b3s_u2w(_S) ?><?V ses_parms ?>" rel="nofollow">Settings</a>
+      <li id="mnu_settings"><a href="/fct/rdfdesc/settings.vsp?g=<?U b3s_u2w(_S) ?><?V ses_parms ?>" rel="nofollow">Settings</a>
         <div id="settings_popup" style="display: none">
           <ul>
             <li>
@@ -574,7 +573,7 @@ again:
 
       <div class="ds_inf_info">
 	    An Entity of Type : <a href="<?V e_type ?>"><?V e_type_label ?></a>,
-	    within Data Space : <a href="http://<?V host ?>"><?V host ?></a> associated with source <a href="usage.vsp?g=<?U _S ?><?V ses_parms ?>">document(s)</a><br/>
+	    within Data Space : <a href="http://<?V host ?>"><?V host ?></a> associated with source <a href="/fct/rdfdesc/usage.vsp?g=<?U _S ?><?V ses_parms ?>">document(s)</a><br/>
 <?vsp
 
   declare is_class int;
