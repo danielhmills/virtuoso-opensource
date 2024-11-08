@@ -10768,6 +10768,11 @@ isql_main (int argc,
       isql_printf (_T("Type HELP; for help and EXIT; to exit.\n"));
     }
 
+#ifdef _UNICODE
+  wprintf (L"\nThe current isqlw application has been deprecated and will be removed in a future release\n\n");
+  exit (1);
+#endif
+
   if (nth_non_option || shortcuts_used)		/* Used in the traditional way, with datasource,
 				   and possibly username and password given from
 				   the command line? */
