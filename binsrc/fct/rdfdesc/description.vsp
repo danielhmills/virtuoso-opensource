@@ -473,9 +473,9 @@ again:
         main_ss := registry_get ('fct_main_ss');
 	if (not isstring (main_ss)) main_ss := '/fct/css/default.css';
     ?>
-    <link rel="stylesheet" type="text/css" href="<?=main_ss?>"  charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="<?=main_ss?>" />
 
-    <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" />
 
     <link rel="icon" href="/favicon.ico?v=1" sizes="any" />
     <link rel="icon" href="/favicon/favicon.svg?v=1" type="image/svg+xml" />

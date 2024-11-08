@@ -47,8 +47,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
   <title>Settings</title>
 
-  <link rel="stylesheet" type="text/css" href="/fct/css/default.css"  charset="utf-8" />
-  <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" charset="utf-8" />
+  <link rel="stylesheet" type="text/css" href="/fct/css/default.css" />
+  <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" />
 </head>
 <body>
   <div id="PG">

@@ -147,8 +147,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Metadata about: <?vsp http (sprintf ('%s', label)); ?></title>
     <link rel="alternate" type="application/rdf+xml" href="<?=rdf_link?>" title="RDF" />
-    <link rel="stylesheet" type="text/css" href="/fct/css/default.css" charset="utf-8" />
-    <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="/fct/css/default.css" />
+    <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" />
 
     <meta name="robots" content="noindex,nofollow" />
 </head>
