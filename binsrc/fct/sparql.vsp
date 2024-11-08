@@ -1,3 +1,6 @@
+<!DOCTYPE html>
+<html lang="en">
+
 <?vsp
 --
 --  $Id$
@@ -27,24 +30,25 @@
   declare cookie_str, cookie_vec any;
 
   debug := get_keyword ('debug', params, case (get_keyword ('query', params, '')) when '' then '1' else '' end);
-  def_qry := virtuoso_ini_item_value ('SPARQL', 'DefaultQuery');
+  def_qry := cfg_item_value (virtuoso_ini_path (), 'SPARQL', 'DefaultQuery');
   if (def_qry is null)
     def_qry := 'SELECT * WHERE {?s ?p ?o} LIMIT 10';
-  ini_dflt_graph := virtuoso_ini_item_value ('SPARQL', 'DefaultGraph');
+  ini_dflt_graph := cfg_item_value (virtuoso_ini_path (), 'SPARQL', 'DefaultGraph');
+?>
 
-?><html xmlns="http://www.w3.org/1999/xhtml">
-	<head>
-		<title>Virtuoso SPARQL Query Form</title>
-		<style type="text/css">
-label
-{ display: inline; margin-top: 10pt; }
-body { font-family: arial, helvetica, sans-serif; font-size: 9pt; color: #234; }
-fieldset { border: 2px solid #86b9d9; }
-legend { font-size: 12pt; color: #86b9d9; }
-label { font-weight: bold; }
-h1 { width: 100%; background-color: #86b9d9; font-size: 18pt; font-weight: normal; color: #fff; height: 4ex; text-align: right; vertical-align: middle; padding-right:  8px; }
-		</style>
-		<script language="JavaScript">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Virtuoso SPARQL Query Form</title>
+    <style type="text/css">
+	label { display: inline; margin-top: 10pt; }
+	body { font-family: arial, helvetica, sans-serif; font-size: 9pt; color: #234; }
+	fieldset { border: 2px solid #86b9d9; }
+	legend { font-size: 12pt; color: #86b9d9; }
+	label { font-weight: bold; }
+	h1 { width: 100%; background-color: #86b9d9; font-size: 18pt; font-weight: normal; color: #fff; height: 4ex; text-align: right; vertical-align: middle; padding-right:  8px; }
+    </style>
+    <script language="JavaScript">
 var last_format = 1;
 function format_select(query_obg)
 {

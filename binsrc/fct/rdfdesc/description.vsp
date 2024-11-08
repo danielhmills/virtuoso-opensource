@@ -1,10 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML+RDFa 1.0//EN" "http://www.w3.org/MarkUp/DTD/xhtml-rdfa-1.dtd">
-<html
-    xmlns="http://www.w3.org/1999/xhtml"
-    xml:lang="en"
-    version="XHTML+RDFa 1.0"
->
+<!DOCTYPE html>
+<html lang="en">
+
 <?vsp
 --
 --
@@ -247,7 +243,7 @@ again:
       {
         http_rewrite ();
         http_status_set (403);
-        http ('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">');
+        http ('<!DOCTYPE html>');
         http (sprintf ('<html><body>Use of this service is not allowed for your current WebID: %V</body></html>', connection_get ('WebID', '<none>')));
         return;  
       } 
@@ -467,6 +463,8 @@ again:
 ?>
 <head>
     <base href="/fct/rdfdesc/" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>About: <?vsp if (length (label)) http_value (label); else http (b3s_uri_percent_decode(b3s_uri_curie (page_resource_uri)));?></title>
     <!--link rel="alternate" type="application/rdf+xml" href="<?=rdf_link?>" title="RDF" /-->
 
