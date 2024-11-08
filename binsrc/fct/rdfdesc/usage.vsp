@@ -149,11 +149,6 @@
     <link rel="alternate" type="application/rdf+xml" href="<?=rdf_link?>" title="RDF" />
     <link rel="stylesheet" type="text/css" href="/fct/css/default.css" charset="utf-8" />
     <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" charset="utf-8" />
-    <script type="text/javascript" >
-      var featureList=["tab"];
-    </script>
-    <script type="text/javascript" src="/fct/oat/toolkit/loader.js"></script>
-    <script type="text/javascript" src="/fct/js/description.js"></script>
 
     <meta name="robots" content="noindex,nofollow" />
 </head>
@@ -403,5 +398,12 @@
 	Copyright &copy; 2009-<?V "LEFT" (datestring (now ()), 4)?> OpenLink Software 
       </div> <!-- #ft_b -->
   </div> <!-- #FT -->
+  <div>
+    <script type="text/javascript">
+      var featureList=["tab"];
+    </script>
+    <script type="text/javascript" src="/fct/oat/toolkit/loader.js"></script>
+    <script type="text/javascript" src="/fct/js/description.js"></script>
+  </div>
 </body>
 </html>

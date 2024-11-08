@@ -476,11 +476,6 @@ again:
     <link rel="stylesheet" type="text/css" href="<?=main_ss?>"  charset="utf-8" />
 
     <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" charset="utf-8" />
-    <script type="text/javascript" >
-      var featureList=["tab","ajax"];
-    </script>
-    <script type="text/javascript" src="/fct/oat/toolkit/loader.js"></script>
-    <script type="text/javascript" src="/fct/js/description.js"></script>
 
     <link rel="icon" href="/favicon.ico?v=1" sizes="any" />
     <link rel="icon" href="/favicon/favicon.svg?v=1" type="image/svg+xml" />
@@ -934,5 +929,12 @@ if (_subject <> '') {
       <div class="form_row"><label for=""></label><input type="text" class="prop_val_lo"/></div><br/>
       <div class="form_row"><label for=""></label><input type="text" class="prop_val_hi"/></div>
     </div -->
+    <div>
+      <script type="text/javascript">
+	var featureList=["tab","ajax"];
+      </script>
+      <script type="text/javascript" src="/fct/oat/toolkit/loader.js"></script>
+      <script type="text/javascript" src="/fct/js/description.js"></script>
+    </div>
   </body>
 </html>
