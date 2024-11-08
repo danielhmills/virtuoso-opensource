@@ -425,7 +425,7 @@ ins_call (instruction_t * ins, caddr_t * qst, code_vec_t code_vec)
       sql_method_t *mtd = NULL;
       ptrlong mtd_inx = -1;
       if (BOX_ELEMENTS (proc_name) != 2 || !DV_STRINGP (proc_mtd_call[0]) ||
-	  !DV_LONG_INT == DV_TYPE_OF (proc_mtd_call[1]))
+         DV_LONG_INT != DV_TYPE_OF (proc_mtd_call[1]))
 	{
 	  err = srv_make_new_error ("22023", "UD004", "Invalid proc_name array supplied");
 	  goto report_error;
