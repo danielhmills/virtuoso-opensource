@@ -1020,13 +1020,6 @@ fct_web (in tree any, in sid int)
 
   fct_dbg_msg (sprintf ('reply: %s', cast (r_ses as varchar)));
 
-  declare _addthis_key varchar;
-  _addthis_key := registry_get ('fct_addthis_key');
-  if (not isstring(_addthis_key)) _addthis_key := null;
-  if ('1' = _addthis_key) _addthis_key := 'xa-4ce13e0065cdadc0';
-
-  --dbg_printf('addthis_key: %s', _addthis_key);
-
   http_value (xslt (registry_get ('_fct_xslt_') || 'fct_vsp.xsl',
                     reply,
 		    vector ('sid',
@@ -1051,8 +1044,6 @@ fct_web (in tree any, in sid int)
                             p_qry,
                             'p_xml',
                             p_xml,
-                            'addthis_key',
-                            _addthis_key,
                             'tree',
                             tree,
 			    'agg_res',
@@ -2708,14 +2699,6 @@ create procedure fct_page_head ()
     <div id="homelink"></div>
   </div> <!-- hd_l -->
   <div id="hd_r">
-    <div class="addthis_toolbox addthis_default_style">
-      <a class="addthis_button_compact"></a>
-      <a class="addthis_button_preferred_1"></a>
-      <a class="addthis_button_preferred_2"></a>
-      <a class="addthis_button_preferred_3"></a>
-      <a class="addthis_button_preferred_4"></a>
-      <a class="addthis_button_google_plusone"></a>
-    </div>
   </div> <!-- hd_r -->');
 }
 ;

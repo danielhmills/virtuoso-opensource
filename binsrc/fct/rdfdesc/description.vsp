@@ -4,8 +4,6 @@
     xmlns="http://www.w3.org/1999/xhtml"
     xml:lang="en"
     version="XHTML+RDFa 1.0"
-    xmlns:addthis="http://www.addthis.com/help/api-spec"
-    xmlns:fb="http://www.facebook.com/2008/fbml"
 >
 <?vsp
 --
@@ -36,7 +34,6 @@
 -- Registry keys:
 --
 -- fct_timeout_max - anytime query timeout for producing this page
--- fct_addthis_key - addthis.com API key
 -- fct_license_text - markup designating a license for content on site
 --
 
@@ -141,19 +138,6 @@ again:
     tbsas := '';
   else
     tbsas := '';
-
-
-  --
-  -- Get AddthisKey from registry
-  --
-  --  if 0 then disable addthis support
-  --  if 1 use temp key to get basic social bookmarking
-  --  any other value should be a registered key
-  --
-  declare _addthis_key varchar;
-  _addthis_key := registry_get ('fct_addthis_key');
-  if (not isstring(_addthis_key)) _addthis_key := '0';
-  if ('1' = _addthis_key) _addthis_key := 'xa-4ce13e0065cdadc0';
 
 
   langs := http_request_header_full (lines, 'Accept-Language', 'en');
@@ -881,31 +865,6 @@ if (_subject <> '') {
 <!-- footer -->
     <div id="FT">
 	Faceted Search &amp; Find service v<?vsp http(DB.DBA.VAD_CHECK_VERSION('fct')); ?> as of <?V fct_build_info () ?><br/><br/>
-<?vsp if (_addthis_key <> '0') { ?>
-  <div id="FT_share">
-    <!-- AddThis Button BEGIN -->
-	<div class="addthis_toolbox addthis_default_style ">
-	<a class="addthis_button_facebook_like" id="fb_like_id"></a>
-	<a class="addthis_button_tweet"></a>
-	<a class="addthis_button_google_plusone" id="g_plusone_id"></a>
-	<a class="addthis_counter addthis_pill_style"></a>
-	</div>
-    <script type="text/javascript">
-    /*<![CDATA[*/
-	var addthis_config = {"data_track_clickback":true, ui_cobrand:"Virtuoso"};
-	var addthis_share = { url_transforms : { clean: true, remove: ['sid'] } };
-    /*]]>*/
-    </script>
-    <script type="text/javascript">
-	var fb_like_id = document.getElementById('fb_like_id');
-	if (fb_like_id) fb_like_id.setAttribute('fb:like:layout', 'button_count');
-	var g_plusone_id = document.getElementById('g_plusone_id');
-	if (g_plusone_id) g_plusone_id.setAttribute('g:plusone:size', 'medium');
-    </script>
-    <script type="text/javascript" src="http<?V case is_https_ctx () when 1 then 's' else '' end ?>://s7.addthis.com/js/250/addthis_widget.js#pubid=<?=_addthis_key?>"></script>
-    <!-- AddThis Button END -->
-  </div><!-- ft_s -->
-<?vsp } ?>
       <div id="ft_t"><br/>
         Alternative Linked Data Documents:
 	<?vsp if (VAD_CHECK_VERSION ('html5pivotviewer') is not null) { ?>	

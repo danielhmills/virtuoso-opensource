@@ -22,9 +22,8 @@
 --  51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 --
 -->
-<xsl:stylesheet version="1.0"
-                xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-                xmlns:addthis="http://www.addthis.com/help/api-spec">
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+
 <xsl:output method="html" encoding="UTF-8" indent="yes"/>
 <!-- Pager-related vars calculation -->
 
@@ -42,7 +41,6 @@
 <xsl:param name="p_xml"/>
 <xsl:param name="p_link"/>
 <xsl:param name="tree"/>
-<xsl:param name="addthis_key"/>
 <xsl:param name="type"/>
 <xsl:param name="agg_res"/>
 
@@ -206,7 +204,6 @@
   plink_a.innerHTML = 'Facet permalink';
   OAT.Dom.append (['sparql_a_ctr',sparql_a, plink_a]);
   </script>
-  <!--xsl:message terminate="no">addthis_key:<xsl:value-of select="$addthis_key"/></xsl:message-->
   <xsl:if test="$view-type = 'entities-list' or $type = 'default'">
   <!-- put in alternative PivotViewer link here... -->
   <script type="text/javascript">
@@ -753,26 +750,9 @@ function init() {
     window.geo_ui.loc_update(parseInt(acq_trig.innerHTML));
   }
     </xsl:if>
-    <xsl:if test="$addthis_key != ''">
-    </xsl:if>
   fct_init_ui();
 }<!-- init -->
   </script>
-  <xsl:if test="$addthis_key != ''">
-  <script type="text/javascript">
-  var addthis_config = {
-    "data_track_clickback":true,
-    ui_cobrand:"OpenLink Virtuoso",
-    pubid: "<xsl:value-of select="$addthis_key"/>"
-  };
-var addthis_share = {
-  url:  window.location.protocol + '//' + window.location.host + window.location.pathname + '?qxml=<xsl:value-of select="urlify ($p_xml)"/>',
-  title: "Faceted browser permalink",
-  Description: "This is a permalink to an OpenLink Faceted Browsing service page."
-};
-  </script>
-  <script type="text/javascript" src="http://s7.addthis.com/js/250/addthis_widget.js"></script>
-  </xsl:if>
 </xsl:template>
 
 <xsl:template match="@* | node()">
