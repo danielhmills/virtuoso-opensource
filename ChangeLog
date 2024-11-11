@@ -1,4 +1,426 @@
+2024-11-11  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated NEWS.md
+
+	Fixed disable readline/editline for isqlw
+
+2024-11-08  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated version to 7.2.14-rc3
+
+2024-11-08  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Added notice to isqlw this application has been deprecated (fixes #1322)
+
+	There is no use shipping a broken tool. We have decided to have it return
+	a deprecation notice in case users upgrade an existing installation.
+
+2024-11-08  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed int32 overflow when dbs_file_length unknown
+
+2024-11-08  Mitko Iliev  <imitko@openlinksw.com>
+
+	Added optional new algorithm to fix xte_sum64 collisions
+
+	For now we continue to use the old algorithm.
+
+2024-11-08  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed compiler errors from -Werror=logical-not-parentheses
+
+	Updated FCT vad version
+
+	Removed <base> tag
+
+	Fixed recommendations from Lighthouse accessibility check
+
+	Removed deprecated charset on stylesheet links
+
+	Fixed issue with page selector on mobile devices
+
+	Removed link to W3C XHTML validator
+
+	Moved javascript to the end of the page
+
+	Changed DOCTYPE from XHTML to HTML5
+
+2024-11-08  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Removed support for AddThis
+
+	This service was terminated on May 31 2023
+
+2024-11-08  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue generating short url on 404
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated version to 7.2.14-rc2
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge branch 'feature/gcc14-fixes' into develop/7
+
+	Fixes #1312
+	Closes #1324
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issue with pointer dereference
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issues compiling isqlw
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed wrong datatype
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed bad typedef
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed bad pointer indirection
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed compiler warnings for misleading indentation
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed qi_set_batch_sz() signature
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issues with stat_desc_t data
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed use separate macro for UST * data
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed use separate macro for XT * data
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed initialization of different pointers
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed bad pointer type
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed bad variable declaration
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed bad cast using thr_get_error_code
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issue with function prototype
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed bad or missing casts
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed casts on mp_alloc and mp_alloc_box
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed missing server_func cast
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed bad argument cast in virt_mbsnrtowcs and virt_wcsnrtombs
+
+	This fixes errors reported by gcc 14 -Derror=incompatible-pointer-types
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed wrong ODBC datatype
+
+2024-11-07  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed missing DB.DBA.SPARQL_BINDINGS_VIEW_C_0 for empty solution bindings
+
+2024-11-07  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed compiler warnings from -Wmultistatement-macros
+
+	Renamed last_majflt to swap_guard_last_majflt
+
+	Fixed memory leak in X509 cert chain
+
+	Removed rbuf_test function
+
+2024-10-28  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed arbitrary XML with CDATA having html tags has MIME re-placed with text/html
+
+2024-10-28  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated Conductor VAD version
+
+2024-10-28  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue when filename starts with underscore
+
+	An underscore is a valid start character for visible files
+
+2024-10-28  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed typo in generation of Transient view urls
+
+2024-10-28  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with RSS menu not working on Firefox
+
+	Added support to handle 101 connection upgrade in http_client
+
+	Added flag to see if connection session is server or client
+
+	Fixed missing encode flag
+
+	Added WSOCK.DBA.WEBSOCKET_CONNECT() for client operations
+
+	Added flag to encode if API used as WSock client
+
+2024-10-28  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed order of checking options and parameters
+
+	Options must be checked before parameters; params are for
+	execution only
+
+2024-10-28  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed allow soap_boolean to accept null for nullable arguments
+
+2024-10-28  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed errror state
+
+	A missing procedure should return 'not found' instead of 'internal error'
+
+2024-10-28  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed check which options are handled by endpoint
+
+	Check defines on rest method for additional http methods allowed
+
+2024-10-28  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with JSON registered REST services
+
+	JSON services should return JSON formatted error, not HTML body
+
+2024-10-28  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with generated names longer than 100 characters
+
+	The GraphQL query generator may compose name over 100 chars, leading to
+	truncated and bad sql. Fixed by making part after 80 chars a sha256 sum.
+
+2024-09-23  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated version to 7.2.14-rc1
+
+2024-09-23  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed DAV escape href should escape apos
+
+	Fixed issue when there are no more inits to skip
+
+2024-09-04  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge branch 'feature/backport' into develop/7
+
+	Updated FCT vad version
+
+2024-09-04  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed make 'x_content > iframe' content resizable
+
+	Added support for WKT rendition
+
+2024-09-04  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Added new MaxTempDBPages setting to virtuoso.ini
+
+	This setting limits the maximum size of the TempDatabase file on disk to a
+	fixed amount of used pages. If the engine detects this limit has been
+	exceeded, the query that was filling up the TempDatabase will return an
+	error and its transaction is killed.
+
+	  [TempDatabase]
+	  MaxTempDBPages = 50G  ; Limit size of the TempDatabase to 50GB on disk
+
+	Values ending in B, K, M, G will be converted to number of pages that
+	can fit into that size. Plain values are interpreted as number of pages.
+
+	For example 50G = (50 * 1024 * 1024 * 1024) / 8192 = 6553600 pages
+
+	The default value is 0 which means that the TempDatabase file can fill
+	up the whole disk partition it is located on.
+
+2024-09-04  Mitko Iliev  <imitko@openlinksw.com>
+
+	Added support for restricting the size of the tempdb
+
+2024-09-04  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Added temp space usage in db activity
+
+	Fixed distribution of vadpacker
+
+2024-09-03  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed issue re-initializing the pconfig struct
+
+2024-09-03  Mitko Iliev  <imitko@openlinksw.com>
+
+	Added put/delete http methods
+
+	Fixed key estimate on single only
+
+2024-09-03  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	 Added support for custom %T and %D http log format
+
+	The following format codes are added:
+
+	  %T            time to serve the request in seconds
+	  %D            time to serve the request in microseconds
+
+	  %{s}T         time to serve the request in seconds (same as %T)
+	  %{ms}T        time to serve the request in milliseconds
+	  %{us}T        time to serve the request in microseconds (same as %D)
+	  %{rt}T        time to serve the request using CPU timestamp counter
+
+2024-09-03  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed use get_usec_real_time() for rate limiting
+
+	Fixed use usec for cli_start_time for custom %T and %D http log format
+
+	Added new function get_usec_real_time
+
+2024-08-30  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated Vadpacker to v1.10
+
+2024-08-09  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed inc. estimate on transitive with unbound input
+
+	Fixed memory leak and error when service sets error status code
+
+	Fixed issue with user defined types (UDT)
+
+	Fixed issue with SN DETs errors
+
+2024-08-09  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with {col}
+
+	When a single column is specified as IRI then do not escape,
+	e.g. {col} means an IRI string
+
+2024-08-08  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with "Content-Encoding: gzip" (fixes #1308)
+
+2024-06-26  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue when there are no parts to split
+
+	Fixed issue with GROUP BY/ORDER BY on LEFT OUTER JOIN
+
+2024-06-24  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Fixed tested building against openssl 3.3.x
+
+2024-06-21  Ivan Mikhailov  <imikhailov@openlinksw.com>
+
+	Added support for (a relatively small amount of) blank nodes in SPARQL INSERT DATA
+
+	Fixes #126
+
+2024-06-18  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue calling concat(wide, utf8) (fixes 944)
+
+	A missing check for box_flags caused the result to be a broken wide
+	string.
+
+2024-06-18  Mitko Iliev  <imitko@openlinksw.com>
+
+	Fixed issue with lenght calculation in rdf_encode_for_uri()
+
+2024-06-18  Ted Thibodeau Jr  <tthibodeau@openlinksw.com>
+
+	Fixed NEWS.md
+
+2024-06-18  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated version to 7.2.14-dev to mark the start of a new development cycle
+
 2024-06-10  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge tag 'v7.2.13' into develop/7
+
+	Tagged for release
+
+2024-06-10  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge branch 'release/7.2.13' into stable/7
+
+	Updated NEWS.md and Changelog
 
 	Updated version to 7.2.13
 
