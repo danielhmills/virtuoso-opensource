@@ -48,6 +48,10 @@
 #error It appears that your system does not support unicode console input/output. If you happend to be using glibc 2.1, please upgrade to more recent version
 #endif
 
+#if defined (UNICODE) || defined (_UNICODE)
+#undef WITH_READLINE
+#undef WITH_EDITLINE
+#endif
 
 #if defined (WITH_READLINE)
 #include <readline/readline.h>
