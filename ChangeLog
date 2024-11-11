@@ -1,5 +1,9 @@
 2024-11-11  Patrick van Kleef  <pkleef@openlinksw.com>
 
+	Updated version to 7.2.14
+
+	Updated ChangeLog
+
 	Updated NEWS.md
 
 	Fixed disable readline/editline for isqlw
