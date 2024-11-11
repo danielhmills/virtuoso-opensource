@@ -1041,7 +1041,7 @@ SQLConnect (SQLHDBC hdbc,
 #ifndef DSN_TRANSLATION
 
   ASSERT_HANDLE_TYPE (hdbc, SQL_HANDLE_DBC);
-  return internal_sql_connect (hdbc, szDSN, cbDSN, szUID, cbUID, szPWD, cbPWD);
+  return internal_sql_connect (hdbc, (SQLCHAR *) szDSN, cbDSN, (SQLCHAR *) szUID, cbUID, (SQLCHAR *) szPWD, cbPWD);
 
 #else
   CON (con, hdbc);

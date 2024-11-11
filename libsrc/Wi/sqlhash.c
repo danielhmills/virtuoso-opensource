@@ -309,7 +309,7 @@ setp_after_deserialize (setp_node_t * setp)
   if (setp->setp_loc_ts)
     setp->setp_loc_ts->ts_order_ks->ks_key = ha->ha_key;
   if (setp->setp_ha && HA_ORDER == setp->setp_ha->ha_op)
-    setp->setp_org_slots = (state_slot_t **)box_concat (setp->setp_keys_box, setp->setp_dependent_box);
+    setp->setp_org_slots = (state_slot_t **) box_concat ((caddr_t) setp->setp_keys_box, (caddr_t) setp->setp_dependent_box);
 }
 
 

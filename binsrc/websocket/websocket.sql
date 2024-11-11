@@ -17,10 +17,10 @@
 --  with this program; if not, write to the Free Software Foundation, Inc.,
 --  51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 --
-create procedure WSOCK.DBA.WEBSOCKET_WRITE_MESSAGE (in sid int, in message varchar)
+create procedure WSOCK.DBA.WEBSOCKET_WRITE_MESSAGE (in sid int, in message varchar, in encode int default 0)
 {
   declare ses, data, payload any;
-  payload := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE (message);
+  payload := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE (message, encode);
   -- get cached
   ses := http_recall_session (sid, 0);
   -- write something
@@ -30,17 +30,16 @@ create procedure WSOCK.DBA.WEBSOCKET_WRITE_MESSAGE (in sid int, in message varch
 }
 ;
 
-create procedure WSOCK.DBA.WEBSOCKET_CLOSE_MESSAGE (in sid int, in code int, in message varchar)
+create procedure WSOCK.DBA.WEBSOCKET_CLOSE_MESSAGE (in sid int, in code int, in message varchar, in encode int default 0)
 {
-  declare h, c, ses, payload any;
+  declare c, ses, payload any;
   message := subseq (message, 0, 125 - 2); -- only short errors
   if (code <> bit_and (code, 0hex7fff))
     signal ('22023', 'Only short int is allowed for code');
-  h := '\x88\x00'; -- 10001000  FIN x80 | opcode 0x8
-  h[1] := length (message) + 2;
   c := '00';
   c := short_set (c, 0, code);
-  payload := concat (h,c,message);
+  payload := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE (concat (c,message), encode);
+  aset(payload, 0, 136);
 
   ses := http_recall_session (sid, 0);
   ses_write (payload, ses);
@@ -49,12 +48,12 @@ create procedure WSOCK.DBA.WEBSOCKET_CLOSE_MESSAGE (in sid int, in code int, in 
 }
 ;
 
-create procedure WSOCK.DBA.SEND_PING (in sid bigint, in message varchar := null)
+create procedure WSOCK.DBA.SEND_PING (in sid bigint, in message varchar := null, in encode int default 0)
 {
   declare ping varchar;
   declare ses any;
   message := subseq (message, 0, 125);
-  ping := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE(message);
+  ping := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE(message, encode);
   aset (ping, 0, 137);
   ses := http_recall_session (sid, 0);
   ses_write (ping, ses);
@@ -70,8 +69,22 @@ create procedure WSOCK.DBA.WEBSOCKET_ECHO (in message varchar, in args any)
 
 create procedure WSOCK.DBA.WEBSOCKET_ONMESSAGE_CALLBACK (inout ses any, inout cd any)
 {
+  return WSOCK.DBA.WEBSOCKET_CALLBACK (ses, cd, 1);
+}
+;
+
+create procedure WSOCK.DBA.WEBSOCKET_ON_SERVER_MESSAGE_CALLBACK (inout ses any, inout cd any)
+{
+  return WSOCK.DBA.WEBSOCKET_CALLBACK (ses, cd, 0);
+}
+;
+
+create procedure WSOCK.DBA.WEBSOCKET_CALLBACK (inout ses any, inout cd any, in server int)
+{
   declare data any;
   declare service_hook, args, response, payload any;
+  declare mask_message int;
+  declare callback_name varchar;
   if (isvector (cd) and length (cd) > 1)
     {
       service_hook := aref (cd, 0);
@@ -81,6 +94,16 @@ create procedure WSOCK.DBA.WEBSOCKET_ONMESSAGE_CALLBACK (inout ses any, inout cd
   else
     {
       return;
+    }
+  if (server)
+    {
+      callback_name := 'WSOCK.DBA.WEBSOCKET_ONMESSAGE_CALLBACK';
+      mask_message := 0;
+    }
+  else
+    {
+      callback_name := 'WSOCK.DBA.WEBSOCKET_ON_SERVER_MESSAGE_CALLBACK';
+      mask_message := 1;
     }
   -- input is there, read a line
   data := ses_read (ses, 2);
@@ -96,8 +119,10 @@ create procedure WSOCK.DBA.WEBSOCKET_ONMESSAGE_CALLBACK (inout ses any, inout cd
       fin := bit_shift (firstByte, -7);
       is_masked :=  case when (bit_and (secondByte, 128) = 128) then 1 else 0 end;
       payload_len := bit_and (secondByte, 127);
-      if (not is_masked) -- client message must be masked
+      if (not is_masked and server) -- client message must be masked
         signal ('22023', 'Request must be masked.');
+      if (is_masked and not server) -- client message must be masked
+        signal ('22023', 'Request must NOT be masked.');
       if (opcode <> 1 and opcode <> 2 and opcode <> 8 and opcode <> 0 and opcode <> 9 and opcode <> 10) -- supported: text, binary, close, ping, pong, frame
         signal ('22023', sprintf ('A frame of type %d is not supported.', opcode));
 
@@ -114,12 +139,19 @@ create procedure WSOCK.DBA.WEBSOCKET_ONMESSAGE_CALLBACK (inout ses any, inout cd
           tmp := ses_read (ses, 2);
           payload_len := tmp[1] + 256 * tmp[0];
         }
-      mask := ses_read (ses, 4);
-      result := make_string (payload_len);
-      request := ses_read (ses, payload_len);
-      for (i := 0; i < payload_len; i := i + 1)
+      if (server)
         {
-          result[i] := bit_xor(request[i], mask[mod(i, 4)]);
+          mask := ses_read (ses, 4);
+          result := make_string (payload_len);
+          request := ses_read (ses, payload_len);
+          for (i := 0; i < payload_len; i := i + 1)
+            {
+              result[i] := bit_xor(request[i], mask[mod(i, 4)]);
+            }
+        }
+      else
+        {
+          result := ses_read (ses, payload_len);
         }
       if (opcode = 8)
         return;
@@ -127,7 +159,7 @@ create procedure WSOCK.DBA.WEBSOCKET_ONMESSAGE_CALLBACK (inout ses any, inout cd
 
       if (opcode = 9) -- ping, send pong
         {
-          reply := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE(payload);
+          reply := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE(payload, mask_message);
           aset (reply, 0, 138);
           ses_write(reply, ses);
           payload := null;
@@ -156,12 +188,12 @@ create procedure WSOCK.DBA.WEBSOCKET_ONMESSAGE_CALLBACK (inout ses any, inout cd
       if (response is not null)
         {
           -- write a reply (optional)
-          reply := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE (response);
+          reply := WSOCK.DBA.WEBSOCKET_ENCODE_MESSAGE (response, mask_message);
           ses_write(reply, ses);
         }
     }
   -- set recv handler back
-  http_on_message (ses, 'WSOCK.DBA.WEBSOCKET_ONMESSAGE_CALLBACK', cd, 0);
+  http_on_message (ses, callback_name, cd, 0);
 }
 ;
 
@@ -313,5 +345,32 @@ create procedure WSOCK.DBA."websockets" () __SOAP_HTTP 'text/plain'
      http_status_set (400);
    }
  return '';
+}
+;
+
+create procedure WSOCK.DBA.WEBSOCKET_CONNECT(in url varchar, in headers varchar default null, in sid bigint default null,
+    in callback varchar default null, in args any default null)
+{
+  declare resp, conn any;
+  declare token, sec varchar;
+  token := encode_base64(xenc_rand_bytes(16,0));
+  if (sid is null)
+    sid := long_ref (xenc_rand_bytes (4,0),0);
+  if (headers is not null)
+    headers := concat(rtrim(headers, '\r\n'), '\r\n');
+  headers := concat (headers, 'Sec-WebSocket-Version: 13\r\n',
+    'Sec-WebSocket-Key: ', token, '\r\n',
+    'Connection: Upgrade\r\n',
+    'Upgrade: websocket\r\n');
+  conn := HTTP_CLIENT_EXT(url, http_method=>'GET', http_headers=>headers, headers=>resp);
+  sec := http_request_header (resp, 'Sec-WebSocket-Accept', null, null);
+  if (sec <> sha1_digest (concat (token, '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')))
+    signal('37000', 'Can not connect to websocket');
+  if (__tag(conn) = 241)
+    {
+      http_on_message (conn, 'WSOCK.DBA.WEBSOCKET_ON_SERVER_MESSAGE_CALLBACK', vector (callback, args, null), 1, 1);
+      http_keep_session(conn, sid, 0);
+    }
+  return sid;
 }
 ;

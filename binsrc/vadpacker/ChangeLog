@@ -1,4 +1,50 @@
+2024-08-30  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Updated NEWS
+
+	Updated version number to 1.10
+
+	Updated AUTHORS
+
+	Merge branch 'feature/fixes' into develop
+
+	Added exception handler to catch errors in createSticker()
+
+	Added exception handler to catch errors in createVad()
+
+	Fixed readability of argument parsing
+
+	Fixed use mtime=0 during  gzip compression
+
+	Fixed use BytesIO and GzipFile for Python 2.7 and newer
+
+	Removed old copy of elementtree
+
+	Fixed issue with python 2.7.5
+
+	Fixed check if we are running Python 2.7.5 or newer
+
+2024-05-20  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge tag 'v1.9' into develop
+	Tagged for release
+
+	Merge branch 'release/1.9'
+
+	Updates NEWS and ChangeLog
+
+	Updated version to 1.9
+
+	Fixed warning of invalid escape sequence
+
 2024-03-14  Patrick van Kleef  <pkleef@openlinksw.com>
+
+	Merge tag 'v1.8' into develop
+	Tagged for release
+
+	Merge branch 'release/1.8'
+
+	Updated NEWS and Changelog
 
 	Updated version to 1.8
 

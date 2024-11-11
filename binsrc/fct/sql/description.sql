@@ -887,10 +887,11 @@ create procedure b3s_o_is_img (in x any)
 ;
 
 create procedure
-b3s_http_print_r (in _object any, in sid varchar, in prop any, in langs any, in rel int := 1, in acc any := null, in _from varchar := null, in flag int := 0)
+b3s_http_print_r (in _object any, in sid varchar, in prop any, in langs any, in rel any, in acc any, in _from varchar, in flag int, inout js any)
 {
    declare lang, rdfs_type, rdfa, visible any;
    declare robotsrel varchar;
+   declare obj_id int;
 
    if (_object is null)
      return;
@@ -926,9 +927,34 @@ again:
    if (__tag (_object) = 246)
      {
        declare dat any;
+       obj_id := rdf_box_ro_id (_object);
        dat := __rdf_sqlval_of_obj (_object, 1);
        _object := dat;
        goto again;
+     }
+   else if (prop = 'http://www.opengis.net/ont/geosparql#asWKT' and __proc_exists ('GEOS getCentroid',2) is not null)
+     {
+       declare cent varchar;
+       http (sprintf ('<div id="map_%d" class="ol_map"></div>', obj_id));
+       if (js is null)
+         {
+           js := string_output ();
+           http ('var raster = new ol.layer.Tile({ source: new ol.source.OSM() });\n', js);
+           http ('var format = new ol.format.WKT();\n', js);
+
+         }
+       cent := "GEOS getCentroid"(ST_GeomFromEWKT(cast (_object as varchar)));
+       http (sprintf ('var wkt_%d = "', obj_id), js); http_value (_object, null, js); http ('";\n', js);
+       http (sprintf ('var cent_%d = "%s";\n', obj_id, cast (cent as varchar)), js);
+       http (sprintf ('var feature_%d = format.readFeature(wkt_%d);\n', obj_id, obj_id), js);
+       http (sprintf ('feature_%d.getGeometry().transform("EPSG:4326", "EPSG:3857");\n', obj_id), js);
+       http (sprintf ('var centerXY_%d = format.readGeometry(cent_%d).transform("EPSG:4326", "EPSG:3857").getCoordinates();\n', obj_id, obj_id), js);
+       http (sprintf ('var vector_%d = new ol.layer.Vector({ source: new ol.source.Vector({ features: [feature_%d] }) });\n', obj_id, obj_id), js);
+       http (sprintf ('var map_%d = new ol.Map({ layers: [raster, vector_%d],target:"map_%d",view:new ol.View({center: centerXY_%d, zoom: 6 })});\n',
+             obj_id, obj_id, obj_id, obj_id), js);
+       http (sprintf ('<span %s>', rdfa));
+       http_value (_object);
+       http ('</span>');
      }
    else if (__tag (_object) = 243 or (isstring (_object) and (__box_flags (_object)= 1 or _object like 'nodeID://%' or _object like 'http://%' or _object like 'https://%')))
      {
@@ -1199,14 +1225,14 @@ fct_make_selector (in subj any, in sid integer)
 }
 ;
 
-create procedure fct_make_curie (in url varchar, in lines any)
+create procedure fct_make_curie (in url varchar, in lines any, in triples_found int default 1)
 {
   declare curie, chost, dhost varchar;
   declare len integer;
 
   len := cast (registry_get('c_uri_min_url_len') as integer);
   if (len = 0) len := 255;
-  if (__proc_exists ('WS.CURI.curi_make_curi') is null OR length(url) < len)
+  if (__proc_exists ('WS.CURI.curi_make_curi') is null OR length(url) < len OR 0 = triples_found)
     return url;
 
   curie := WS.CURI.curi_make_curi (url);

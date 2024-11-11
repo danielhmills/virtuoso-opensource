@@ -2289,6 +2289,39 @@ http_cli_parse_authorize_headers (http_cli_ctx * ctx)
 }
 
 HC_RET
+http_cli_std_handle_upgrade (http_cli_ctx * ctx, caddr_t parm, caddr_t ret_val, caddr_t err_ret)
+{
+  int ret;
+  char *s = NULL, *last;
+  caddr_t url, loc, err = NULL, cookie_header = NULL;
+  dk_set_t cookies = NULL;
+  CATCH_ABORT (http_cli_read_resp_hdrs, ctx, ret);
+  DO_SET (caddr_t, hdr, &ctx->hcctx_resp_hdrs)
+    {
+      if (!strnicmp ("Upgrade:", hdr, 8))
+        {
+	  last = hdr + box_length (hdr) - 3;
+	  s = hdr + 8;
+	  s = skip_lwsp (s, last);
+          if (!strnicmp ("websocket", s, 9))
+            ctx->hcctx_connection_upgrade = HC_U_WEBSOCKET;
+          else
+            ctx->hcctx_connection_upgrade = HC_U_UNKNOWN;
+        }
+      else if (!strnicmp ("Connection:", hdr, 11))
+        {
+	  last = hdr + box_length (hdr) - 3;
+	  s = hdr + 11;
+	  s = skip_lwsp (s, last);
+          if (!strnicmp ("upgrade", s, 7))
+            F_SET (ctx, HC_F_UPGRADE);
+        }
+    }
+  END_DO_SET ();
+  return (HC_RET_OK);
+}
+
+HC_RET
 http_cli_std_handle_redir (http_cli_ctx * ctx, caddr_t parm, caddr_t ret_val, caddr_t err_ret)
 {
   int ret;
@@ -2463,6 +2496,8 @@ http_cli_std_init (char * url, caddr_t * qst)
 
   h = http_cli_make_handler_frame (http_cli_handle_socks_conn_post, NULL, NULL, NULL);
   http_cli_push_hook (ctx, HC_HTTP_CONN_POST, h);
+
+  http_cli_push_resp_evt (ctx, 101, http_cli_make_handler_frame (http_cli_std_handle_upgrade, NULL, NULL, NULL));
 
   return (ctx);
 }
@@ -2847,6 +2882,14 @@ bif_http_client_impl (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args, co
   start_dt = get_msec_real_time ();
   if (!http_cli_main (ctx))
     ret = box_copy_tree (ctx->hcctx_resp_body);
+  if (HC_U_WEBSOCKET == ctx->hcctx_connection_upgrade)
+    {
+      dk_free_tree (ret);
+      ret = dk_alloc_box (2 * sizeof (caddr_t), DV_CONNECTION);
+      ((caddr_t *)ret)[0] = (caddr_t) ctx->hcctx_http_out;
+      ((caddr_t *)ret)[1] = (caddr_t) 1L;
+      ctx->hcctx_http_out = NULL;
+    }
   if (NULL == ret)
     ret = box_dv_short_string ("");
 

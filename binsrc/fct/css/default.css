@@ -608,9 +608,11 @@ a.desc_permalink { font-size: 9pt; font-weight: normal }
 
 #fct_form { margin-top: 1ex }
 
-.addthis_toolbox { margin: 20px 10px auto; }
-
-#FT_share .addthis_toolbox { margin: 0 }
-
 img.dicon { border-width:0; height:20px; vertical-align: middle; }
 
+div.content.embedded > iframe { resize: auto; }
+div.content.embedded { resize: auto; overflow: auto; }
+
+.text-nowrap {
+  white-space: nowrap;
+}

@@ -738,6 +738,30 @@ DBG_NAME (it_temp_free) (DBG_PARAMS index_tree_t * it)
   return 1;
 }
 
+void
+it_temp_write_cancel (index_tree_t * tree)
+{
+  int inx;
+  ptrlong dp;
+  buffer_desc_t * buf;
+  dk_hash_iterator_t hit;
+  if (KI_TEMP != tree->it_key->key_id)
+    GPF_T1 ("it_temp_write_cancel is supposed to use with temp tree only");
+  for (inx = 0; inx < IT_N_MAPS; inx++)
+    {
+      it_map_t * itm = &tree->it_maps[inx];
+      dk_hash_iterator (&hit, &itm->itm_dp_to_buf);
+      while (dk_hit_next (&hit, (void**) &dp, (void **) &buf))
+        {
+          if (!BUF_WIRED(buf))
+            continue;
+          if (buf->bd_iq)
+            buf_cancel_write (buf);
+          BD_SET_IS_WRITE (buf, 0);
+        }
+    }
+}
+
 
 page_map_t *
 map_allocate (ptrlong sz)
@@ -3881,6 +3905,7 @@ dbs_init_id (char * str)
 }
 
 extern int32 rdf_rpid64_mode;
+extern int32 xte_use_mhash;
 
 void
 dbs_write_cfg_page (dbe_storage_t * dbs, int is_first)
@@ -3934,6 +3959,7 @@ dbs_write_cfg_page (dbe_storage_t * dbs, int is_first)
   db.db_timezoneless_datetimes = timezoneless_datetimes;
   /* should we check it is set to true? */
   db.db_rdf_id64 = rdf_rpid64_mode;
+  db.db_xte_hash_mode = xte_use_mhash;
   LSEEK (fd, 0, SEEK_SET);
   memcpy (zero, &db, sizeof (db));
   rc = write (fd, zero, PAGE_SZ);
@@ -4372,6 +4398,7 @@ dbs_read_cfg_page (dbe_storage_t * dbs, wi_database_t * cfg_page)
       timezoneless_datetimes = cfg_page->db_timezoneless_datetimes;
     }
   rdf_rpid64_mode = cfg_page->db_rdf_id64;
+  xte_use_mhash = cfg_page->db_xte_hash_mode;
   if (cfg_page->db_byte_order != DB_ORDER_UNKNOWN && cfg_page->db_byte_order != DB_SYS_BYTE_ORDER)
     {
 #ifdef BYTE_ORDER_REV_SUPPORT

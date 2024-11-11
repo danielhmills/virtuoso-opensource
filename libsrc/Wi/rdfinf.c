@@ -2513,7 +2513,7 @@ data_source_t *
 qn_skip_inits (data_source_t * qn)
 {
   data_source_t * next;
-  while ((next = qn_next (qn)))
+  while (qn && (next = qn_next (qn)))
     {
       if (!IS_QN (qn, hash_fill_node_input))
 	break;

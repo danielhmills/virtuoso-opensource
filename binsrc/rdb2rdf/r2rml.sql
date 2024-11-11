@@ -505,7 +505,7 @@ create method R2RML_GEN_CREATE_IOL_CLASS_OR_REF (in fld_idx integer, in mode int
 {
   declare format_string, class_iri varchar;
   declare format_ses, format_parts, col_descs, argtypes, class_digest any;
-  declare argctr, argcount integer;
+  declare argctr, argcount, raw_string integer;
   -- dbg_obj_princ ('R2RML_GEN_CREATE_IOL_CLASS_OR_REF (', fld_idx, mode, triplesmap_iid, src_template, termtype, dt, lang, ')');
   if (termtype = 'http://www.w3.org/ns/r2rml#BlankNode')
     {
@@ -513,6 +513,10 @@ create method R2RML_GEN_CREATE_IOL_CLASS_OR_REF (in fld_idx integer, in mode int
       termtype := 'http://www.w3.org/ns/r2rml#IRI';
     }
   format_parts := DB.DBA.R2RML_SPLIT_TEMPLATE (src_template);
+  -- Pure {col} case, should not escape
+  raw_string := 0;
+  if (termtype = 'http://www.w3.org/ns/r2rml#IRI' and length(format_parts) = 3 and aref(format_parts,0) = '' and aref(format_parts,2) = '')
+    raw_string := 1;
   argcount := (length (format_parts) - 1) / 2;
   if (0 = argcount) -- constant written as a template for some reason.
     {
@@ -540,7 +544,7 @@ create method R2RML_GEN_CREATE_IOL_CLASS_OR_REF (in fld_idx integer, in mode int
         when (coltype[1] in (__tag of bigint)) then '%ld'
         when (coltype[1] in (__tag of real, __tag of double precision, __tag of numeric)) then '%g'
         when (coltype[1] in (__tag of varchar, __tag of nvarchar, __tag of long varchar, __tag of long nvarchar)) then
-          case (termtype) when 'http://www.w3.org/ns/r2rml#Literal' then '%s' else '%U' end
+          case when termtype = 'http://www.w3.org/ns/r2rml#Literal' or raw_string then '%s' else '%U' end
         else
           signal ('R2RML',
             sprintf ('Unsupported column type %d, column %s of %s',

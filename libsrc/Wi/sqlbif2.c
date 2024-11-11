@@ -279,7 +279,7 @@ tcpses_check_disk_error (dk_session_t *ses, caddr_t *qst, int throw_error)
 {
   query_instance_t *qi = (query_instance_t *) qst;
 
-  if (!ses || !ses->dks_session || !ses->dks_session->ses_class != SESCLASS_STRING
+  if (!ses || !ses->dks_session || ses->dks_session->ses_class != SESCLASS_STRING
       || !ses->dks_session->ses_file->ses_max_blocks_init)
     return 0;
 

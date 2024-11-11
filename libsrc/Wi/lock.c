@@ -2220,7 +2220,7 @@ time_msec_t checkpointed_last_time = 0;
 #include <sys/resource.h>
 #endif
 
-long last_majflt = 0;
+long swap_guard_last_majflt = 0;
 long swap_guard_threshold = 300;
 int32 swap_guard_on = 0;
 int process_is_swapping = 0;
@@ -2258,15 +2258,15 @@ the_grim_mem_guard ()
   return;
   getrusage (RUSAGE_SELF, &ru);
 #ifdef GPF_ON_SWAPPING
-  if (ru.ru_majflt - last_majflt > swap_guard_threshold)
+  if (ru.ru_majflt - swap_guard_last_majflt > swap_guard_threshold)
     GPF_T1 ("started swapping");
 #endif
   if (swap_guard_on & 0x10)
     {
-      if ((ru.ru_majflt - last_majflt > swap_guard_threshold) && !wi_inst.wi_is_checkpoint_pending)
+      if ((ru.ru_majflt - swap_guard_last_majflt > swap_guard_threshold) && !wi_inst.wi_is_checkpoint_pending)
         GPF_T1 ("The process started swapping and SwapGuard parameter has bit 0x10 set on, forcing immediate kill. ");
     }
-  if (virtuoso_server_initialized && ru.ru_majflt - last_majflt > swap_guard_threshold)
+  if (virtuoso_server_initialized && ru.ru_majflt - swap_guard_last_majflt > swap_guard_threshold)
     {
       if (!process_is_swapping)
 	log_error ("The process started swapping, all pending transactions will be killed");
@@ -2276,7 +2276,7 @@ the_grim_mem_guard ()
     {
       if (process_is_swapping)
 	process_is_swapping = 0;
-  last_majflt = ru.ru_majflt;
+      swap_guard_last_majflt = ru.ru_majflt;
     }
 #endif
 }

@@ -1857,9 +1857,9 @@ qn_is_cl (data_source_t * qn)
 
 
 int
-ts_need_large_out_batch (table_source_t * ts)
+ts_need_large_out_batch (data_source_t * ts)
 {
-  data_source_t * next = qn_next ((data_source_t *)ts);
+  data_source_t * next = qn_next (ts);
   if (!next)
     return 0;
   if (IS_QN (next, setp_node_input))
@@ -1896,7 +1896,7 @@ qi_batch_inc (caddr_t * inst, data_source_t * qn)
     }
   for (prev = qn; prev; prev = qn_next (prev))
     {
-      if (ts_need_large_out_batch ((table_source_t *)prev))
+      if (ts_need_large_out_batch (prev))
 	inc += qn_batch_inc (inst, prev);
     }
   return inc;
@@ -1904,13 +1904,13 @@ qi_batch_inc (caddr_t * inst, data_source_t * qn)
 
 
 void
-qi_set_batch_sz (caddr_t * inst, table_source_t * ts, int new_sz)
+qi_set_batch_sz (caddr_t * inst, data_source_t * ts, int new_sz)
 {
   data_source_t *pred;
   int any_qf = 0;
   if (!ts_need_large_out_batch (ts))
-    ts = (table_source_t*)ts->src_gen.src_prev;
-  for (pred = (data_source_t *) ts; pred; pred = pred->src_prev)
+    ts = ts->src_prev;
+  for (pred = ts; pred; pred = pred->src_prev)
     {
       if (SRC_IN_STATE (pred, inst))
 	goto found;
@@ -1923,7 +1923,7 @@ qi_set_batch_sz (caddr_t * inst, table_source_t * ts, int new_sz)
 found:
   TC (tc_adjust_batch_sz);
   tc_cum_batch_sz += new_sz;
-  for (pred = (data_source_t *) ts; pred; pred = pred->src_prev)
+  for (pred = ts; pred; pred = pred->src_prev)
     {
       if (!any_qf)
 	any_qf = qn_is_cl (pred);
@@ -1934,7 +1934,7 @@ found:
 	  if (IS_QN (pred, subq_node_input))
 	    {
 	      QNCAST (subq_source_t, sqs, pred);
-	      qi_set_batch_sz (inst, (table_source_t *) sqs->sqs_query->qr_select_node->src_gen.src_prev, new_sz);
+	      qi_set_batch_sz (inst, sqs->sqs_query->qr_select_node->src_gen.src_prev, new_sz);
 	    }
 	}
       else
@@ -2116,7 +2116,7 @@ ts_check_batch_sz (table_source_t * ts, caddr_t * inst, it_cursor_t * itc)
 	      return;
 	    }
 	}
-      qi_set_batch_sz (inst, ts, target_sz);
+      qi_set_batch_sz (inst, (data_source_t *)ts, target_sz);
     }
 }
 
@@ -2176,7 +2176,7 @@ ins_check_batch_sz (insert_node_t * ins, caddr_t * inst, it_cursor_t * itc)
 	  return;
 	}
     }
-  qi_set_batch_sz (inst, ins, target_sz);
+  qi_set_batch_sz (inst, (data_source_t *)ins, target_sz);
 }
 
 /* query parallelization */
@@ -3057,6 +3057,8 @@ int
 tsp_next (ts_split_state_t * tsp, it_cursor_t * itc, buffer_desc_t ** buf_ret, it_cursor_t * prev)
 {
   int nth = ++tsp->tsp_nth_call;
+  if (!tsp->tsp_n_parts)
+    return TSS_NO_SPLIT;
   if (itc->itc_insert_key->key_is_col && enable_col_split)
     return tsp_next_col (tsp, itc, buf_ret, prev);
   for (;;)
@@ -3824,11 +3826,11 @@ vec_fref_group_result (fun_ref_node_t * fref, table_source_t * ts, caddr_t * ins
     hash_area_t *ha = setp->setp_ha;
     if (HA_GROUP != ha->ha_op)
       continue;
-      if (1 == n_sets && (tree = (index_tree_t*) (SSL_REF == ha->ha_tree->ssl_type || SSL_VEC == ha->ha_tree->ssl_type  ? sslr_qst_get (inst, (state_slot_ref_t*)ha->ha_tree, 0) : qst_get (inst, ha->ha_tree))))
-      {
-	if (tree->it_hi && tree->it_hi->hi_chash)
-	  chash_to_memcache (inst, tree, ha);
-      }
+    if (1 == n_sets && (tree = (index_tree_t*) (SSL_REF == ha->ha_tree->ssl_type || SSL_VEC == ha->ha_tree->ssl_type  ? sslr_qst_get (inst, (state_slot_ref_t*)ha->ha_tree, 0) : qst_get (inst, ha->ha_tree))))
+    {
+      if (tree->it_hi && tree->it_hi->hi_chash)
+	chash_to_memcache (inst, tree, ha);
+    }
   }
   END_DO_SET ();
   if (fref->src_gen.src_continuations)
@@ -3993,7 +3995,7 @@ ts_aq_result (table_source_t * ts, caddr_t * inst)
     }
   if (prof_on || !ts->src_gen.src_query->qr_select_node)
     {
-      qi_add_stats ((QI*)inst, qst_get (inst, ts->ts_aq_qis), ts->src_gen.src_query);
+      qi_add_stats ((QI*)inst, (QI **) qst_get (inst, ts->ts_aq_qis), ts->src_gen.src_query);
     }
   if (!ts->ts_agg_node)
     return;

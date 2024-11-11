@@ -257,7 +257,7 @@ dbs_extend_ext_cache (dbe_storage_t * dbs)
 }
 
 int32 dbs_check_extent_free_pages = 1;
-
+int64 dbs_max_temp_db_pages = 0;
 
 int
 dbs_file_extend (dbe_storage_t * dbs, extent_t ** new_ext_ret, int is_in_sys_em)
@@ -268,6 +268,8 @@ dbs_file_extend (dbe_storage_t * dbs, extent_t ** new_ext_ret, int is_in_sys_em)
   dp_addr_t ext_first = dbs->dbs_n_pages;
   ASSERT_IN_DBS (dbs);
   if (dbf_no_disk)
+    return 0;
+  if (dbs_max_temp_db_pages > EXTENT_SZ && DBS_TEMP == dbs->dbs_type && (dbs->dbs_n_pages + EXTENT_SZ) > dbs_max_temp_db_pages)
     return 0;
   if (dbs->dbs_disks)
     {
@@ -522,12 +524,12 @@ ext_get_dp (extent_t * ext, dp_addr_t near)
     {
       if (!DP_IN_EXTENT (near, ext))
 	GPF_T1 ("near outside of extent");
-	word = (near - ext->ext_dp) / BITS_IN_LONG;
-	if (ext->ext_pages[word] != 0xffffffff)
-	  {
-	    bit = word_free_bit (ext->ext_pages[word]);
-	    goto bit_found;
-	  }
+      word = (near - ext->ext_dp) / BITS_IN_LONG;
+      if (ext->ext_pages[word] != 0xffffffff)
+	{
+	  bit = word_free_bit (ext->ext_pages[word]);
+	  goto bit_found;
+	}
     }
   for (word = 0; word < EXTENT_SZ / BITS_IN_LONG; word++)
     {
@@ -1515,7 +1517,7 @@ em_compact (extent_map_t * em, int free_em)
 	      IN_DBS (em->em_dbs);
 	      dbs_locate_incbackup_bit (em->em_dbs, dp, &array, &array_page, &inx, &bit);
 	      array[inx] = 0;
-	      page_set_checksum_init (array);
+	      page_set_checksum_init ((db_buf_t) array);
 	      if (EXT_INDEX == EXT_TYPE (ext))
 		{
 		  /* when dropping a column extent map in a drop index, cpt remaps are possible, so if any, drop them. The remap pagge is dropped anyway as part of the em */

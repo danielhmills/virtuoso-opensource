@@ -609,7 +609,7 @@ idx_found:
     }
   else
     {
-      int wide_len_diff = (int) virt_mbsnrtowcs (NULL, &str, ofs - prev_ofs, 0, &mb);
+      int wide_len_diff = (int) virt_mbsnrtowcs (NULL, (const unsigned char **) &str, ofs - prev_ofs, 0, &mb);
       prev_wide_len += wide_len_diff;
       prev_ofs = ofs;
       ret_vec [idx_to_fill] = prev_wide_len;

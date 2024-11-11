@@ -761,7 +761,7 @@ xml_find_child (caddr_t *entity, const char *szSearchName, const char *szURI, in
 caddr_t *
 xml_find_one_child (caddr_t *entity, char *szSearchName, char **szURIs, int nth, int *start_inx)
 {
-  const char **urls = szURIs;
+  const char **urls = (const char **) szURIs;
   caddr_t * rc = NULL;
   for (; urls[0]; urls++)
     {
@@ -4220,9 +4220,11 @@ bif_soap_box_structure (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 static caddr_t
 bif_soap_boolean (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
-  char *szMe = "soap_boolean";
-  ptrlong val = bif_long_arg (qst, args, 0, szMe);
-
+  const char *szMe = "soap_boolean";
+  int is_null;
+  ptrlong val = bif_long_or_null_arg (qst, args, 0, szMe, &is_null);
+  if (is_null)
+    return NEW_DB_NULL;
   return list (2, dk_alloc_box (0, DV_COMPOSITE), box_num_nonull (val));
 }
 
@@ -11355,7 +11357,61 @@ end:
   return params;
 }
 
-#define SOAP_HTTP
+void
+ws_soap_qr_opt_check (ws_connection_t * ws, query_t * qr)
+{
+  int inx, m;
+  caddr_t opts, tmp[BOX_AUTO_OVERHEAD+5], item;
+  dk_set_t set = NULL;
+  if (!qr || !ARRAYP(qr->qr_proc_soap_opts))
+    return;
+  BOX_AUTO_TYPED (caddr_t, item, tmp, 5, DV_STRING);
+  strcpy_box_ck (item,"Http");
+  inx = find_index_to_vector (item, (caddr_t) qr->qr_proc_soap_opts, BOX_ELEMENTS(qr->qr_proc_soap_opts), DV_ARRAY_OF_POINTER, 0, 2, "http_rest");
+  if (!inx || !DV_STRINGP (qr->qr_proc_soap_opts[inx]))
+    goto done;
+  split_string (qr->qr_proc_soap_opts[inx], NULL, &set);
+  http_set_default_options (ws);
+  DO_SET (caddr_t, meth, &set)
+    {
+      m = http_method_id (meth);
+      ws->ws_options [m] = '\x1';
+    }
+  END_DO_SET();
+done:
+  dk_free_tree (list_to_array (set));
+  BOX_DONE(item,tmp);
+}
+
+static void
+ws_rest_handle_error (dk_session_t * ses, char * media_type, caddr_t * err_ret, char * code, int * http_resp_code, soap_ctx_t * ctx, int mode)
+{
+  char tmp[64];
+  char *state, *message;
+  caddr_t err = err_ret ? *err_ret : NULL;
+  if (!IS_BOX_POINTER(err))
+    return;
+  state = ERR_STATE (err);
+  if (!strcmp (state, "VSPRT")) /* service generated error, do not replace with built-in error */
+    return;
+  message = ERR_MESSAGE (err);
+  if (!mode) /* SOAP like service */
+    {
+      err_ret[0]  = ws_soap_error (ses, code, state, message, ctx->soap_version, 0 /* no uddi */, http_resp_code, ctx);
+      dk_free_tree (err);
+    }
+  else if (media_type && strstr (media_type, "json")) /* RESTful services registered to return json */
+    {
+      strses_flush (ses);
+      *http_resp_code = (code && '3' == code[0]) ? 400 : 500;
+      snprintf (tmp, sizeof (tmp), "{\"error\":\"%s\",\"code\":\"%s\",\"message\":\"", state, code);
+      session_buffered_write (ses, tmp, strlen (tmp));
+      dks_esc_write (ses, message, strlen (message), CHARSET_UTF8, CHARSET_UTF8, DKS_ESC_JSWRITE_DQ);
+      session_buffered_write (ses, "\"}", 2);
+      err_ret[0] = srv_make_new_error ("VSPRT", "SP003", "%s", message);
+      dk_free_tree (err);
+    }
+}
 
 caddr_t
 ws_soap_http (ws_connection_t * ws)
@@ -11366,7 +11422,7 @@ ws_soap_http (ws_connection_t * ws)
   const char *usr_own;
   client_connection_t *cli = ws->ws_cli;
   query_t *qr = NULL;
-  caddr_t err = NULL, *pars, text;
+  caddr_t err = NULL, *pars = NULL, text;
   dk_session_t *ses = ws->ws_strses;
   ws_http_map_t *vd = ws->ws_map;
   wcharset_t *volatile charset = ws->ws_charset;
@@ -11412,6 +11468,7 @@ ws_soap_http (ws_connection_t * ws)
       qrs = get_granted_qrs (cli, NULL, NULL, 0);
       if (!(qr = proc_find_in_grants (szMethod, &qrs, NULL)))
 	{
+          http_resp_code = 404;
 	  err = srv_make_new_error ("37000", "SOH03", "There is no such procedure: %.500s", szFullProcName);
 	  goto end;
 	}
@@ -11425,14 +11482,6 @@ ws_soap_http (ws_connection_t * ws)
 
   is_http = (qr->qr_proc_place & SOAP_MSG_HTTP);
 
-#ifndef SOAP_HTTP
-  if (!is_http)
-    {
-      err = srv_make_new_error ("37000", "SOH04", "There is no such procedure");
-      goto end;
-    }
-#endif
-
   if (!ws->ws_header)
     {
       if (is_http)		/* we should do this only when no error */
@@ -11441,30 +11490,22 @@ ws_soap_http (ws_connection_t * ws)
 	      qr->qr_proc_alt_ret_type, CHARSET_NAME (charset, "ISO-8859-1"));
 	  ws->ws_header = box_dv_short_string (mime_type);
 	}
-#ifdef SOAP_HTTP
       else
 	{
 	  snprintf (mime_type, sizeof (mime_type), "Content-Type: text/xml; charset=\"%s\"\r\n", CHARSET_NAME (charset, "ISO-8859-1"));
 	  ws->ws_header = box_dv_short_string (mime_type);
 	}
-#endif
     }
   ctx.literal = (SOAP_MSG_LITERAL & qr->qr_proc_place);
+  ws_soap_qr_opt_check (ws, qr);
+  if (NULL != vd && vd->hm_exec_opts && WM_OPTIONS == ws->ws_method)
+    goto end;
   pars = soap_http_params (qr, params, &text, &err, &ctx);
   if (err)
     {
       dk_free_tree ((box_t) pars);
       dk_free_box (text);
-#ifdef SOAP_HTTP
-      if (!is_http)
-	{
-	  caddr_t err1;
-	  err1 = ws_soap_error (ses, "320", ERR_STATE (err), ERR_MESSAGE (err), ctx.soap_version, 0,
-	      &http_resp_code, &ctx);
-	  dk_free_tree (err);
-	  err = err1;
-	}
-#endif
+      ws_rest_handle_error (ses, qr->qr_proc_alt_ret_type, &err, "320", &http_resp_code, &ctx, is_http);
       goto end;
     }
 
@@ -11479,11 +11520,6 @@ ws_soap_http (ws_connection_t * ws)
 	dk_free_tree ((box_t) pars);
 	goto end;
       }
-      if (NULL != vd && vd->hm_exec_opts && WM_OPTIONS == ws->ws_method)
-        {
-	  dk_free_tree ((box_t) pars);
-	  goto end;
-        }
       err = qr_exec (cli, call_qry, CALLER_LOCAL, NULL, NULL,
 	  &lc, pars, NULL, 1);
     dk_free_box ((box_t) pars);
@@ -11493,28 +11529,17 @@ ws_soap_http (ws_connection_t * ws)
 	if (lc)
 	  lc_free (lc);
 	qr_free (call_qry);
-#ifdef SOAP_HTTP
-	if (!is_http)
-	  {
-	    caddr_t err1;
-	      err1 = ws_soap_error (ses, "400", ERR_STATE (err), ERR_MESSAGE (err), ctx.soap_version, 0,
-		  &http_resp_code, &ctx);
-	    dk_free_tree (err);
-	    err = err1;
-	  }
-#endif
+          ws_rest_handle_error (ses, qr->qr_proc_alt_ret_type, &err, "400", &http_resp_code, &ctx, is_http);
 	goto end;
       }
     if (lc)
       {
 	if (IS_BOX_POINTER (lc->lc_proc_ret))
 	  {
-#ifdef SOAP_HTTP
 	    if (!is_http)
 	      err = soap_serialize (ses, cli, qr, lc, &ctx,
 		  schema_ns, 0, &http_resp_code, szMethod, SOAP_OPT (RESP_NS, qr, -1, NULL));
 	    else
-#endif
 	      {
 		caddr_t *proc_ret = (caddr_t *) lc->lc_proc_ret;
 		int nProcRet = BOX_ELEMENTS (lc->lc_proc_ret);
@@ -11546,7 +11571,7 @@ ws_soap_http (ws_connection_t * ws)
   }
 
 end:
-  if (err && http_resp_code != 200)
+  if (err && http_resp_code != 200 && !ws->ws_status_line)
     {
       ws->ws_status_line = ws_http_error_header (http_resp_code);
       ws->ws_status_code = http_resp_code;

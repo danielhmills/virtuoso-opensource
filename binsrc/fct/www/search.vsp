@@ -1,5 +1,5 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <?vsp
 --
 --  $Id$
@@ -62,6 +62,8 @@
   desc_resource_uri := sprintf ('http://%{WSHost}s/sparql?query=%U&format=cxml', ltrim(squery, 'sparql '));
 ?>
   <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <link rel="stylesheet" type="text/css" href="style.css">
     <title><?=label?></title>
   </head>

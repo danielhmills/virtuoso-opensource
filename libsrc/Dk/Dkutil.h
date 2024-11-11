@@ -33,6 +33,7 @@ BEGIN_CPLUSPLUS
 NORETURN int gpf_notice (const char *file, int line, const char *text);
 void get_real_time (timeout_t * time_ret);
 time_msec_t get_msec_real_time (void);
+time_usec_t get_usec_real_time (void);
 time_msec_t approx_msec_real_time (void);
 void time_add (timeout_t * time1, timeout_t * time2);
 int time_gt (timeout_t * time1, timeout_t * time2);

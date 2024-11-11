@@ -1475,7 +1475,7 @@ sf_pl_debug (caddr_t name, caddr_t digest)
 static server_func
 sf_pl_debug_wrapper (caddr_t args[])
 {
-  return sf_pl_debug (args[0], args[1]);
+  return (server_func) sf_pl_debug (args[0], args[1]);
 }
 
 /* source and line are from module's qr */

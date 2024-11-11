@@ -19,7 +19,7 @@
 #  
 #  
 
-SUBDIRS = vadpacker dav mono virtuoso tests rdf_mappers driver maildrop sqldoc hosting graphql bpel fct tutorial conductor samples vsp ws sync vspx vad cached_resources virtodbc virtoledb virtuoso_sink xddl VirtuosoClient.Net oat isparql jena jena2 jena3 jena4 sesame sesame2 sesame3 sesame4 redland hibernate dbpedia rdb2rdf rdf4j rdf4j_4 websocket 
+SUBDIRS = dav mono virtuoso tests rdf_mappers driver maildrop sqldoc hosting graphql bpel fct tutorial conductor samples vsp ws sync vspx vad cached_resources virtodbc virtoledb virtuoso_sink xddl VirtuosoClient.Net oat isparql jena jena2 jena3 jena4 sesame sesame2 sesame3 sesame4 redland hibernate dbpedia rdb2rdf rdf4j rdf4j_4 websocket 
 
 
 # ----------------------------------------------------------------------
@@ -27,4 +27,13 @@ SUBDIRS = vadpacker dav mono virtuoso tests rdf_mappers driver maildrop sqldoc h
 #  Additional files to distribute
 #
 # ----------------------------------------------------------------------
-EXTRA_DIST = config/ccdefs.c config/libxml.m4
+EXTRA_DIST = \
+	$(srcdir)/config/ccdefs.c \
+	$(srcdir)/config/libxml.m4 \
+	$(srcdir)/vadpacker/*.py \
+	$(srcdir)/vadpacker/.gitignore \
+	$(srcdir)/vadpacker/AUTHORS \
+	$(srcdir)/vadpacker/ChangeLog \
+	$(srcdir)/vadpacker/COPYING \
+	$(srcdir)/vadpacker/NEWS \
+	$(srcdir)/vadpacker/README

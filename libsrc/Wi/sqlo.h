@@ -32,9 +32,7 @@ typedef struct df_elt_s df_elt_t;
 typedef struct dfe_reuse_s dfe_reuse_t;
 typedef struct sqlo_s sqlo_t;
 typedef struct locus_s locus_t;
-#ifdef __cplusplus
 typedef struct remote_ds_s remote_ds_t;
-#endif
 
 
 typedef struct ot_virt_col_s
@@ -49,11 +47,7 @@ typedef struct op_table_s
   caddr_t		ot_prefix;
   caddr_t	ot_new_prefix;
   dbe_table_t * 	ot_table;
-#ifdef __cplusplus
   remote_ds_t *	ot_rds;
-#else
-  struct remote_ds_t *	ot_rds;
-#endif
   ST *	ot_dt;
   ST *	ot_left_sel;
   ST *	ot_join_cond;

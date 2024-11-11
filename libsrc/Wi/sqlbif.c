@@ -3390,6 +3390,7 @@ bif_trim (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   return res;
 }
 
+#define DV_STRING_MAYBE_UTF8(a) (BF_UTF8 == box_flags(a) || BF_IRI == box_flags(a))
 
 /* Modified by AK 29-OCT-1997 to skip all NULL arguments (i.e.
    the result being exactly like they were empty strings "") */
@@ -3402,7 +3403,7 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   caddr_t *cast_args = NULL;
   int alen;
   caddr_t a;
-  int len = 0, fill = 0;
+  int len = 0, wlen = 0, fill = 0;
   caddr_t res;
   int haveWides = 0, haveWeirds = 0;
   dtp_t dtp1;
@@ -3419,11 +3420,27 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	case DV_STRING:
 	case DV_UNAME:
 	  len += box_length (a) - 1;
+	  if (DV_STRING_MAYBE_UTF8 (a))	/* the IRIs may be UTF-8 so we try */
+	    {
+	      size_t wide_len = wide_char_length_of_utf8_string (a, box_length (a) - 1);
+	      if (wide_len >= 0)
+		wlen += wide_len;
+	      else		/* in case utf8 is not a proper sequence, then gigo, we set flag here and do not try converting below */
+		{
+		  if (NULL == cast_args)
+		    cast_args = dk_alloc_list_zero (n_args);
+		  cast_args[inx] = box_num (1);
+		  wlen += box_length (a) - 1;
+		}
+	    }
+	  else
+	    wlen += box_length (a) - 1;
 	  break;
 	case DV_WIDE:
 	case DV_LONG_WIDE:
 	  haveWides = 1;
 	  len += box_length (a) / sizeof (wchar_t) - 1;
+	  wlen += box_length (a) / sizeof (wchar_t) - 1;
 	  break;
 	default:
 	  if (NULL == cast_args)
@@ -3456,24 +3473,27 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 		  sprintf (buf, BOXINT_FMT, unbox (a));
 		  cast_args[inx] = box_dv_short_string (buf);
 		  len += box_length (cast_args[inx]) - 1;
+		  wlen += box_length (cast_args[inx]) - 1;
 		  break;
 		}
 	      /* no break */
 	    default:
 	      {
 		char save = qi->qi_no_cast_error;
-		qi->qi_no_cast_error = 0; /* concat may get vector as input, this is not a cast to be done w/o error here */
+		qi->qi_no_cast_error = 0;	/* concat may get vector as input, this is not a cast to be done w/o error here */
 		QR_RESET_CTX
 		{
 		  if (haveWides)
 		    {
 		      cast_args[inx] = box_cast (qst, a, st_nvarchar, dtp1);
 		      len += box_length (cast_args[inx]) / sizeof (wchar_t) - 1;
+		      wlen += box_length (cast_args[inx]) / sizeof (wchar_t) - 1;
 		    }
 		  else
 		    {
 		      cast_args[inx] = box_cast (qst, a, st_varchar, dtp1);
 		      len += box_length (cast_args[inx]) - 1;
+		      wlen += box_length (cast_args[inx]) - 1;
 		    }
 		}
 		QR_RESET_CODE
@@ -3495,6 +3515,8 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	}
     }
   sizeof_char = haveWides ? sizeof (wchar_t) : sizeof (char);
+  if (haveWides)
+    len = wlen;
   if (((len + 1) * sizeof_char) > 10000000)
     {
       /*dk_free_box ((caddr_t)orig_args); */
@@ -3506,7 +3528,7 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
     {
       /*dk_free_box ((caddr_t)orig_args); */
       dk_free_tree ((caddr_t) cast_args);
-    qi_signal_if_trx_error (qi);
+      qi_signal_if_trx_error (qi);
     }
   for (inx = 0; inx < n_args; inx++)
     {
@@ -3521,7 +3543,10 @@ bif_concat (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 	  if (haveWides)
 	    {
 	      alen = box_length (a) - 1;
-	      box_narrow_string_as_wide ((unsigned char *) a, res + fill * sizeof_char, alen, QST_CHARSET (qst), err_ret, 1);
+	      if (DV_STRING_MAYBE_UTF8 (a) && (!cast_args || !cast_args[inx]))
+		alen = (size_t) box_utf8_as_wide_char (a, res + fill * sizeof_char, alen, len - fill);
+	      else
+		box_narrow_string_as_wide ((unsigned char *) a, res + fill * sizeof_char, alen, QST_CHARSET (qst), err_ret, 1);
 	      break;
 	    }
 	  /* no break */
@@ -10019,7 +10044,7 @@ bif_tlsf_dump (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   int ht_mode = AB_ALLOCD;
   if (BOX_ELEMENTS (args) > 2)
     {
-      hit = bif_arg (qst, args, 2, "tlsf_dump");
+      hit = (id_hash_iterator_t *) bif_arg (qst, args, 2, "tlsf_dump");
       ht_mode = bif_long_arg (qst, args, 3, "tlsf_dump");
       if (DV_DICT_ITERATOR == DV_TYPE_OF (hit))
 	ht = hit->hit_hash;
@@ -10688,7 +10713,7 @@ do_bin_again:
 
 	      wide_work = wide;
 	      memset (&state, 0, sizeof (virt_mbstate_t));
-	      utf8_len = (long) virt_wcsnrtombs (NULL, &wide_work, wide_len, 0, &state);
+	      utf8_len = (long) virt_wcsnrtombs (NULL, (const wchar_t **) &wide_work, wide_len, 0, &state);
 	      if (utf8_len < 0)
 		sqlr_new_error ("22005", "IN014",
 		    "Invalid data supplied in NVARCHAR -> VARBINARY conversion");
@@ -10696,7 +10721,7 @@ do_bin_again:
 
 	      wide_work = wide;
 	      memset (&state, 0, sizeof (virt_mbstate_t));
-              actual_utf8_len = virt_wcsnrtombs ((unsigned char *) res, &wide_work, wide_len, utf8_len, &state);
+              actual_utf8_len = virt_wcsnrtombs ((unsigned char *) res, (const wchar_t **) &wide_work, wide_len, utf8_len, &state);
 	      if (utf8_len != actual_utf8_len)
 		GPF_T1("non consistent wide char to multi-byte translation of a buffer");
 	      if (NULL != tmp_res)
@@ -10753,14 +10778,14 @@ do_wide:
               virt_mbstate_t state;
               utf8work = utf8;
               memset (&state, 0, sizeof (virt_mbstate_t));
-              wide_len = virt_mbsnrtowcs (NULL, &utf8work, utf8_len, 0, &state);
+              wide_len = virt_mbsnrtowcs (NULL, (const unsigned char **) &utf8work, utf8_len, 0, &state);
               if (((long) wide_len) < 0)
 	        sqlr_new_error ("22005", "IN015",
 	          "Invalid data supplied in UNAME -> NVARCHAR conversion");
               ret = dk_alloc_box ((int) (wide_len  + 1) * sizeof (wchar_t), DV_WIDE);
               utf8work = utf8;
               memset (&state, 0, sizeof (virt_mbstate_t));
-              if (wide_len != virt_mbsnrtowcs ((wchar_t *) ret, &utf8work, utf8_len, wide_len, &state))
+              if (wide_len != virt_mbsnrtowcs ((wchar_t *) ret, (const unsigned char **) &utf8work, utf8_len, wide_len, &state))
                 {
                   dk_free_box (ret);
 	          sqlr_new_error ("22005", "IN015",
@@ -11117,7 +11142,7 @@ bif_blob_dps (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   dtp_t dtp = DV_TYPE_OF (bh);
   if (dtp != DV_BLOB_HANDLE && dtp != DV_BLOB_WIDE_HANDLE)
     return NEW_DB_NULL;
-  l = bh_dp_list_n (qi->qi_trx, bh);
+  l = bh_dp_list_n (qi->qi_trx, (blob_handle_t *) bh);
   return list_to_array (l);
 }
 
@@ -12510,7 +12535,7 @@ bif_deserialize (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
     return NEW_DB_NULL;
   if (DV_STRING_SESSION == dtp)
     {
-      return read_object (xx);
+      return read_object ((dk_session_t *) xx);
     }
   if (!IS_BLOB_HANDLE_DTP(dtp))
     sqlr_new_error ("22023", "SR581", "deserialize() requires a blob or NULL or string argument");
@@ -12556,7 +12581,7 @@ bif_serialize_to_string_session (caddr_t * qst, caddr_t * err_ret, state_slot_t 
 	  dv_type_title (tag), (unsigned) tag);
     }
   END_WRITE_FAIL (out);
-  return out;
+  return (caddr_t) out;
 }
 
 static caddr_t
@@ -16664,7 +16689,7 @@ bif_rdf_encode_for_uri_impl (caddr_t * qst, caddr_t * err_ret, state_slot_t ** a
     case DV_LONG_WIDE:
       {
         ses = strses_allocate ();
-        dks_esc_write (ses, str, box_length (str) - 1, CHARSET_UTF8, CHARSET_WIDE, DKS_ESC_URI);
+        dks_esc_write (ses, str, box_length (str) - sizeof (wchar_t), CHARSET_UTF8, CHARSET_WIDE, DKS_ESC_URI);
       }
       break;
     default:

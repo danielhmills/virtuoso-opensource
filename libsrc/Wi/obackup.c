@@ -1252,17 +1252,17 @@ bif_backup_online (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   QR_RESET_CODE
     {
       du_thread_t *self = THREAD_CURRENT_THREAD;
-      caddr_t* err = (caddr_t*) thr_get_error_code (self);
+      caddr_t err = thr_get_error_code (self);
       POP_QR_RESET;
 
       if ((DV_TYPE_OF (err) == DV_ARRAY_OF_POINTER) &&
 	  BOX_ELEMENTS (err) == 3)
 	{
 	  backup_status.is_error = 1;
-	  strncpy (backup_status.errcode, err[1], 100);
-	  strncpy (backup_status.errstring, err[2], 1024);
+	  strncpy (backup_status.errcode, ERR_STATE(err), 100);
+	  strncpy (backup_status.errstring, ERR_MESSAGE(err), 1024);
 	}
-      sqlr_resignal ((caddr_t)err);
+      sqlr_resignal (err);
     }
   END_QR_RESET;
   return box_num (res);

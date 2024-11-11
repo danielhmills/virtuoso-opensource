@@ -425,7 +425,7 @@ ins_call (instruction_t * ins, caddr_t * qst, code_vec_t code_vec)
       sql_method_t *mtd = NULL;
       ptrlong mtd_inx = -1;
       if (BOX_ELEMENTS (proc_name) != 2 || !DV_STRINGP (proc_mtd_call[0]) ||
-	  !DV_LONG_INT == DV_TYPE_OF (proc_mtd_call[1]))
+         DV_LONG_INT != DV_TYPE_OF (proc_mtd_call[1]))
 	{
 	  err = srv_make_new_error ("22023", "UD004", "Invalid proc_name array supplied");
 	  goto report_error;
@@ -882,7 +882,7 @@ ins_call_vec (instruction_t * ins, caddr_t * inst, code_vec_t code_vec, int firs
 	  rets[set] = qi->qi_proc_ret;
       }
     END_SET_LOOP;
-    qi->qi_proc_ret = rets;
+    qi->qi_proc_ret = (caddr_t) rets;
   }
 }
 
@@ -2245,8 +2245,8 @@ qi_check_trx_error (query_instance_t * qi, int flags)
       sqlr_resignal (err);
     }
 
-  if (cli->cli_start_time &&
-      time_now_msec - cli->cli_start_time > BURST_STOP_TIMEOUT
+  if (cli->cli_start_time_usec &&
+      time_now_msec - (cli->cli_start_time_usec / 1000UL) > BURST_STOP_TIMEOUT
       && cli->cli_session
       && cli_is_interactive (cli)
       && !cli->cli_ws)

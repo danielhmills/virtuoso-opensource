@@ -178,7 +178,7 @@ typedef struct ws_acl_s
 
 typedef struct acl_hit_s
   {
-    int64 ah_initial;	/*!< initial time */
+    time_usec_t ah_initial;	/*!< initial time */
     long ah_count;	/*!< hits since initial */
     float ah_avg;	/*!< for statistics */
   } acl_hit_t;
@@ -204,6 +204,8 @@ extern long  tws_bad_request;
 #define WM_ERROR 4	/*!< comment out this definition to stop sending 401 Bad request */
 #define WM_HEAD 5
 #define WM_OPTIONS 6
+#define WM_PUT 7
+#define WM_DELETE 8
 
 #define WM_URIQA_FIRST 100
 #define WM_URIQA_MGET 100
@@ -439,6 +441,7 @@ size_t http_threads_mem_report (void);
 extern dk_hash_t * ws_cli_sessions;
 extern dk_mutex_t * ws_cli_mtx;
 int ws_is_https (ws_connection_t * ws);
+void http_set_default_options (ws_connection_t * ws);
 extern int www_maintenance;
 
 #endif /* _HTTP_H */

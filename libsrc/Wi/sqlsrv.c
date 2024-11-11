@@ -709,7 +709,7 @@ client_connection_reset (client_connection_t * cli)
   cli->cli_not_char_c_escape = 0;
   cli->cli_utf8_execs = 0;
   cli->cli_no_system_tables = 0;
-  cli->cli_start_time = 0;
+  cli->cli_start_time_usec = 0;
   cli->cli_terminate_requested = 0;
   if (client_connection_reset_hook)
     cli->cli_outp_worker = client_connection_reset_hook (cli->cli_outp_worker);
@@ -1564,7 +1564,7 @@ sf_stmt_prepare (caddr_t stmt_id, char *text, long explain,
   if (!stmt && err)
     goto report_error;
   cli->cli_terminate_requested = 0;
-  cli->cli_start_time = time_now_msec;
+  cli->cli_start_time_usec = get_usec_real_time();
   if (!stmt || stmt->sst_cursor_state)
     {
       /* There's an instance. can't do it */
@@ -1747,8 +1747,8 @@ cli_set_start_times (client_connection_t * cli)
 {
   if (prof_on)
     dt_now ((caddr_t)&cli->cli_start_dt);
-  cli->cli_start_time = get_msec_real_time ();
-  cli->cli_ws_check_time = cli->cli_start_time;
+  cli->cli_start_time_usec = get_usec_real_time();
+  cli->cli_ws_check_time = cli->cli_start_time_usec / 1000UL;
   cli->cli_cl_start_ts = rdtsc ();
   cli->cli_activity.da_thread_time = 0;
 }
@@ -1799,7 +1799,7 @@ sf_sql_execute (caddr_t stmt_id, char *text, char *cursor_name,
 #endif
 
   cli->cli_terminate_requested = 0;
-  cli->cli_start_time = time_now_msec;
+  cli->cli_start_time_usec = get_usec_real_time();
   if (!stmt || stmt->sst_cursor_state)
     {
       /* Busy */
@@ -3981,7 +3981,7 @@ srv_global_init_plugin_actions (dk_set_t *set_ptr, char *mode)
 static server_func
 sf_sql_connect_wrapper (caddr_t args[])
 {
-  return sf_sql_connect (args[0], args[1], args[2], (caddr_t *) args[3]);
+  return (server_func) sf_sql_connect (args[0], args[1], args[2], (caddr_t *) args[3]);
 }
 
 static server_func
@@ -4008,14 +4008,14 @@ sf_sql_fetch_wrapper (caddr_t args[])
 static server_func
 sf_sql_transact_wrapper (caddr_t args[])
 {
-  sf_sql_transact ((long) args[0], args[1]);
+  sf_sql_transact ((long) args[0], (caddr_t *) args[1]);
   return NULL;			/* void function */
 }
 
 static server_func
 sf_sql_free_stmt_wrapper (caddr_t args[])
 {
-  return (caddr_t) sf_sql_free_stmt (args[0], (int)args[1]);
+  return (server_func) sf_sql_free_stmt (args[0], (int)args[1]);
 }
 
 static server_func
@@ -4042,7 +4042,7 @@ sf_sql_extended_fetch_wrapper (caddr_t args[])
 static server_func
 sf_sql_no_threads_reply_wrapper (caddr_t args[])
 {
-  return sf_sql_no_threads_reply ();
+  return (server_func) sf_sql_no_threads_reply ();
 }
 
 static server_func
@@ -4453,10 +4453,10 @@ DBG_NAME(srv_make_new_error) (DBG_PARAMS const char *code, const char *virt_code
 
   if (code[1] == 'Y')
     virtuoso_sleep (0, 10000);
-    if ('S' == code[0] || '4' == code[0])
-      {
-        at_printf (("Host %d make err %s %s in %s\n", local_cll.cll_this_host, code, temp, cl_thr_stat ()));
-      }
+  if ('S' == code[0] || '4' == code[0])
+    {
+      at_printf (("Host %d make err %s %s in %s\n", local_cll.cll_this_host, code, temp, cl_thr_stat ()));
+    }
 #ifdef SIGNAL_DEBUG
   ctx = THREAD_CURRENT_THREAD->thr_reset_ctx;
   for (ctx_ctr = 0, ctx_iter = ctx; NULL != ctx_iter; ctx_ctr++, ctx_iter = ctx_iter->j_parent) { /*do nothing*/; }
@@ -4546,7 +4546,7 @@ srv_make_trx_error (int code, caddr_t detail)
       case LTE_SQL_ERROR:
         {
           du_thread_t *self = THREAD_CURRENT_THREAD;
-          caddr_t *probable_err = (caddr_t *)thr_get_error_code (self);
+          caddr_t probable_err = thr_get_error_code (self);
           if (DV_ARRAY_OF_POINTER != DV_TYPE_OF (probable_err))
             probable_err = NULL;
           if (NULL == probable_err)
@@ -4560,7 +4560,7 @@ srv_make_trx_error (int code, caddr_t detail)
             {
 	      err = srv_make_new_error ("4000X", "SR176",
 	        "Transaction rolled back due to previous SQL error %s (((\n%s\n)))%s%s",
-					probable_err[1], probable_err[2], detail ? " : " : "", detail ? detail : "");
+					ERR_STATE(probable_err), ERR_MESSAGE(probable_err), detail ? " : " : "", detail ? detail : "");
 	      break;
             }
         }

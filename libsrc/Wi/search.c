@@ -3447,7 +3447,7 @@ cs_new_page (dk_hash_t * cols)
       int64 * place;
       caddr_t * p_value;
       id_hash_iterator (&hit, cs->cs_distinct);
-      while (hit_next (&hit, &p_value, (caddr_t*)&place))
+      while (hit_next (&hit, (caddr_t *) &p_value, (caddr_t*)&place))
 	{
 	  *place &= ~CS_IN_SAMPLE; 
 	}

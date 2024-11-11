@@ -555,6 +555,7 @@ void * pm_get (buffer_desc_t * buf, size_t sz);
 index_tree_t *DBG_NAME (it_allocate) (DBG_PARAMS dbe_storage_t *);
 index_tree_t *DBG_NAME (it_temp_allocate) (DBG_PARAMS dbe_storage_t *);
 int DBG_NAME (it_temp_free) (DBG_PARAMS index_tree_t * it);	/*!< \returns zero is the \c it is actually kept, just with smaller it_ref_count; non-zero means real free */
+void it_temp_write_cancel (index_tree_t *tree);
 #ifdef MALLOC_DEBUG
 #define it_allocate(s) dbg_it_allocate (__FILE__, __LINE__, (s))
 #define it_temp_allocate(s) dbg_it_temp_allocate (__FILE__, __LINE__, (s))
@@ -836,7 +837,7 @@ extern int enable_gzip;
 extern int isdts_mode;
 extern FILE *http_log;
 extern char * http_soap_client_id_string;
-extern const char * http_client_id_string;
+extern char * http_client_id_string;
 extern char * http_server_id_string;
 extern uint32 http_default_client_req_timeout;
 extern long http_ses_trap;
@@ -866,7 +867,7 @@ extern char *denied_dirs;
 extern char *backup_dirs;
 extern char *safe_execs;
 extern char *dba_execs;
-extern const char *www_root;
+extern char *www_root;
 extern char *temp_dir;
 
 /* Externals from virtuoso */
@@ -1359,6 +1360,7 @@ typedef enum { SQW_OFF, SQW_ON, SQW_ERROR } sqw_mode;
 extern sqw_mode sql_warning_mode;
 extern long sql_warnings_to_syslog;
 extern long temp_db_size;
+extern int64 dbs_max_temp_db_pages;
 
 void
 srv_set_cfg(

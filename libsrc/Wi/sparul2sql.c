@@ -1233,3 +1233,50 @@ ins_is_bad: ;
         (SPART **)t_list_to_array (bad_ins_triples) );
   retvals[0]->_.funcall.argtrees[0] = good_ctor_call;
 }
+
+SPART *
+spar_make_insertdata_or_deletedata (sparp_t *sparp, ptrlong subtype, SPART *dflt_g, SPART *ctor)
+{
+  SPART *const_data_op;
+  dk_set_t bnoded_triples = NULL;
+  SPART *fake = spar_make_fake_action_solution (sparp);
+  if ((NULL == dflt_g) && spar_ctor_uses_default_graph (ctor))
+    dflt_g = sparp->sparp_env->spare_found_default_sparul_target = spar_default_sparul_target (sparp,
+      (SPARUL_INSERT_DATA == subtype) ? "triple in INSERT DATA {...} without GRAPH {...}" : "triple in DELETE DATA {...} without GRAPH {...}",
+      0 );
+  if (SPARUL_INSERT_DATA == subtype)
+    {
+      SPART **membs = ctor->_.gp.members;
+      int triple_count = BOX_ELEMENTS (membs);
+      int last_used_idx = triple_count-1;
+      int ctr;
+      for (ctr = triple_count; ctr--; /* no step */)
+        {
+          SPART *memb = membs[ctr];
+          if ((SPAR_BLANK_NODE_LABEL != SPART_TYPE (memb->_.triple.tr_subject)) && (SPAR_BLANK_NODE_LABEL != SPART_TYPE (memb->_.triple.tr_object)))
+            continue;
+          t_set_push (&bnoded_triples, memb);
+          membs[ctr] = membs[last_used_idx];
+          membs[last_used_idx] = NULL;
+          last_used_idx--;
+        }
+      if (NULL != bnoded_triples)
+        {
+          SPART **new_membs = (SPART **)t_alloc_list (last_used_idx+1);
+          memcpy (new_membs, membs, sizeof (SPART *) * (last_used_idx+1));
+          ctor->_.gp.members = new_membs;
+        }
+    }
+  const_data_op = spar_make_top_or_special_case_from_wm (sparp, subtype, NULL, fake);
+  spar_compose_retvals_of_insert_or_delete (sparp, const_data_op, dflt_g, ctor);
+  if (NULL != bnoded_triples)
+    {
+      SPART *fake2 = spar_make_fake_action_solution (sparp);
+      SPART *bnode_ctor = (SPART *)t_box_copy ((caddr_t)ctor);
+      SPART *bnode_op = spar_make_top_or_special_case_from_wm (sparp, INSERT_L, NULL, fake2);
+      bnode_ctor->_.gp.members = (SPART **)t_revlist_to_array (bnoded_triples);
+      spar_compose_retvals_of_insert_or_delete (sparp, bnode_op, dflt_g, bnode_ctor);
+      return spartlist (sparp, 2, SPAR_LIST, (SPART **)t_list (2, const_data_op, bnode_op));
+    }
+  return const_data_op;
+ }

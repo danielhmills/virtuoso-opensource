@@ -264,7 +264,7 @@ sqlo_is_tautology (ST * tree)
       dtp_t l_dtp = DV_TYPE_OF (l);
       dtp_t r_dtp = DV_TYPE_OF (r);
       if (DV_LONG_INT == l_dtp && DV_LONG_INT == r_dtp)
-	return unbox (l) == unbox (r);
+	return unbox ((ccaddr_t) l) == unbox ((ccaddr_t) r);
       return 2;
     }
   return 2;
@@ -1700,7 +1700,7 @@ dfe_is_super (df_elt_t *super, df_elt_t * sub)
 
 
 df_elt_t *
-dfe_skip_to_min_card (df_elt_t * place, df_elt_t * super, df_elt_t * dfe)
+dfe_skip_to_min_card (df_elt_t * place, df_elt_t * super, df_elt_t * dfe, int skip_gby_oby)
 {
   /* when placing a func, see if some place later in the query has lower card */
   df_elt_t * best = place, *org_place = place;
@@ -1748,6 +1748,9 @@ dfe_skip_to_min_card (df_elt_t * place, df_elt_t * super, df_elt_t * dfe)
 	  ptrlong top_cnt;
 	  if (place->_.setp.is_being_placed)
 	    goto over;
+          /* coalesce & case exp may ref a col in gby the following oby has dc cleared ref */
+          if (skip_gby_oby && place->dfe_prev && DFE_GROUP == place->dfe_prev->dfe_type)
+            goto over;
 	  top_cnt = place->_.setp.top_cnt;
 	  if (top_cnt)
 	    {
@@ -2287,7 +2290,7 @@ sqlo_place_exp (sqlo_t * so, df_elt_t * super, df_elt_t * dfe)
 	  }
 	END_DO_BOX;
 	placed = dfe_skip_exp_dfes (placed, &dfe, 1);
-	placed = dfe_skip_to_min_card (placed, super, dfe);
+	placed = dfe_skip_to_min_card (placed, super, dfe, 1);
 	so->so_mark_gb_dep = 1;
 	sqlo_place_dfe_after (so, pref_loc, placed, dfe);
 	return dfe;
@@ -2347,7 +2350,7 @@ sqlo_place_exp (sqlo_t * so, df_elt_t * super, df_elt_t * dfe)
 	  {
 	    placed = dfe_latest (so, n_args, args, 1);
 	    placed = dfe_skip_exp_dfes (placed, &dfe, 1);
-	    placed = dfe_skip_to_min_card (placed, super, dfe);
+	    placed = dfe_skip_to_min_card (placed, super, dfe, 0);
 	  }
 	so->so_mark_gb_dep = 1;
 	sqlo_place_dfe_after (so, pref_loc, placed, dfe);

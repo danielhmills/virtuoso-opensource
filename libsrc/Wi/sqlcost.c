@@ -2581,16 +2581,16 @@ sqlo_inx_sample_1 (df_elt_t * tb_dfe, dbe_key_t * key, df_elt_t ** lowers, df_el
     }
   if (sop)
     itc->itc_st.cols = sop->sop_cols;
-    {
-    res = itc_sample (itc);
-      row_sel = itc_row_selectivity (itc, res);
-      if (sop && (dk_hash_t*)-1 == itc->itc_st.cols)
-	{
-	  /* the itc sample has set the p stat, so no p stat or cxol samples here */
-	  hash_table_free (sop->sop_cols);
-	  sop->sop_cols = NULL;
-	}
-    }
+  {
+  res = itc_sample (itc);
+    row_sel = itc_row_selectivity (itc, res);
+    if (sop && (dk_hash_t*)-1 == itc->itc_st.cols)
+      {
+	/* the itc sample has set the p stat, so no p stat or cxol samples here */
+	hash_table_free (sop->sop_cols);
+	sop->sop_cols = NULL;
+      }
+  }
   if (sop)
     sop->sop_n_sample_rows += itc->itc_st.n_sample_rows;
   itc->itc_st.cols = NULL;
@@ -3471,7 +3471,7 @@ rq_sample_subp (df_elt_t * dfe, rq_cols_t * rq, index_choice_t * ic)
   ri_iterator_t * rit;
   int found;
   rdf_sub_t * sub_iri;
-  variable = &rq->rq_p.rqp_lower->_.bin.right->dfe_tree;
+  variable = (caddr_t *) &rq->rq_p.rqp_lower->_.bin.right->dfe_tree;
   save = *variable;
   sub = ric_iri_to_sub (ric, save, RI_SUBPROPERTY, 0);
   if (!sub || (!sub->rs_sub && !sub->rs_equiv))
@@ -3585,9 +3585,9 @@ dfe_init_p_stat (df_elt_t * dfe, df_elt_t * lower)
   rq.rq_p.rqp_lower = lower;
   ic.ic_set_sample_key = 1;
   ic.ic_key = tb_px_key (rq.rq_table, rq.rq_s_col);
-  dfe_p_card (dfe, &rq, &p_stat, &ic, SO_S);
+  dfe_p_card (dfe, &rq, p_stat, &ic, SO_S);
   ic.ic_key = tb_px_key (rq.rq_table, rq.rq_o_col);
-  dfe_p_card (dfe, &rq, &p_stat, &ic, SO_O);
+  dfe_p_card (dfe, &rq, p_stat, &ic, SO_O);
   return 1;
 }
 
@@ -3780,7 +3780,7 @@ sqlo_use_p_stat (df_elt_t * dfe, df_elt_t ** lowers, int inx_const_fill, int64 e
   if (!enable_p_stat || !inx_const_fill)
     return 0;
   if (0 != strcmp (((dbe_column_t*)key->key_parts->data)->col_name, "P")
-      || !strstr (key->key_table->tb_name, "RDF_QUAD"))
+      || !tb_is_rdf_quad (key->key_table))
     return 0;
   col2 = (dbe_column_t*)key->key_parts->next->data;
   so_dfe = sqlo_key_part_best (col2, dfe->_.table.col_preds, 0);
@@ -3889,7 +3889,7 @@ arity_scale (float ar)
 }
 
 int
-col_dfe_list_size (dk_set_t * cols)
+col_dfe_list_size (dk_set_t cols)
 {
   int res = 0;
   DO_SET (df_elt_t *, dfe, &cols)
@@ -4688,6 +4688,8 @@ dfe_unit_cost (df_elt_t * dfe, float input_arity, float * u1, float * a1, float 
       if (dfe->dfe_type == DFE_DT
 	  && dfe->_.sub.ot->ot_is_outer)
 	*a1 = MAX (1, *a1); /* right siode of left oj has min cardinality 1 */
+      if (dfe->_.sub.trans && TRANS_LR == dfe->_.sub.trans->tl_direction) /* in unkn est. potentially increase */
+        *u1 *= MAX (dfe->_.sub.in_arity, 1.0);
 
       break;
     case DFE_QEXP:

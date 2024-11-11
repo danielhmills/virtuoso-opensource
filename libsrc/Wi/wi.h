@@ -2169,19 +2169,30 @@ extern int in_crash_dump;
 #define __builtin_prefetch(m) 0
 #endif
 
-#define SD_INT32 ((char **)-1)
-#define SD_INT64 ((char **)-2)
+typedef enum
+{
+  SD_TYPE_INT32,
+  SD_TYPE_INT64,
+  SD_TYPE_LONG,
+  SD_TYPE_STRING,
+} stat_desc_type_t;
 
 typedef struct stat_desc_s
   {
     const char *   sd_name;
-    long *   sd_value;
-    char **   sd_str_value;
+  void *sd_value;
+  stat_desc_type_t sd_type;
   } stat_desc_t;
 
 extern stat_desc_t dbf_descs[];
 extern stat_desc_t rdf_preset_datatypes_descs[];
-int dbf_protected_param(stat_desc_t *sd);
+
+#define SD_STRUCT_ITEM(a, b, c) { a, &b, c }
+
+#define SD_DEF_I32(v, a)	SD_STRUCT_ITEM (a, v, SD_TYPE_INT32)
+#define SD_DEF_I64(v, a)	SD_STRUCT_ITEM (a, v, SD_TYPE_INT64)
+#define SD_DEF_L(v, a)		SD_STRUCT_ITEM (a, v, SD_TYPE_LONG)
+#define SD_DEF_STR(v, a)	SD_STRUCT_ITEM (a, v, SD_TYPE_STRING)
 
 typedef struct s_time_t
 {

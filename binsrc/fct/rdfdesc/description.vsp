@@ -1,12 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML+RDFa 1.0//EN" "http://www.w3.org/MarkUp/DTD/xhtml-rdfa-1.dtd">
-<html
-    xmlns="http://www.w3.org/1999/xhtml"
-    xml:lang="en"
-    version="XHTML+RDFa 1.0"
-    xmlns:addthis="http://www.addthis.com/help/api-spec"
-    xmlns:fb="http://www.facebook.com/2008/fbml"
->
+<!DOCTYPE html>
+<html lang="en">
+
 <?vsp
 --
 --
@@ -36,7 +30,6 @@
 -- Registry keys:
 --
 -- fct_timeout_max - anytime query timeout for producing this page
--- fct_addthis_key - addthis.com API key
 -- fct_license_text - markup designating a license for content on site
 --
 
@@ -69,6 +62,8 @@
   declare auto_sponge_on_empty_graph int;
   declare q_txt any;
   declare safetolink integer;
+  declare triples_found integer;
+  declare jsses any;
 
   set http_charset='utf-8';
   { 
@@ -83,6 +78,7 @@
   err := null;
 
   deadl := 0;
+  jsses := null;
 
   declare exit handler for sqlstate '40001' {
     rollback work;
@@ -138,19 +134,6 @@ again:
     tbsas := '';
   else
     tbsas := '';
-
-
-  --
-  -- Get AddthisKey from registry
-  --
-  --  if 0 then disable addthis support
-  --  if 1 use temp key to get basic social bookmarking
-  --  any other value should be a registered key
-  --
-  declare _addthis_key varchar;
-  _addthis_key := registry_get ('fct_addthis_key');
-  if (not isstring(_addthis_key)) _addthis_key := '0';
-  if ('1' = _addthis_key) _addthis_key := 'xa-4ce13e0065cdadc0';
 
 
   langs := http_request_header_full (lines, 'Accept-Language', 'en');
@@ -260,7 +243,7 @@ again:
       {
         http_rewrite ();
         http_status_set (403);
-        http ('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">');
+        http ('<!DOCTYPE html>');
         http (sprintf ('<html><body>Use of this service is not allowed for your current WebID: %V</body></html>', connection_get ('WebID', '<none>')));
         return;  
       } 
@@ -377,13 +360,17 @@ again:
 --    dbg_obj_print (qry_str);
 
   b3s_dbg_out (dbg_out, 'qry: ' || qry_str);
-
   exec (qry_str, null, null, vector (), 0, meta, data);
 
   _subject := b3s_label_get (data, langs);
 
   rdf_link := sprintf ('/sparql?query=%U', __box_flags_tweak (sprintf ('define sql:describe-mode "CBD" %s DESCRIBE <%s>', b3s_render_inf_clause(), _S), 2)); 
   __box_flags_set (rdf_link, 2);
+
+  -- 404 ck
+  qry_str := sprintf ('sparql ask %s where { { <%s> ?p1 ?o1 } union { ?s ?p2 <%s> } }', _F, _S, _S);
+  exec (qry_str, null, null, vector (), 0, meta, data);
+  triples_found := case when isvector(data) and aref(aref(data,0),0) then 1 else 0 end;
 
   declare __res_desc, qs, qv, best_variant, accept, protocol varchar;
   declare best_q, curr float;
@@ -475,7 +462,8 @@ again:
 
 ?>
 <head>
-    <base href="/fct/rdfdesc/" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>About: <?vsp if (length (label)) http_value (label); else http (b3s_uri_percent_decode(b3s_uri_curie (page_resource_uri)));?></title>
     <!--link rel="alternate" type="application/rdf+xml" href="<?=rdf_link?>" title="RDF" /-->
 
@@ -484,19 +472,22 @@ again:
         main_ss := registry_get ('fct_main_ss');
 	if (not isstring (main_ss)) main_ss := '/fct/css/default.css';
     ?>
-    <link rel="stylesheet" type="text/css" href="<?=main_ss?>"  charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="<?=main_ss?>" />
 
-    <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" charset="utf-8" />
-    <script type="text/javascript" >
-      var featureList=["tab","ajax"];
-    </script>
-    <script type="text/javascript" src="/fct/oat/toolkit/loader.js"></script>
-    <script type="text/javascript" src="/fct/js/description.js"></script>
+    <link rel="stylesheet" type="text/css" href="/fct/css/highlighter.css" />
 
     <link rel="icon" href="/favicon.ico?v=1" sizes="any" />
     <link rel="icon" href="/favicon/favicon.svg?v=1" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon/apple-touch-icon-180x180.png?v=1" />
     <link rel="manifest" href="/favicon/manifest.webmanifest?v=1" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.1.0/ol.css">
+    <style>
+    .ol_map {
+        width: 100%;
+        height: 340px;
+    }
+    </style>
 <?vsp fct_links_mup (_S, rdf_link); ?>
 </head>
 <body about="<?V page_resource_uri ?>">
@@ -513,9 +504,9 @@ again:
       <?vsp } ?>
       <li id="mnu_descr" class="sel"><a href="/describe/?uri=<?U b3s_u2w(_S) ?><?V ses_parms ?>" class="sel" rel="nofollow">Description</a></li>
       <li id="mnu_usage">
-        <a href="usage.vsp?g=<?U _S ?><?V ses_parms ?>" rel="nofollow">Metadata</a>
+        <a href="/fct/rdfdesc/usage.vsp?g=<?U _S ?><?V ses_parms ?>" rel="nofollow">Metadata</a>
       </li>
-      <li id="mnu_settings"><a href="settings.vsp?g=<?U b3s_u2w(_S) ?><?V ses_parms ?>" rel="nofollow">Settings</a>
+      <li id="mnu_settings"><a href="/fct/rdfdesc/settings.vsp?g=<?U b3s_u2w(_S) ?><?V ses_parms ?>" rel="nofollow">Settings</a>
         <div id="settings_popup" style="display: none">
           <ul>
             <li>
@@ -556,8 +547,7 @@ again:
 	    http (b3s_uri_curie(page_resource_uri));
         }
       ?>
-    <a href="">
-    </a>&nbsp;&nbsp;&nbsp;
+    &nbsp;&nbsp;&nbsp;
     <?vsp
       if(safetolink>0) {
         http(sprintf('<a class="desc_permalink" href="%s" rel="nofollow">Goto</a>\n',
@@ -572,18 +562,18 @@ again:
         id="sp_link" rel="nofollow">Sponge
     </a>
     &nbsp;
-    <a class="desc_permalink" href="<?vsp http (fct_make_curie (sprintf ('%s&amp;distinct=%d',  plink_href, equ (dist, 0)), lines)); ?>" title="This link enables you toggle between normalized and un-normalized views of data using by applying or note applying a DISTINCT operator">
+    <a class="desc_permalink" href="<?vsp http (sprintf ('%s&amp;distinct=%d', plink_href, equ (dist, 0))); ?>" title="This link enables you toggle between normalized and un-normalized views of data using by applying or note applying a DISTINCT operator">
     <?vsp if (dist) http ('Not'); ?>Distinct
     </a>
     &nbsp;
-    <a class="desc_permalink" href="<?vsp http(fct_make_curie (sprintf ('%s&amp;distinct=%d', plink_href, dist), lines)); ?>" rel="nofollow">Permalink
+    <a class="desc_permalink" href="<?vsp http(fct_make_curie (sprintf ('%s&amp;distinct=%d', plink_href, dist), lines, triples_found)); ?>" rel="nofollow">Permalink
     </a>
 
     </h2>
 
       <div class="ds_inf_info">
 	    An Entity of Type : <a href="<?V e_type ?>"><?V e_type_label ?></a>,
-	    within Data Space : <a href="http://<?V host ?>"><?V host ?></a> associated with source <a href="usage.vsp?g=<?U _S ?><?V ses_parms ?>">document(s)</a><br/>
+	    within Data Space : <a href="http://<?V host ?>"><?V host ?></a> associated with source <a href="/fct/rdfdesc/usage.vsp?g=<?U _S ?><?V ses_parms ?>">document(s)</a><br/>
 <?vsp
 
   declare is_class int;
@@ -659,6 +649,9 @@ if (_subject <> '') {
     <table class="description">
 
 <?vsp
+
+     if (0 = triples_found)
+       goto _404;
 
     --  gs_user_id := USER;
     --  gs_user_id := coalesce ((select U_ID from DB.DBA.SYS_USERS where U_NAME=gs_user_id and not U_ACCOUNT_DISABLED), http_nobody_uid());
@@ -757,7 +750,7 @@ if (_subject <> '') {
 	       curr_pred := pred;
                curr_flag := FLAG;
 	     }
-           vis := b3s_http_print_r (OBJECT, sid, PRED, langs, 1, all_langs, _from, FLAG);
+           vis := b3s_http_print_r (OBJECT, sid, PRED, langs, 1, all_langs, _from, FLAG, jsses);
 	   nxt1:;
 	   inx := inx + 1;
 	   skip:;
@@ -797,6 +790,7 @@ if (_subject <> '') {
 	}
 	else
 	{
+        _404:
 	  http_request_status ('HTTP/1.1 404 Not Found');
 	http ('<tr><td colspan="2"><p>No further information is available.</p></td></tr>');
       }
@@ -831,53 +825,42 @@ if (_subject <> '') {
 	      } } ?>
 	      <input type="hidden" name="lp" value="<?V _last ?>"/>
 	      <?vsp if (topof <> '' and _last > 0) {  if (1 or page > 0) { ?>
-	      <button type="submit" value="" name="first" <?vsp if (page <= 0) { http ('disabled="disabled"'); } ?>>&#9666;&#9666; First</button>
+	      <span class="text-nowrap">
+	      <button type="submit" value="" name="first" aria-label="First page" <?vsp if (page <= 0) { http ('disabled="disabled"'); } ?>>&#9666;&#9666; First</button>
 	      &nbsp;
 	      <input type="hidden" name="op" value="<?V page - 1 ?>"/>
-	      <button type="submit" value="" name="prev" <?vsp if (page <= 0) { http ('disabled="disabled"'); } ?>>&#9666; Prev</button>
+	      <button type="submit" value="" name="prev" aria-label="Previous page" <?vsp if (page <= 0) { http ('disabled="disabled"'); } ?>>&#9666; Prev</button>
 	      &nbsp;&nbsp;&nbsp;
 	<?vsp } if (1 or not dis_next) { ?>
-	      <button type="submit" value="" name="next" <?vsp if (dis_next) { http ('disabled="disabled"'); } ?>>Next &#9656;</button>
+	      <button type="submit" value="" name="next" aria-label="Next page" <?vsp if (dis_next) { http ('disabled="disabled"'); } ?>>Next &#9656;</button>
 	       &nbsp;
-	      <button type="submit" value="" name="last" <?vsp if (dis_next) { http ('disabled="disabled"'); } ?>>Last &#9656;&#9656;</button>
-	       &nbsp;&nbsp;&nbsp;
-	       Page <?V page + 1 ?> of <?V _last + 1 ?>  &nbsp;&nbsp;&nbsp;
-	       <input type="text" value="<?V page + 1 ?>" size="5" name="gp" <?vsp if (page <= 0 AND dis_next) { http('disabled="disabled"'); }?> /> &nbsp; 
-	       <button type="submit" value="" name="go" <?vsp if (page <= 0 AND dis_next) { http('disabled="disabled"'); }?> >Go</button>
+	      <button type="submit" value="" name="last" aria-label="Last page" <?vsp if (dis_next) { http ('disabled="disabled"'); } ?>>Last &#9656;&#9656;</button>
+	      </span>
+	      <span class="text-nowrap">
+	       Page <?V page + 1 ?> of <?V _last + 1 ?> &nbsp;&nbsp;&nbsp;
+	       </span>
+	      <span class="text-nowrap">
+	       <input type="text" value="<?V page + 1 ?>" size="5" name="gp" aria-label="Enter page number" <?vsp if (page <= 0 AND dis_next) { http('disabled="disabled"'); }?> /> &nbsp;
+	       <button type="submit" value="" name="go" aria-label="Goto page" <?vsp if (page <= 0 AND dis_next) { http('disabled="disabled"'); }?> >Go</button>
+	       </span>
 	<?vsp } } ?>
 	</div>
 	</form>
       </div>
     </div> <!--  #MD -->
+    <?vsp
+       if (jsses is not null)
+         {
+           http ('<script src="https://cdn.jsdelivr.net/npm/ol@v7.1.0/dist/ol.js"></script>');
+           http ('<script>');
+           http (jsses);
+           http ('</script>');
+         }
+    ?>
     <?vsp b3s_render_dbg_out (dbg_out); ?>
 <!-- footer -->
     <div id="FT">
 	Faceted Search &amp; Find service v<?vsp http(DB.DBA.VAD_CHECK_VERSION('fct')); ?> as of <?V fct_build_info () ?><br/><br/>
-<?vsp if (_addthis_key <> '0') { ?>
-  <div id="FT_share">
-    <!-- AddThis Button BEGIN -->
-	<div class="addthis_toolbox addthis_default_style ">
-	<a class="addthis_button_facebook_like" id="fb_like_id"></a>
-	<a class="addthis_button_tweet"></a>
-	<a class="addthis_button_google_plusone" id="g_plusone_id"></a>
-	<a class="addthis_counter addthis_pill_style"></a>
-	</div>
-    <script type="text/javascript">
-    /*<![CDATA[*/
-	var addthis_config = {"data_track_clickback":true, ui_cobrand:"Virtuoso"};
-	var addthis_share = { url_transforms : { clean: true, remove: ['sid'] } };
-    /*]]>*/
-    </script>
-    <script type="text/javascript">
-	var fb_like_id = document.getElementById('fb_like_id');
-	if (fb_like_id) fb_like_id.setAttribute('fb:like:layout', 'button_count');
-	var g_plusone_id = document.getElementById('g_plusone_id');
-	if (g_plusone_id) g_plusone_id.setAttribute('g:plusone:size', 'medium');
-    </script>
-    <script type="text/javascript" src="http<?V case is_https_ctx () when 1 then 's' else '' end ?>://s7.addthis.com/js/250/addthis_widget.js#pubid=<?=_addthis_key?>"></script>
-    <!-- AddThis Button END -->
-  </div><!-- ft_s -->
-<?vsp } ?>
       <div id="ft_t"><br/>
         Alternative Linked Data Documents:
 	<?vsp if (VAD_CHECK_VERSION ('html5pivotviewer') is not null) { ?>	
@@ -922,9 +905,6 @@ if (_subject <> '') {
 	<span about=""
 	resource="http://www.w3.org/TR/rdfa-syntax"
 	rel="dc:conformsTo" xmlns:dc="http://purl.org/dc/terms/">
-	<a href="//validator.w3.org/check?uri=referer"><img
-	    src="//www.w3.org/Icons/valid-xhtml-rdfa"
-	    alt="Valid XHTML + RDFa" height="27" /></a>
 	</span>
 <?vsp fct_cctr(); ?>
 	<br />
@@ -949,5 +929,12 @@ if (_subject <> '') {
       <div class="form_row"><label for=""></label><input type="text" class="prop_val_lo"/></div><br/>
       <div class="form_row"><label for=""></label><input type="text" class="prop_val_hi"/></div>
     </div -->
+    <div>
+      <script type="text/javascript">
+	var featureList=["tab","ajax"];
+      </script>
+      <script type="text/javascript" src="/fct/oat/toolkit/loader.js"></script>
+      <script type="text/javascript" src="/fct/js/description.js"></script>
+    </div>
   </body>
 </html>

@@ -105,7 +105,7 @@ ta_add_sample (timer_account_t * ta, long this_time)
 void
 ta_print_out (FILE * out, timer_account_t * ta)
 {
-  if (!ta->ta_is_on == TA_ON)
+  if (ta->ta_is_on != TA_ON)
     return;
   if (ta->ta_n_samples > 0)
     {

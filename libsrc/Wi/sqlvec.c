@@ -1597,7 +1597,7 @@ sqlg_vec_setp (sql_comp_t * sc, setp_node_t * setp, dk_hash_t * res)
 {
   sqlg_vec_ref_ssl_list (sc, setp->setp_keys);
   if (setp->setp_ha && HA_ORDER == setp->setp_ha->ha_op)
-    setp->setp_org_slots = (state_slot_t **)box_concat (setp->setp_keys_box, setp->setp_dependent_box);
+    setp->setp_org_slots = (state_slot_t **)box_concat ((caddr_t) setp->setp_keys_box, (caddr_t) setp->setp_dependent_box);
   if (setp->setp_loc_ts)
     sqlg_vec_setp_loc (sc, setp);
   if (setp->setp_ha && HA_GROUP == setp->setp_ha->ha_op && !setp->setp_set_no_in_key)
@@ -4472,10 +4472,10 @@ qr_set_vec_ssls (query_t * qr)
   {
     if (SSL_VEC == ssl->ssl_type && !ssl->ssl_alias_of)
       dk_set_push (&ssls, (void *) ssl);
-      if (DV_ANY == ssl->ssl_dc_dtp)
-	est += dc_default_var_len + sizeof (caddr_t);
-      else
-	est += sizeof (int64);
+    if (DV_ANY == ssl->ssl_dc_dtp)
+      est += dc_default_var_len + sizeof (caddr_t);
+    else
+      est += sizeof (int64);
   }
   END_DO_SET ();
   DO_SET (state_slot_t *, ssl, &qr->qr_temp_spaces)

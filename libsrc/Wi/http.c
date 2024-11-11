@@ -373,13 +373,11 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
   else if (check_rate == ACL_CHECK_HITS)
     {
       acl_hit_t * hit, **place;
-      int64 now;
-      timeout_t tv;
+      time_usec_t now_usec;
 
       res = elm->ha_flag;
-      get_real_time (&tv);
-      now = ((int64)tv.to_sec * 1000000) + (int64) tv.to_usec;
-      /*now = get_msec_real_time ();*/
+      now_usec = get_usec_real_time ();
+
       mutex_enter (http_acl_mtx);
       loc_hash = elm->ha_hits;
 #ifdef DEBUG
@@ -394,7 +392,7 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
 
 	  hit = *place;
 
-	  elapsed = (float) (now - hit->ah_initial) / 1000000;
+	  elapsed = (float) (now_usec - hit->ah_initial) / 1000000;
 	  if (elapsed < 1) elapsed = 0.5;
 	  rate = (float)((hit->ah_count + 1) / elapsed);
 	  hit->ah_avg = rate;
@@ -414,7 +412,7 @@ static int http_acl_check_rate (ws_acl_t * elm, caddr_t name, int check_rate, in
 	  memset (hit, 0, sizeof (acl_hit_t));
 	  id_hash_set (loc_hash, (caddr_t) &new_name, (caddr_t) &hit);
 	}
-      if (!hit->ah_initial) hit->ah_initial = now;
+      if (!hit->ah_initial) hit->ah_initial = now_usec;
       hit->ah_count ++;
       if (hit_ret)
 	*hit_ret = hit;
@@ -993,6 +991,8 @@ log_info_http (ws_connection_t * ws, const char * code, OFF_T clen)
   const char * str;
   int volatile len;
   int http_resp_code = 0;
+  client_connection_t *cli = ws->ws_cli;
+  time_usec_t time_usec_now = 0;
   time_t now;
   struct tm *tm;
 #if defined (HAVE_LOCALTIME_R) && !defined (WIN32)
@@ -1083,8 +1083,36 @@ next_fragment:
 		      dk_free_tree (connvar_value);
 		    }
 		  break;
-	      default:
-		  WS_LOG_ERROR;
+	      case 'T':
+		if (!time_usec_now)
+		  time_usec_now = get_usec_real_time ();
+		if (!strcmp (format, "s"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000000UL);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "ms"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000UL);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "us"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec));
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		else if (!strcmp (format, "rt"))
+		  {
+		    snprintf (tmp, sizeof (tmp), "%lld", rdtsc () - cli->cli_cl_start_ts);
+		    session_buffered_write (ses, tmp, strlen (tmp));
+		    break;
+		  }
+		/* no break; */
+		  default:
+		      WS_LOG_ERROR;
 	    }
 	  goto get_next;
 	}
@@ -1111,8 +1139,19 @@ next_fragment:
 		  (tm->tm_mday), monthname [month - 1], year, tm->tm_hour, tm->tm_min, tm->tm_sec, TZ_TO_HHMM(dt_local_tz_for_logs));
 	    }
 	  break;
+    case 'T':
+      if (!time_usec_now)
+	time_usec_now = get_usec_real_time ();
+      snprintf (tmp, sizeof (tmp), "%lld", (time_usec_now - cli->cli_start_time_usec) / 1000000UL);
+      break;
+    case 'D':
+      if (!time_usec_now)
+	time_usec_now = get_usec_real_time ();
+      snprintf (tmp, sizeof (tmp), "%lld", time_usec_now - cli->cli_start_time_usec);
+      break;
       case 'r':
-         snprintf (tmp, sizeof (tmp), "%.*s", tmp_len, ws->ws_req_line ? ws->ws_req_line : "GET unspecified");
+      snprintf (tmp, sizeof (tmp), "%.*s", tmp_len, ws->ws_req_line
+	  && ws->ws_method != WM_ERROR ? ws->ws_req_line : "GET unspecified");
 	  strcat_ck (tmp, ws->ws_proto);
 	  tmp [sizeof (tmp) - 1] = 0;
 	  break;
@@ -1550,6 +1589,8 @@ ws_path_and_params (ws_connection_t * ws)
     case 3:
       if (0 == memcmp (ws->ws_req_line, "GET", 3))
         ws->ws_method = WM_GET;
+      if (0 == memcmp (ws->ws_req_line, "PUT", 3))
+        ws->ws_method = WM_PUT;
       break;
     case 4:
       if (0 == memcmp (ws->ws_req_line, "POST", 4))
@@ -1560,6 +1601,10 @@ ws_path_and_params (ws_connection_t * ws)
         ws->ws_method = WM_URIQA_MGET;
       else if (0 == memcmp (ws->ws_req_line, "MPUT", 4))
         ws->ws_method = WM_URIQA_MPUT;
+      break;
+    case 6:
+      if (0 == memcmp (ws->ws_req_line, "DELETE", 6))
+        ws->ws_method = WM_DELETE;
       break;
     case 7:
       if (0 == memcmp (ws->ws_req_line, "MDELETE", 7))
@@ -1912,7 +1957,7 @@ ws_clear (ws_connection_t * ws, int error_cleanup)
 
 char http_server_id_string_buf [1024];
 char *http_server_id_string = NULL;
-const char *http_client_id_string = "Mozilla/4.0 (compatible; OpenLink Virtuoso)";
+char *http_client_id_string = "Mozilla/4.0 (compatible; OpenLink Virtuoso)";
 uint32 http_default_client_req_timeout = 100;
 extern char * https_csp;
 
@@ -2524,7 +2569,7 @@ ws_strses_reply (ws_connection_t * ws, const char * volatile code)
   accept_gz = ws_get_packed_hf (ws, "Accept-Encoding:", "");
   if (IS_CHUNKED_OUTPUT (ws))
     cnt_enc = WS_CE_CHUNKED;
-  else if (enable_gzip && accept_gz && strstr (accept_gz, "gzip") && ws->ws_proto_no == 11 && ws->ws_status_code > 199 && CONTENT_ALLOWED(ws))
+  else if (enable_gzip && accept_gz && strstr (accept_gz, "gzip") && ws->ws_proto_no == 11 && CONTENT_ALLOWED(ws))
     {
       cnt_enc = WS_CE_GZIP;
       ws->ws_try_pipeline = 0; /* browsers based on webkit workaround */
@@ -2758,7 +2803,7 @@ static char *fmt1 =
 
 #define REPLY_SENT "reply sent"
 
-const char *www_root = ".";
+char *www_root = ".";
 
 
 static int
@@ -8798,11 +8843,11 @@ http_map_fill_cors_allow_headers (caddr_t option_value)
       if (NULL == ht)
         ht = id_strcase_hash_create (7);
       if (h[0] != '!' || 0 == stricmp (h, "!ALL")) /* expilicitly added header, or all custom disabled */
-        id_hash_set (ht, &h, (caddr_t) &one);
+        id_hash_set (ht, (caddr_t) &h, (caddr_t) &one);
       else /* explicitly denied header */
         {
           caddr_t he = box_dv_short_string (h+1);
-          id_hash_set (ht, &he, (caddr_t) &two);
+          id_hash_set (ht, (caddr_t) &he, (caddr_t) &two);
         }
     }
   END_DO_SET();
@@ -8810,10 +8855,10 @@ http_map_fill_cors_allow_headers (caddr_t option_value)
   /* default allowed headers, except if denied explicitly, see above */
   DO_SET (caddr_t, h, &http_default_allow_headers_list)
     {
-      ptrlong * flag = id_hash_get (ht, (caddr_t) &h);
+      ptrlong * flag = (ptrlong *) id_hash_get (ht, (caddr_t) &h);
       if (flag && 2 == flag[0])
         continue;
-      id_hash_set (ht, &h, (caddr_t) &one);
+      id_hash_set (ht, (caddr_t) &h, (caddr_t) &one);
     }
   END_DO_SET();
 
@@ -11620,7 +11665,7 @@ bif_http_get_cli_sessions (caddr_t * qst, caddr_t * err_ret, state_slot_t ** arg
   while (dk_hit_next (&hit, (void**) &sid, (void**) &ses))
     {
       caddr_t * args = (caddr_t *) DKS_DB_DATA (ses);
-      dk_set_push (&set, list (2, box_num(sid), add_args ? box_copy_tree (args) : NEW_DB_NULL));
+      dk_set_push (&set, list (3, box_num(sid), add_args ? box_copy_tree (args) : NEW_DB_NULL, box_num((boxint)ses->dks_n_threads)));
     }
   mutex_leave (ws_cli_mtx);
   return list_to_array (dk_set_nreverse (set));
@@ -11631,9 +11676,11 @@ bif_http_client_session_cached (caddr_t * qst, caddr_t * err_ret, state_slot_t *
 {
   boxint id = bif_long_arg (qst, args, 0, "http_client_session_cached");
   boxint ret;
+  dk_session_t * ses;
   mutex_enter (ws_cli_mtx);
-  ret = ((NULL != gethash ((void *) (ptrlong) id, ws_cli_sessions)) ? 1 : 0);
+  ses = (dk_session_t *) gethash ((void *) (ptrlong) id, ws_cli_sessions);
   mutex_leave (ws_cli_mtx);
+  ret = (ses && ses->dks_n_threads ? 1 : (ses ? 2 : 0));
   return box_num (ret);
 }
 
@@ -11645,18 +11692,21 @@ bif_http_on_message (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   caddr_t func = bif_string_arg (qst, args, 1, "http_on_message");
   caddr_t cd = bif_arg (qst, args, 2, "http_on_message");
   int signal_on_disconnected = BOX_ELEMENTS(args) > 3 ? bif_long_arg (qst, args, 3, "http_on_message") : 1;
+  int keep_conn_ref = BOX_ELEMENTS(args) > 4 ? bif_long_arg (qst, args, 4, "http_on_message") : 0; /* use on client side to keep ses ref */
   dk_session_t * ses = NULL;
   ws_connection_t * ws = qi->qi_client->cli_ws;
 
   if (DV_CONNECTION == DV_TYPE_OF (conn))
     {
+      int server_session = 0;
       ses = (dk_session_t *) conn[0];
+      server_session = (ws && ses && ses == ws->ws_session);
       if (ses && DKSESSTAT_ISSET (ses, SST_OK))
-        conn[0] = NULL;
+        conn[0] = keep_conn_ref && !server_session ? (caddr_t) ses : (caddr_t) NULL;
       else
 	ses = NULL;
       mutex_enter (thread_mtx);
-      if (ws && ses && ses == ws->ws_session)
+      if (server_session)
 	{
 	  ws->ws_session->dks_ws_status = DKS_WS_CACHED;
 	  ws->ws_session->dks_n_threads++;
