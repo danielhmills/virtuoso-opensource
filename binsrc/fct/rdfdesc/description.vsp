@@ -259,7 +259,7 @@ again:
   if (view_mode = 'none')
   {
     -- User doesn't have read permission
-    return;
+    http_status_set(403);
   }
 
   if (graph_perms_allow_sponge)
@@ -368,9 +368,13 @@ again:
   __box_flags_set (rdf_link, 2);
 
   -- 404 ck
-  qry_str := sprintf ('sparql ask %s where { { <%s> ?p1 ?o1 } union { ?s ?p2 <%s> } }', _F, _S, _S);
-  exec (qry_str, null, null, vector (), 0, meta, data);
-  triples_found := case when isvector(data) and aref(aref(data,0),0) then 1 else 0 end;
+  triples_found := 0;
+  if (view_mode <> 'none') 
+    {
+      qry_str := sprintf ('sparql ask %s where { { <%s> ?p1 ?o1 } union { ?s ?p2 <%s> } }', _F, _S, _S);
+      exec (qry_str, null, null, vector (), 0, meta, data);
+      triples_found := case when isvector(data) and aref(aref(data,0),0) then 1 else 0 end;
+    }
 
   declare __res_desc, qs, qv, best_variant, accept, protocol varchar;
   declare best_q, curr float;
