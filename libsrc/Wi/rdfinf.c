@@ -2092,7 +2092,7 @@ pred_body_references (sqlo_t * so, df_elt_t ** pred, df_elt_t * refd)
     return pred_body_references (so, (df_elt_t**)pred[1], refd);
   if (DFE_PRED_BODY == op)
     {
-      int inx;
+      uint32_t inx;
       for (inx = 1; inx < BOX_ELEMENTS (pred); inx++)
 	{
 	  df_elt_t * dfe = pred[inx];
@@ -2112,7 +2112,6 @@ sqlg_trailing_subclass_inf (sqlo_t * so, data_source_t ** q_head, data_source_t 
 {
   state_slot_t * o_slot;
   df_elt_t * o_col;
-  data_source_t * last = qn_last(ts);
   rdf_inf_pre_node_t * ri;
   if (sas_dummy_ctx == ctx
       || tb_dfe->_.table.is_inf_col_given)
@@ -2135,8 +2134,14 @@ sqlg_trailing_subclass_inf (sqlo_t * so, data_source_t ** q_head, data_source_t 
     ri->ri_p = sqlg_col_ssl (tb_dfe, "P");
   if (pred_body_references (so, tb_dfe->_.table.join_test, o_col))
     {
-      ri->src_gen.src_after_test = last->src_after_test;
-      last->src_after_test = NULL;
+      data_source_t * last_with_test = qn_last(ts);
+      while (last_with_test && !last_with_test->src_after_test)
+        last_with_test = qn_prev(q_head, last_with_test);
+      if (last_with_test) /* precaution, NULL should not happen since tb has jt */
+        {
+          ri->src_gen.src_after_test = last_with_test->src_after_test;
+          last_with_test->src_after_test = NULL;
+        }
     }
   ri->ri_ctx = ctx;
 }
@@ -2193,12 +2198,14 @@ sqlg_trailing_subproperty_inf (sqlo_t * so, data_source_t ** q_head, data_source
 			    rdf_inf_ctx_t * ctx, df_elt_t * tb_dfe, int inxop_inx)
 {
   state_slot_t * p_slot;
+  df_elt_t * p_col;
   rdf_inf_pre_node_t * ri;
   if (sas_dummy_ctx == ctx
       || tb_dfe->_.table.is_inf_col_given)
     return;
 
-  p_slot = sqlg_col_ssl (tb_dfe, "P");
+  p_col = sqlg_col_dfe (tb_dfe, "P");
+  p_slot = p_col ? p_col->dfe_ssl : NULL;
   if (!p_slot)
     return; /* P is unspecified and but is not accessed */
   ri = sqlg_rdf_inf_node (so->so_sc);
@@ -2208,6 +2215,17 @@ sqlg_trailing_subproperty_inf (sqlo_t * so, data_source_t ** q_head, data_source
   ri->ri_output = p_slot;
   ri->ri_p = p_slot;
   ri->ri_ctx = ctx;
+  if (pred_body_references (so, tb_dfe->_.table.join_test, p_col))
+    {
+      data_source_t * last_with_test = qn_last(ts);
+      while (last_with_test && !last_with_test->src_after_test)
+        last_with_test = qn_prev(q_head, last_with_test);
+      if (last_with_test) /* precaution, NULL should not happen since tb has jt */
+        {
+          ri->src_gen.src_after_test = last_with_test->src_after_test;
+          last_with_test->src_after_test = NULL;
+        }
+    }
 }
 
 
