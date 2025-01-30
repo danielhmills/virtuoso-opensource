@@ -22,8 +22,10 @@
 create table ACME.DBA.ACME_SERVER (AC_URL varchar primary key, AC_DIR any, AC_EXPIRATION datetime) if not exists
 ;
 
-create table ACME.DBA.ACME_ACCOUNT (AA_KEY_NAME varchar primary key, AA_KID varchar, AA_SRV varchar, AA_USER varchar, AA_EMAIL varchar) if not exists
+create table ACME.DBA.ACME_ACCOUNT (AA_KEY_NAME varchar primary key, AA_KID varchar, AA_SRV varchar, AA_USER varchar, AA_EMAIL varchar, AA_ORDERS varchar) if not exists
 ;
+
+alter table ACME.DBA.ACME_ACCOUNT add AA_ORDERS varchar if not exists;
 
 create table ACME.DBA.ACME_ORDERS (AO_DNS varchar, AO_SID varchar, AO_OID varchar, AO_ACCT varchar, AO_STATE varchar,
     AO_KEY varchar, AO_CSR long varchar, AO_CRT long varchar, AO_EXPIRES datetime,
@@ -94,9 +96,9 @@ create procedure ACME.DBA.jwk_plain (in kname varchar)
 }
 ;
 
-create procedure ACME.DBA.sign_request (in kname varchar, in nonce varchar, in url varchar, in payload any, in algo varchar := 'RSA-SHA256')
+create procedure ACME.DBA.eab(in eab_kid varchar, in url varchar, in payload any)
 {
-  declare jwk, jws, protected, bprotected, bpayload, spayload, signature any;
+  declare jwk, jws, protected, bprotected, bpayload, spayload, signature, kv any;
   if (isvector (payload))
     spayload := obj2json (payload);
   else
@@ -105,6 +107,20 @@ create procedure ACME.DBA.sign_request (in kname varchar, in nonce varchar, in u
     bpayload := '';
   else
     bpayload := encode_base64url (spayload);
+  protected := soap_box_structure ('alg', 'HS256', 'kid', eab_kid, 'url', url);
+  bprotected := encode_base64url (obj2json (protected));
+  kv := decode_base64(xenc_key_serialize(eab_kid));
+  signature := xenc_hmac_digest (concat (bprotected, '.', bpayload), kv, 'sha256');
+  jws := soap_box_structure ('protected', bprotected, 'payload', bpayload, 'signature', encode_base64url (signature));
+  return jws;
+}
+;
+
+
+create procedure ACME.DBA.sign_request (in kname varchar, in nonce varchar, in url varchar, in payload any,
+    in eab_kid varchar default null, in algo varchar := 'RSA-SHA256')
+{
+  declare jwk, jws, protected, bprotected, bpayload, spayload, signature any;
   protected := null;
   for select AA_KID from ACME.DBA.ACME_ACCOUNT where AA_KEY_NAME = kname do
     {
@@ -116,6 +132,22 @@ create procedure ACME.DBA.sign_request (in kname varchar, in nonce varchar, in u
       protected := soap_box_structure ('alg', 'RS256', 'jwk', jwk, 'nonce', nonce, 'url', url);
     }
   bprotected := encode_base64url (obj2json (protected));
+  if (eab_kid is not null and jwk is not null)
+    {
+      declare eab any;
+      eab := ACME.DBA.eab(eab_kid, url, jwk);
+      if (isstring(payload))
+        payload := json_parse(payload);
+      payload := vector_concat(payload, vector('externalAccountBinding',eab));
+    }
+  if (isvector (payload))
+    spayload := obj2json (payload);
+  else
+    spayload := payload;
+  if (payload is null)
+    bpayload := '';
+  else
+    bpayload := encode_base64url (spayload);
   -- TODO: alg value
   signature := xenc_sign (concat (bprotected, '.', bpayload), kname, algo);
   jws := soap_box_structure ('protected', bprotected, 'signature', encode_base64url (signature), 'payload', bpayload);
@@ -189,6 +221,30 @@ create procedure WS.WS."acme-challenge" () __soap_http 'application/octet-stream
 grant execute on WS.WS."acme-challenge" to WebMeta
 ;
 
+create procedure ACME.DBA.resolve_url (in sid varchar, in kname varchar, in url varchar)
+{
+  declare nonce, url0, payload, request, json, pem, oid, jt varchar;
+  declare response any;
+  url0 := null;
+  for select * from ACME.DBA.ACME_SESSION where AS_SID = sid for update do
+    {
+      url0 := AS_URL;
+      nonce := AS_NONCE;
+      if (AS_KEY is not null and kname <> AS_KEY)
+        signal ('42000', 'Cannot resume session with another account');
+    }
+
+  if (url0 is null)
+    signal ('22023', 'Non existing session');
+  if (not xenc_key_exists (kname))
+    signal ('42000', 'Key does not exists');
+  request := ACME.DBA.sign_request (kname, nonce, url, NULL);
+  json := HTTP_CLIENT_EXT (url=>url,  http_method=>'POST', headers=>response,
+                           http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
+                           body=>request);
+  return json;
+}
+;
 
 -- XXX: make common call to sign an call http_get, ck HTTP code
 create procedure ACME.DBA.new_order (in sid varchar, in kname varchar, in identifiers0 any)
@@ -303,7 +359,7 @@ create procedure ACME.DBA.new_order (in sid varchar, in kname varchar, in identi
   jt := json_parse (json);
   state := get_keyword ('status', jt);
 
-  if (state <> 'pending')
+  if (state <> 'pending' and state <> 'processing')
     {
       --bing ();
       update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_DNS = dns and AO_OID = oid;
@@ -321,7 +377,7 @@ create procedure ACME.DBA.new_order (in sid varchar, in kname varchar, in identi
   jt := json_parse (json);
   state := get_keyword ('status', jt);
   start_ts := msec_time ();
-  while (state = 'pending')
+  while (state = 'pending' or state = 'processing')
     {
       dbg_obj_print ('Authorization retry, please wait...');
       --bing();
@@ -377,6 +433,7 @@ finalize:
       signal ('42000', concat ('Order registration failed (05) : ', error));
     }
 
+  start_ts := msec_time ();
   while (state in ('pending', 'processing'))
     {
       delay (2);
@@ -414,9 +471,9 @@ finalize:
 }
 ;
 
-create procedure ACME.DBA.new_account (in sid varchar, in kname varchar, in email varchar)
+create procedure ACME.DBA.new_account (in sid varchar, in kname varchar, in email varchar, in eab_kid varchar default null)
 {
-  declare nonce, url0, url, payload, request, json, pem, kid, jt varchar;
+  declare nonce, url0, url, payload, request, json, pem, kid, jt, orders_url varchar;
   declare response, ret any;
   url0 := null;
   for select * from ACME.DBA.ACME_SESSION where AS_SID = sid for update do
@@ -430,9 +487,8 @@ create procedure ACME.DBA.new_account (in sid varchar, in kname varchar, in emai
     signal ('42000', 'Key already exists');
   url := ACME.DBA.server_url (url0, 'newAccount');
   xenc_key_RSA_create (kname, 2048);
-  --payload := obj2json (soap_box_structure ('contact', vector (concat ('mailto:', email)), 'termsOfServiceAgreed', soap_boolean(1)));
-  payload := sprintf ('{"contact":["mailto:%s"],"termsOfServiceAgreed":true}', email);
-  request := ACME.DBA.sign_request (kname, nonce, url, payload);
+  payload := soap_box_structure ('contact', vector (concat ('mailto:', email)), 'termsOfServiceAgreed', soap_boolean(1));
+  request := ACME.DBA.sign_request (kname, nonce, url, payload, eab_kid);
   json := HTTP_CLIENT_EXT (url=>url,  http_method=>'POST', headers=>response,
                            http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
                            body=>request);
@@ -444,7 +500,8 @@ create procedure ACME.DBA.new_account (in sid varchar, in kname varchar, in emai
       xenc_key_remove (kname);
       signal ('42000', 'Account registration failed');
     }
-  insert into ACME.DBA.ACME_ACCOUNT (AA_KEY_NAME, AA_KID, AA_USER, AA_SRV, AA_EMAIL) values (kname, kid, user, url0, email);
+  orders_url := get_keyword('orders', jt);
+  insert into ACME.DBA.ACME_ACCOUNT (AA_KEY_NAME, AA_KID, AA_USER, AA_SRV, AA_EMAIL, AA_ORDERS) values (kname, kid, user, url0, email, orders_url);
   USER_KEY_STORE (user, kname);
   update ACME.DBA.ACME_SESSION set AS_NONCE = nonce, AS_OP = 'newAccount' where AS_SID = sid;
   commit work;
@@ -579,6 +636,16 @@ create procedure ACME.DBA.make_cert (in dns varchar, in oid varchar, in kname va
 }
 ;
 
+create procedure ACME.DBA.zerossl_eab(in access_key varchar)
+{
+  declare x, jt, k, v  varchar;
+  x := HTTP_CLIENT(sprintf ('https://api.zerossl.com/acme/eab-credentials?access_key=%U',access_key), http_method=>'POST');
+  jt := json_parse (x);
+  k := get_keyword('eab_kid',jt);
+  v := get_keyword('eab_hmac_key',jt);
+  xenc_key_RAW_read(k, encode_base64(decode_base64url(v)));
+  return k;
+};
 
 create procedure ACME.DBA.revoke_cert (in sid varchar, in kname varchar)
 {
@@ -596,7 +663,7 @@ create procedure ACME.DBA.revoke_cert (in sid varchar, in kname varchar)
     signal ('42000', 'Key does not exists');
   url := ACME.DBA.server_url (url0, 'revokeCert');
   cert := encode_base64url (decode_base64 (xenc_X509_certificate_serialize (kname)));
-  payload := sprintf ('{"certificate":"%s","reason":4}', cert);
+  payload := sprintf ('{"certificate":"%s","reason":0}', cert);
   request := ACME.DBA.sign_request (kname, nonce, url, payload);
   json := HTTP_CLIENT_EXT (url=>url,  http_method=>'POST', headers=>response,
                            http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
