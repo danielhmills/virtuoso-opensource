@@ -275,6 +275,7 @@
 		      $("url0_td").appendChild(sel.div);
 		      sel.addOption("https://acme-staging-v02.api.letsencrypt.org/directory");
 		      sel.addOption("https://acme-v02.api.letsencrypt.org/directory");
+		      sel.addOption("https://acme.zerossl.com/v2/DV90");
 		     }
 		  </script>
 		  ]]>
@@ -284,6 +285,13 @@
               <td>E-mail</td>
 	      <td>
 		<v:text name="email" value="" xhtml_size="120" error-glyph="*">
+		</v:text>
+              </td>
+            </tr>
+            <tr>
+              <td>Access Key*</td>
+	      <td>
+		<v:text name="access_key" value="" xhtml_size="120" error-glyph="*">
 		</v:text>
               </td>
             </tr>
@@ -300,8 +308,9 @@
                 <v:button action="simple" name="save_btn" value="Register New Account">
                   <v:on-post>
                       <![CDATA[
-                      declare hf, new_acc_result any;
+                      declare hf, new_acc_result, eab_kid any;
                       self.url0 := get_keyword ('url0', e.ve_params, '');
+                      eab_kid := null;
                       if (isnull (regexp_match ('^[A-Za-z0-9_\-]+$', self.name.ufl_value)))
                         {
                            self.vc_is_valid := 0;
@@ -321,9 +330,21 @@
                            self.vc_error_message := 'Invalid e-mail address.';
                            return;
                         }
-                       new_acc_result := ACME.DBA.new_account (ACME.DBA.new_nonce (null, self.url0), self.name.ufl_value, self.email.ufl_value);
+                      if (get_keyword('externalAccountRequired',ACME.DBA.server_url(self.url0,'meta')) and not length(self.access_key.ufl_value))
+                        {
+                           self.vc_is_valid := 0;
+                           self.vc_error_message := 'External acccount binding key required';
+                           return;
+                        }
+
+                      if (self.url0 like 'https://acme.zerossl.com/%' and length(self.access_key.ufl_value) > 0)
+                        {
+                          eab_kid := ACME.DBA.zerossl_eab(self.access_key.ufl_value);
+                        }
+                       new_acc_result := ACME.DBA.new_account (ACME.DBA.new_nonce (null, self.url0), self.name.ufl_value, self.email.ufl_value, eab_kid);
                        self.email.ufl_value := '';
                        self.name.ufl_value := '';
+                       self.access_key.ufl_value := '';
                        self.vc_data_bind (e);
                       ]]>
                   </v:on-post>
