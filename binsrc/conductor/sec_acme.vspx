@@ -347,11 +347,14 @@
                            self.vc_error_message := 'Invalid e-mail address.';
                            return;
                         }
-                      if (get_keyword('externalAccountRequired',ACME.DBA.server_url(self.url0,'meta')) and not length(self.access_key.ufl_value))
+                      if (get_keyword('externalAccountRequired',ACME.DBA.server_url(self.url0,'meta')))
                         {
-                           self.vc_is_valid := 0;
-                           self.vc_error_message := 'External acccount binding key required';
-                           return;
+                          eab_kid := self.access_key.ufl_value;
+                          if (not length(eab_kid)) {
+                            self.vc_is_valid := 0;
+                            self.vc_error_message := 'External acccount binding key required';
+                            return;
+                          }
                         }
 
                       if (self.url0 like 'https://acme.zerossl.com/%' and length(self.access_key.ufl_value) > 0)
