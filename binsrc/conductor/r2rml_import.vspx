@@ -117,6 +117,12 @@
                             return;
                           }
 
+                          if (self.del.ufl_selected)
+                          {
+                            sparql clear graph iri(?:_graph);
+                            commit work;
+                          }
+
                           if (not length (_file))
                           {
                             declare uri any;
@@ -137,10 +143,6 @@
                             goto end_post;
                           }
 
-                          if (self.del.ufl_selected)
-                          {
-                            sparql clear graph iri(?:_graph);
-                          }
 
                           is_ttl := 1;
                           {
