@@ -132,6 +132,13 @@
               </td>
             </tr>
             <tr>
+                <td>Alternative Names <small>(comma-separated)</small></td>
+	      <td>
+		<v:text name="alt_names" value="" xhtml_size="120" error-glyph="*">
+		</v:text>
+              </td>
+            </tr>
+            <tr>
               <td>Select ACME Account</td>
 	      <td>
 		  <v:data-list name="account" value=""
@@ -163,7 +170,7 @@
                 <v:button action="simple" name="save_btn2" value="Place New Order">
                   <v:on-post>
                       <![CDATA[
-                      declare url0, acct varchar;
+                      declare url0, acct, identifiers varchar;
                       self.host.ufl_value := trim (self.host.ufl_value);
                       if (self.host.ufl_value = '')
                         {
@@ -184,7 +191,17 @@
                              self.vc_error_message := __SQL_MESSAGE;
                              return;
                           };
-                      ACME.DBA.new_order (ACME.DBA.new_nonce (kname=>acct), acct, vector (self.host.ufl_value));
+                      identifiers := vector(self.host.ufl_value);
+                      if (length(self.alt_names.ufl_value))
+                        {
+                          declare vec any;
+                          vec := string_split(self.alt_names.ufl_value);
+                          foreach (any x in vec) do {
+                            if (not position (x, identifiers))
+                              identifiers := vector_concat(identifiers, vector(x));
+                          }
+                        }
+                      ACME.DBA.new_order (ACME.DBA.new_nonce (kname=>acct), acct, identifiers);
                       self.host.ufl_value := '';
                       self.account.ufl_value := 'no';
                       self.vc_data_bind (e);

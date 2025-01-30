@@ -22,37 +22,76 @@
 create table ACME.DBA.ACME_SERVER (AC_URL varchar primary key, AC_DIR any, AC_EXPIRATION datetime) if not exists
 ;
 
-create table ACME.DBA.ACME_ACCOUNT (AA_KEY_NAME varchar primary key, AA_KID varchar, AA_SRV varchar, AA_USER varchar, AA_EMAIL varchar, AA_ORDERS varchar) if not exists
+create table ACME.DBA.ACME_ACCOUNT (
+    AA_KEY_NAME varchar primary key,
+    AA_KID varchar,
+    AA_SRV varchar,
+    AA_USER varchar,
+    AA_EMAIL varchar,
+    AA_ORDERS varchar,
+    AA_TS integer) if not exists
 ;
 
 alter table ACME.DBA.ACME_ACCOUNT add AA_ORDERS varchar if not exists;
+alter table ACME.DBA.ACME_ACCOUNT add AA_TS integer if not exists;
 
-create table ACME.DBA.ACME_ORDERS (AO_DNS varchar, AO_SID varchar, AO_OID varchar, AO_ACCT varchar, AO_STATE varchar,
-    AO_KEY varchar, AO_CSR long varchar, AO_CRT long varchar, AO_EXPIRES datetime,
-    primary key (AO_DNS, AO_OID)) if not exists
-create index ACME_ORDERS_KEY on ACME.DBA.ACME_ORDERS (AO_KEY) if not exists
+create table ACME.DBA.ACME_ORDERS (
+    AO_OID varchar,
+    AO_DNS varchar, -- primary DNS name (CN)
+    AO_SID varchar,
+    AO_ACCT varchar,
+    AO_STATE varchar,
+    AO_KEY varchar,
+    AO_CSR long varchar,
+    AO_CRT long varchar,
+    AO_EXPIRES datetime,
+    AO_IDENTIFIERS any,
+    AO_TS integer,
+    primary key (AO_OID)) if not exists
 ;
 
-create table ACME.DBA.ACME_AUTH_TOKEN (AT_TOKEN varchar primary key, AT_DNS varchar, AT_AID varchar, AT_KEY varchar, AT_EXPIRY datetime) if not exists
+alter table ACME.DBA.ACME_ORDERS modify primary key (AO_OID);
+alter table ACME.DBA.ACME_ORDERS add AO_IDENTIFIERS any if not exists;
+alter table ACME.DBA.ACME_ORDERS add AO_TS integer if not exists;
+
+create table ACME.DBA.ACME_AUTH_TOKEN (
+    AT_TOKEN varchar primary key,
+    AT_OID varchar,
+    AT_DNS varchar,
+    AT_AID varchar,
+    AT_KEY varchar,
+    AT_EXPIRY datetime) if not exists
 create unique index ACME_AUTH_TOKEN_AID on ACME.DBA.ACME_AUTH_TOKEN (AT_AID) if not exists
+;
+
+alter table ACME.DBA.ACME_AUTH_TOKEN add AT_OID varchar if not exists
 ;
 
 create table ACME.DBA.ACME_SESSION (AS_SID varchar primary key, AS_KEY varchar, AS_URL varchar, AS_NONCE varchar,
     AS_OP varchar, AS_TS timestamp) if not exists
 ;
 
-create procedure ACME.DBA.make_csr (in sid varchar, in dns varchar, in oid varchar, in kname varchar)
+create procedure ACME.DBA.make_csr (in sid varchar, in dns varchar, in oid varchar, in kname varchar, in identifiers any default null)
 {
-  declare key_name, csr varchar;
+  declare key_name, csr, san varchar;
   if (sid is null)
     signal ('42000', 'Can not make csr for non existing acme session');
+  san := null;
+  if (identifiers is null or not position(dns, identifiers))
+    identifiers := vector_concat(vector(dns), identifiers);
+  foreach (varchar cn in identifiers) do
+    {
+      if (san is not null)
+        san := concat (san,', ');
+      san := concat (san, 'DNS:',cn);
+    }
   key_name := concat ('key_', sid);
   xenc_key_RSA_create (key_name, 2048);
-  csr := xenc_x509_csr_generate (key_name, vector ('CN', dns), vector ('subjectAltName', concat ('DNS:', dns)), 'sha256', 1);
+  csr := xenc_x509_csr_generate (key_name, vector ('CN', dns), vector ('subjectAltName', san), 'sha256', 1);
   csr := encode_base64url (csr);
   USER_KEY_STORE (user, key_name);
-  insert replacing ACME.DBA.ACME_ORDERS (AO_DNS, AO_SID, AO_OID, AO_STATE, AO_CSR, AO_KEY, AO_ACCT)
-      values (dns, sid, oid, 'pending', csr, key_name, kname);
+  insert replacing ACME.DBA.ACME_ORDERS (AO_DNS, AO_SID, AO_OID, AO_STATE, AO_CSR, AO_KEY, AO_ACCT, AO_IDENTIFIERS, AO_TS)
+      values (dns, sid, oid, 'pending', csr, key_name, kname, identifiers, unix_timestamp());
   commit work;
   return csr;
 }
@@ -250,7 +289,7 @@ create procedure ACME.DBA.resolve_url (in sid varchar, in kname varchar, in url 
 create procedure ACME.DBA.new_order (in sid varchar, in kname varchar, in identifiers0 any)
 {
   declare nonce, url0, url, payload, request, json, pem, oid, jt varchar;
-  declare response, ret, identifiers, authorizations, finalize, challenges, thumbnail, token, cha_url, auth_url, state any;
+  declare response, ret, identifiers, authorizations, finalize, challenges, thumbnail, token, challenge_url, state any;
   declare csr, loc, certificate_url varchar;
   declare dns, identifier, expires any;
   declare start_ts int;
@@ -268,14 +307,15 @@ create procedure ACME.DBA.new_order (in sid varchar, in kname varchar, in identi
     signal ('22023', 'Non existing session');
   if (not xenc_key_exists (kname))
     signal ('42000', 'Key does not exists');
-  if (not isvector (identifiers0) or length (identifiers0) <> 1)
-    signal ('22023', 'Only one identifier is supported per request');
+  if (not isvector (identifiers0) or length (identifiers0) < 1)
+    signal ('22023', 'At least one identifier should be in the request');
 
   dns := identifiers0[0];
   url := ACME.DBA.server_url (url0, 'newOrder');
   identifiers := vector ();
   foreach (varchar id in identifiers0) do
     {
+      -- should check for IPs
       identifiers := vector_concat (identifiers, vector (soap_box_structure ('type', 'dns', 'value', id)));
     }
   payload := obj2json (soap_box_structure ('identifiers', identifiers));
@@ -293,8 +333,6 @@ create procedure ACME.DBA.new_order (in sid varchar, in kname varchar, in identi
   if (length (authorizations) < 1 or finalize is null)
     signal ('42000', 'No authorizations or finalize URLs');
 
-  auth_url := authorizations[0];
-
   if (state = 'ready')
     goto finalize;
 
@@ -302,120 +340,132 @@ create procedure ACME.DBA.new_order (in sid varchar, in kname varchar, in identi
     signal ('42000', 'Order registration failed (01)');
 
   update ACME.DBA.ACME_SESSION set AS_NONCE = nonce, AS_KEY = kname, AS_OP = 'newOrder' where AS_SID = sid;
-  insert replacing ACME.DBA.ACME_ORDERS (AO_DNS, AO_SID, AO_OID, AO_STATE, AO_ACCT) values (dns, sid, oid, state, kname);
+  insert replacing ACME.DBA.ACME_ORDERS (AO_DNS, AO_SID, AO_OID, AO_STATE, AO_ACCT, AO_IDENTIFIERS, AO_TS) 
+      values (dns, sid, oid, state, kname, identifiers0, unix_timestamp());
   commit work;
 
-  request := ACME.DBA.sign_request (kname, nonce, auth_url, null);
-  json := HTTP_CLIENT_EXT (url=>auth_url,  http_method=>'POST', headers=>response,
-                           http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
-                           body=>request);
-  nonce := http_request_header (response, 'Replay-Nonce', null, null);
-  jt := json_parse (json);
-  state := get_keyword ('status', jt);
-  if (state  <> 'pending')
-    {
-      --bing ();
-      update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_DNS = dns and AO_OID = oid;
-      commit work;
-      signal ('42000', 'Order registration failed (02)');
-    }
+  -- loop over authorizations
+  foreach (varchar auth_url in authorizations) do {
 
-  identifier := get_keyword ('identifier', jt);
-  expires := get_keyword ('expires', jt);
-  if (expires is not null)
-    expires := cast (expires as datetime);
-  -- XXX: ck `type`
-  dns := get_keyword ('value', identifier);
-  challenges := get_keyword ('challenges', jt, vector ());
-  token := cha_url := null;
-  foreach (any cha in challenges) do
-    {
-      if (get_keyword ('status', cha) = 'pending' and get_keyword ('type', cha) = 'http-01')
-        {
-          token := get_keyword ('token', cha);
-          cha_url := get_keyword ('url', cha);
-        }
-    }
-  if (token is null or cha_url is null)
-    {
-      update ACME.DBA.ACME_ORDERS set AO_STATE = 'error' where AO_DNS = dns and AO_OID = oid;
-      commit work;
-      signal ('42000', 'Cannot find pending token');
-    }
-
-  update ACME.DBA.ACME_ORDERS set AO_EXPIRES = expires where AO_DNS = dns and AO_OID = oid;
-  update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
-  commit work;
-  thumbnail := encode_base64url (xenc_digest (obj2json (ACME.DBA.jwk (kname)), 'sha256'));
-  insert replacing ACME.DBA.ACME_AUTH_TOKEN (AT_TOKEN, AT_KEY, AT_EXPIRY, AT_DNS, AT_AID)
-      values (token, kname, expires, dns, auth_url);
-  commit work;
-
-  request := ACME.DBA.sign_request (kname, nonce, cha_url, '{}');
-  json := HTTP_CLIENT_EXT (url=>cha_url,  http_method=>'POST', headers=>response,
-                           http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
-                           body=>request);
-  nonce := http_request_header (response, 'Replay-Nonce', null, null);
-  jt := json_parse (json);
-  state := get_keyword ('status', jt);
-
-  if (state <> 'pending' and state <> 'processing')
-    {
-      --bing ();
-      update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_DNS = dns and AO_OID = oid;
-      commit work;
-      signal ('42000', 'Order registration failed (03)');
-    }
-
-  update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
-  commit work;
-  request := ACME.DBA.sign_request (kname, nonce, auth_url, null);
-  json := HTTP_CLIENT_EXT (url=>auth_url,  http_method=>'POST', headers=>response,
-                           http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
-                           body=>request);
-  nonce := http_request_header (response, 'Replay-Nonce', null, null);
-  jt := json_parse (json);
-  state := get_keyword ('status', jt);
-  start_ts := msec_time ();
-  while (state = 'pending' or state = 'processing')
-    {
-      dbg_obj_print ('Authorization retry, please wait...');
-      --bing();
-      delay (2);
       request := ACME.DBA.sign_request (kname, nonce, auth_url, null);
       json := HTTP_CLIENT_EXT (url=>auth_url,  http_method=>'POST', headers=>response,
-                           http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
-                           body=>request);
+                               http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
+                               body=>request);
       nonce := http_request_header (response, 'Replay-Nonce', null, null);
       update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
       commit work;
       jt := json_parse (json);
       state := get_keyword ('status', jt);
-      if ((msec_time() - start_ts) > 1200000)
-        signal ('42000', 'Authorization timedout');
-    }
-  if (state <> 'valid')
-    {
-      declare xt, error, code any;
-      xt := xtree_doc (json2xml (json));
-      --bing ();
-      error := cast (xpath_eval ('//error/detail/text()', xt) as varchar);
-      update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_DNS = dns and AO_OID = oid;
-      commit work;
-      signal ('42000', concat ('Order registration failed (04) : ', error));
-    }
+      if (state  <> 'pending')
+        {
+          update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_OID = oid;
+          commit work;
+          signal ('42000', 'Order registration failed (02)');
+        }
 
-  update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
-  update ACME.DBA.ACME_ORDERS set AO_STATE = 'valid' where AO_DNS = dns and AO_OID = oid;
-  commit work;
+      identifier := get_keyword ('identifier', jt);
+      expires := get_keyword ('expires', jt);
+      if (expires is not null)
+        expires := cast (expires as datetime);
+      update ACME.DBA.ACME_ORDERS set AO_EXPIRES = expires where AO_OID = oid;
+      commit work;
+      -- XXX: ck `type`
+      dns := get_keyword ('value', identifier);
+      challenges := get_keyword ('challenges', jt, vector ());
+      token := challenge_url := null;
+      foreach (any cha in challenges) do
+        {
+          -- store token and send back challenge request 
+          if (get_keyword ('status', cha) = 'pending' and get_keyword ('type', cha) = 'http-01')
+            {
+              token := get_keyword ('token', cha);
+              challenge_url := get_keyword ('url', cha);
+              thumbnail := encode_base64url (xenc_digest (obj2json (ACME.DBA.jwk (kname)), 'sha256'));
+              insert replacing ACME.DBA.ACME_AUTH_TOKEN (AT_TOKEN, AT_KEY, AT_EXPIRY, AT_DNS, AT_AID, AT_OID)
+                  values (token, kname, expires, dns, auth_url, oid);
+              commit work;
+
+              request := ACME.DBA.sign_request (kname, nonce, challenge_url, '{}');
+              json := HTTP_CLIENT_EXT (url=>challenge_url,  http_method=>'POST', headers=>response,
+                                       http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
+                                       body=>request);
+              nonce := http_request_header (response, 'Replay-Nonce', null, null);
+              update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
+              commit work;
+              jt := json_parse (json);
+              state := get_keyword ('status', jt);
+              if (state <> 'pending' and state <> 'processing')
+                {
+                  --bing ();
+                  update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_OID = oid;
+                  commit work;
+                  signal ('42000', 'Order registration failed (03)');
+                }
+
+              update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
+              commit work;
+            }
+        }
+      --if (token is null or challenge_url is null)
+      --  {
+      --    update ACME.DBA.ACME_ORDERS set AO_STATE = 'error' where AO_OID = oid;
+      --    commit work;
+      --    signal ('42000', 'Cannot find pending token');
+      --  }
+
+      request := ACME.DBA.sign_request (kname, nonce, auth_url, null);
+      json := HTTP_CLIENT_EXT (url=>auth_url,  http_method=>'POST', headers=>response,
+                               http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
+                               body=>request);
+      nonce := http_request_header (response, 'Replay-Nonce', null, null);
+      update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
+      commit work;
+      jt := json_parse (json);
+      state := get_keyword ('status', jt);
+      start_ts := msec_time ();
+      while (state = 'pending' or state = 'processing')
+        {
+          dbg_obj_print ('Authorization retry, please wait...');
+          --bing();
+          delay (2);
+          request := ACME.DBA.sign_request (kname, nonce, auth_url, null);
+          json := HTTP_CLIENT_EXT (url=>auth_url,  http_method=>'POST', headers=>response,
+                               http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
+                               body=>request);
+          nonce := http_request_header (response, 'Replay-Nonce', null, null);
+          update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
+          commit work;
+          jt := json_parse (json);
+          state := get_keyword ('status', jt);
+          if ((msec_time() - start_ts) > 1200000)
+            signal ('42000', 'Authorization timedout');
+        }
+      if (state <> 'valid')
+        {
+          declare xt, error, code any;
+          xt := xtree_doc (json2xml (json));
+          --bing ();
+          error := cast (xpath_eval ('//error/detail/text()', xt) as varchar);
+          update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_OID = oid;
+          commit work;
+          signal ('42000', concat ('Order registration failed (04) : ', error));
+        }
+
+      update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
+      update ACME.DBA.ACME_ORDERS set AO_STATE = 'valid' where AO_OID = oid;
+      commit work;
+  }
 
 finalize:
-  csr := ACME.DBA.make_csr (sid, dns, oid, kname);
+  dns := aref(identifiers0, 0);
+  csr := ACME.DBA.make_csr (sid, dns, oid, kname, identifiers0);
   request := ACME.DBA.sign_request (kname, nonce, finalize, obj2json (soap_box_structure ('csr', csr)));
   json := HTTP_CLIENT_EXT (url=>finalize,  http_method=>'POST', headers=>response,
                            http_headers=>'Accept: application/json\r\nContent-Type: application/jose+json',
                            body=>request);
   nonce := http_request_header (response, 'Replay-Nonce', null, null);
+  update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
+  commit work;
   loc := http_request_header (response, 'Location', null, null);
   jt := json_parse (json);
   state := get_keyword ('status', jt);
@@ -426,7 +476,7 @@ finalize:
     {
       declare xt, error, code any;
       --bing();
-      update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_DNS = dns and AO_OID = oid;
+      update ACME.DBA.ACME_ORDERS set AO_STATE = state where AO_OID = oid;
       commit work;
       xt := xtree_doc (json2xml (json));
       error := cast (xpath_eval ('//error/detail/text()', xt) as varchar);
@@ -462,7 +512,7 @@ finalize:
                            body=>request);
       nonce := http_request_header (response, 'Replay-Nonce', null, null);
       update ACME.DBA.ACME_SESSION set AS_NONCE = nonce where AS_SID = sid;
-      update ACME.DBA.ACME_ORDERS set AO_CRT = certs, AO_STATE = 'valid' where AO_DNS = dns and AO_OID = oid;
+      update ACME.DBA.ACME_ORDERS set AO_CRT = certs, AO_STATE = 'valid' where AO_OID = oid;
       commit work;
     }
   else
@@ -501,7 +551,8 @@ create procedure ACME.DBA.new_account (in sid varchar, in kname varchar, in emai
       signal ('42000', 'Account registration failed');
     }
   orders_url := get_keyword('orders', jt);
-  insert into ACME.DBA.ACME_ACCOUNT (AA_KEY_NAME, AA_KID, AA_USER, AA_SRV, AA_EMAIL, AA_ORDERS) values (kname, kid, user, url0, email, orders_url);
+  insert into ACME.DBA.ACME_ACCOUNT (AA_KEY_NAME, AA_KID, AA_USER, AA_SRV, AA_EMAIL, AA_ORDERS, AA_TS) 
+      values (kname, kid, user, url0, email, orders_url, unix_timestamp());
   USER_KEY_STORE (user, kname);
   update ACME.DBA.ACME_SESSION set AS_NONCE = nonce, AS_OP = 'newAccount' where AS_SID = sid;
   commit work;
@@ -600,7 +651,7 @@ create procedure ACME.DBA.make_cert (in dns varchar, in oid varchar, in kname va
   if (xenc_key_exists (kname))
     signal ('22023', sprintf ('Key name `%s` alredy used, please give a unique name', kname));
   cchain := vector ();
-  for select * from ACME.DBA.ACME_ORDERS where AO_DNS = dns and AO_OID = oid do
+  for select * from ACME.DBA.ACME_ORDERS where AO_OID = oid do
     {
       declare certs, cert0 any;
       declare i int;
@@ -630,7 +681,7 @@ create procedure ACME.DBA.make_cert (in dns varchar, in oid varchar, in kname va
   if (okey is null)
     signal ('22023', 'No such order');
   xenc_key_remove (okey);
-  update ACME.DBA.ACME_ORDERS set AO_KEY = kname, AO_STATE = 'issued' where AO_DNS = dns and AO_OID = oid;
+  update ACME.DBA.ACME_ORDERS set AO_KEY = kname, AO_STATE = 'issued' where AO_OID = oid;
   commit work;
   return cchain;
 }
