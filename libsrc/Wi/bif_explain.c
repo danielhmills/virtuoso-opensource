@@ -4458,7 +4458,9 @@ qi_log_stats_1 (query_instance_t * qi, caddr_t err, caddr_t ext_text)
   /*40*/
   if (!ext_text)
     {
+      PROC_SAVE_VARS;
       qr_comment_t * comm;
+      PROC_SAVE_PARENT;
       cli->cli_resultset_max_rows = -1;
       cli->cli_resultset_comp_ptr = (caddr_t *) &rs_comp;
       cli->cli_resultset_data_ptr = &res;
@@ -4473,6 +4475,7 @@ qi_log_stats_1 (query_instance_t * qi, caddr_t err, caddr_t ext_text)
 	}
       END_QR_RESET;
       trset_end ();
+      PROC_RESTORE_SAVED;
       SET_THR_ATTR (self, TA_STAT_INST, NULL);
 	  res = dk_set_nreverse (res);
 	  /* milos: Get the list of warnings from the TA_STAT_COMM and print it */
