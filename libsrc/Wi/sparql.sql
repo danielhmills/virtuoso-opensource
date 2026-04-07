@@ -16732,7 +16732,8 @@ create procedure DB.DBA.RDF_12_VOCAB_INIT ()
 {
   declare vocab_graph varchar;
   vocab_graph := 'urn:rdf12:vocab';
-  SPARQL CLEAR GRAPH <urn:rdf12:vocab>;
+  if ((sparql define input:storage "" ask where { graph `iri(?:vocab_graph)` { ?s ?p ?o }}))
+     return;  
   DB.DBA.TTLP (
 '@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -16751,6 +16752,12 @@ rdf:reifies  rdfs:label       "reifies" .
 rdf:reifies  rdfs:comment     "The subject reifies the object triple term." .
 ', '', vocab_graph);
 }
+;
+
+DB.DBA.RDF_12_VOCAB_INIT ()
+;
+
+rdf_schema_ld ()
 ;
 
 create function DB.DBA.RDF_STAR_TT_VALUE_EQ (in tt1 any, in tt2 any) returns integer

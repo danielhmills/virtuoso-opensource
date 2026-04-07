@@ -2407,8 +2407,3 @@ insert soft DB.DBA.SYS_XPF_EXTENSIONS (XPE_NAME, XPE_PNAME) values ('http://www.
 xpf_extension ('http://www.openlinksw.com/virtuoso/xslt/:docproxyIRI', 'DB.DBA.RDF_SPONGE_PROXY_IRI', 0)
 ;
 
-DB.DBA.RDF_12_VOCAB_INIT ()
-;
-
-rdf_schema_ld ()
-;
