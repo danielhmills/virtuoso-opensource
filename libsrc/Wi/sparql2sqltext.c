@@ -3487,7 +3487,8 @@ vmodes_found:
         }
       else if (!IS_BOX_POINTER (min_mode) || (1 == min_mode->qmfColumnCount))
         {
-          if ((BOP_EQ == ttype) && (NULL == split) && SPAR_IS_BLANK_OR_VAR (left) && SPAR_IS_BLANK_OR_VAR (right))
+          /* FIXME: check if DB.DBA.RDF_STAR_TT_VALUE_EQ is needed */
+          if (0 && (BOP_EQ == ttype) && (NULL == split) && SPAR_IS_BLANK_OR_VAR (left) && SPAR_IS_BLANK_OR_VAR (right))
             {
               ssg_puts (" (");
               ssg_print_scalar_expn (ssg, left, min_mode, NULL_ASNAME);
