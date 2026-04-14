@@ -506,7 +506,7 @@ sqlc_insert_autoincrements (sql_comp_t * sc, insert_node_t * ins,
 	  }
 	else
 	  {
-	    snext = t_sqlp_box_id_upcase ("now");
+	    snext = t_sqlp_box_id_upcase ("get_timestamp");
 	    args = (state_slot_t **) dk_alloc_box (0,
 		DV_ARRAY_OF_POINTER);
 	  }
@@ -1950,4 +1950,3 @@ sqlc_sch_list (sql_comp_t * sc, ST * tree)
   }
   END_DO_BOX;
 }
-
