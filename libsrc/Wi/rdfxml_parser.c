@@ -1029,7 +1029,7 @@ xp_rdfxml_element_end (void *userdata, const char * name)
       caddr_t lang_in_effect;
       caddr_t obj;
       xml_tree_ent_t *literal_xte;
-      if ((NULL == xp->xp_current->xn_children) && !(XRL_PARSETYPE_LITERAL & inner->xrl_parsetype))
+      if ((NULL == xp->xp_current->xn_children) && !(XRL_PARSETYPE_SET_EXPLICITLY & inner->xrl_parsetype))
         {
           obj = strses_string (xp->xp_strses);
           strses_flush (xp->xp_strses);
