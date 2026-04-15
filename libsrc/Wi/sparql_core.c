@@ -6769,6 +6769,7 @@ spar_make_literal_from_sql_box (sparp_t * sparp, caddr_t box, int mode)
     case DV_DOUBLE_FLOAT: return spartlist (sparp, 5, SPAR_LIT, t_box_copy (box), uname_xmlschema_ns_uri_hash_double, NULL, NULL);
     case DV_UNAME: return spartlist (sparp, 2, SPAR_QNAME, t_box_copy (box));
     case DV_IRI_ID:
+    case DV_IRI_ID_8:
       {
         iri_id_t iid = unbox_iri_id (box);
         caddr_t iri;
@@ -7011,7 +7012,7 @@ bif_sparql_quad_maps_for_quad_impl (caddr_t * qst, caddr_t * err_ret, state_slot
                         param = fake_global_sql_param;
                         tmpl = qmv->qmvFormat->qmfShortOfUriTmpl;
                         break;
-                      case DV_IRI_ID: case DV_RDF:
+                      case DV_IRI_ID: case DV_IRI_ID_8: case DV_RDF:
                         if (NULL == fake_global_sql_param)
                           fake_global_long_param = spar_make_variable (&sparp, t_box_dv_uname_string (":LONG::0"));
                         param = fake_global_long_param;

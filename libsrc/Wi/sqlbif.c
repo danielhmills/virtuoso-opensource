@@ -559,7 +559,7 @@ bif_iri_id_or_long_arg (caddr_t * qst, state_slot_t ** args, int nth, const char
       numeric_to_int64 ((numeric_t) arg, &tl);
       return (iri_id_t)(unsigned int64) tl;
     }
-  if (dtp == DV_IRI_ID)
+  if (IS_IRI_DTP (dtp))
     return unbox_iri_id (arg);
   if (dtp != DV_SHORT_INT && dtp != DV_LONG_INT)
     {
@@ -577,7 +577,7 @@ bif_iri_id_arg (caddr_t * qst, state_slot_t ** args, int nth, const char *func)
 {
   caddr_t arg = bif_arg (qst, args, nth, func);
   dtp_t dtp = DV_TYPE_OF (arg);
-  if (dtp != DV_IRI_ID)
+  if (!IS_IRI_DTP (dtp))
     sqlr_new_error ("22023", "SR008",
 		    "Function %s needs an IRI_ID as argument %d, "
 		    "not an arg of type %s (%d)",
@@ -592,7 +592,7 @@ bif_iri_id_or_null_arg (caddr_t * qst, state_slot_t ** args, int nth, const char
   dtp_t dtp = DV_TYPE_OF (arg);
   if (DV_DB_NULL == dtp)
     return 0;
-  if (dtp != DV_IRI_ID)
+  if (!IS_IRI_DTP (dtp))
     sqlr_new_error ("22023", "SR008",
 		    "Function %s needs an IRI_ID or NULL as argument %d, "
 		    "not an arg of type %s (%d)",
@@ -607,7 +607,7 @@ bif_string_or_uname_or_iri_id_arg (caddr_t * qst, state_slot_t ** args, int nth,
   dtp_t dtp = DV_TYPE_OF (arg);
   switch (dtp)
     {
-    case DV_IRI_ID: case DV_STRING: case DV_UNAME:
+    case DV_IRI_ID: case DV_IRI_ID_8: case DV_STRING: case DV_UNAME:
       return arg;
     }
   sqlr_new_error ("22023", "SR008",
@@ -6893,7 +6893,7 @@ caddr_t
 bif_isiri_id (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
   caddr_t arg0 = bif_arg (qst, args, 0, "isiri_id");
-  return box_bool (DV_IRI_ID == DV_TYPE_OF (arg0));
+  return box_bool (IS_IRI_DTP (DV_TYPE_OF (arg0)));
 }
 
 caddr_t
@@ -6903,7 +6903,7 @@ bif_rdf_isliteral_impl (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
   switch (DV_TYPE_OF (arg0))
     {
     case DV_DB_NULL: return (caddr_t)((ptrlong)0);
-    case DV_IRI_ID: return (caddr_t)((ptrlong)0);
+    case DV_IRI_ID: case DV_IRI_ID_8: return (caddr_t)((ptrlong)0);
     case DV_UNAME: return (caddr_t)((ptrlong)0);
     case DV_STRING: return box_bool (!(box_flags (arg0) & BF_IRI));
     default: return (caddr_t)((ptrlong)1);
@@ -6915,7 +6915,7 @@ bif_is_named_iri_id (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
   caddr_t arg0 = bif_arg (qst, args, 0, "is_named_iri_id");
   iri_id_t iid;
-  if (DV_IRI_ID != DV_TYPE_OF (arg0))
+  if (!IS_IRI_DTP (DV_TYPE_OF (arg0)))
     return box_bool (0);
   iid = unbox_iri_id (arg0);
   return box_bool (iid < min_bnode_iri_id());
@@ -6926,7 +6926,7 @@ bif_is_bnode_iri_id (caddr_t * qst, caddr_t * err_ret, state_slot_t ** args)
 {
   caddr_t arg0 = bif_arg (qst, args, 0, "is_bnode_iri_id");
   iri_id_t iid;
-  if (DV_IRI_ID != DV_TYPE_OF (arg0))
+  if (!IS_IRI_DTP (DV_TYPE_OF (arg0)))
     return box_bool (0);
   iid = unbox_iri_id (arg0);
   return box_bool (iid >= min_bnode_iri_id());
@@ -6937,7 +6937,7 @@ bif_is_plain_bnode_iri_id (caddr_t * qst, caddr_t * err_ret, state_slot_t ** arg
 {
   caddr_t arg0 = bif_arg (qst, args, 0, "is_plain_bnode_iri_id");
   iri_id_t iid;
-  if (DV_IRI_ID != DV_TYPE_OF (arg0))
+  if (!IS_IRI_DTP (DV_TYPE_OF (arg0)))
     return box_bool (0);
   iid = unbox_iri_id (arg0);
   return box_bool ((iid >= min_bnode_iri_id()) && (iid < min_named_bnode_iri_id()));
@@ -6988,7 +6988,7 @@ bif_iri_id_bnode32_to_bnode64 (caddr_t * qst, caddr_t * err_ret, state_slot_t **
 {
   caddr_t arg0 = bif_arg (qst, args, 0, "iri_id_bnode32_to_bnode64");
   iri_id_t iid;
-  if (DV_IRI_ID != DV_TYPE_OF (arg0))
+  if (!IS_IRI_DTP (DV_TYPE_OF (arg0)))
     return box_copy_tree (arg0);
   iid = unbox_iri_id (arg0);
   if (iid < MIN_32BIT_BNODE_IRI_ID)

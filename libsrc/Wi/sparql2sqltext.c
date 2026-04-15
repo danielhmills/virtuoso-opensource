@@ -2047,6 +2047,7 @@ ptrlong sparp_restr_bits_of_dtp (dtp_t dtp)
       case DV_DB_NULL:
         return SPART_VARR_ALWAYS_NULL;
       case DV_IRI_ID:
+      case DV_IRI_ID_8:
         return SPART_VARR_IS_REF | SPART_VARR_NOT_NULL;
       case DV_LONG_INT: case DV_DATETIME: case DV_DATE: case DV_TIME:
       case DV_SINGLE_FLOAT: case DV_DOUBLE_FLOAT: case DV_NUMERIC:
