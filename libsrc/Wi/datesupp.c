@@ -60,6 +60,9 @@ static const int cumdays_in_month[] =
   0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
 };
 
+/* dt_now_GMT() keeps process-global monotonic timestamp state. */
+static dk_mutex_t *dt_now_mtx;
+
 
 /*
  *  Computes the number of days in February, respecting the
@@ -423,6 +426,7 @@ dt_now_GMT (caddr_t dt)
 #if defined(HAVE_GMTIME_R)
   struct tm result;
 #endif
+  mutex_enter (dt_now_mtx);
   gettimeofday (&tv, NULL);
   tim = (time_t)tv.tv_sec;
 #if defined(HAVE_GMTIME_R)
@@ -448,6 +452,7 @@ dt_now_GMT (caddr_t dt)
       DT_SET_FRACTION (dt, (tv.tv_usec * 1000));
     }
   DT_SET_DT_TYPE (dt, DT_TYPE_DATETIME);
+  mutex_leave (dt_now_mtx);
 }
 
 void
@@ -911,6 +916,8 @@ dt_init (void)
 #if defined(HAVE_GMTIME_R)
   struct tm result;
 #endif
+  if (NULL == dt_now_mtx)
+    dt_now_mtx = mutex_allocate ();
 
   tim = time (NULL);
   ltm = *localtime (&tim);
