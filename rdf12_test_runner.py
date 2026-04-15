@@ -14,6 +14,7 @@ from pathlib import Path
 ISQL = None  # set in main
 SQL_PORT = "1113"
 TESTS_BASE = None  # set in main
+ABSOLUTE_IRI_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 def sql_literal(value):
     """Render a Python value as a SQL literal."""
@@ -36,6 +37,58 @@ def build_ttlp_sql(test_name, ttl_content, base_uri, flags=0):
         f"DB.DBA.TTLP({sql_literal(ttl_content)}, {sql_literal(ttpl_base)}, '{graph}');"
     )
 
+def find_relative_iri_ref(nq_content):
+    """Return the first relative IRI ref in N-Triples/N-Quads content, or None."""
+    idx = 0
+    length = len(nq_content)
+    in_string = False
+    while idx < length:
+        ch = nq_content[idx]
+        if in_string:
+            if ch == "\\":
+                idx += 2
+                continue
+            if ch == '"':
+                in_string = False
+            idx += 1
+            continue
+        if ch == '#':
+            newline = nq_content.find("\n", idx)
+            if newline == -1:
+                break
+            idx = newline + 1
+            continue
+        if ch == '"':
+            in_string = True
+            idx += 1
+            continue
+        if ch == '<':
+            if idx + 1 < length and nq_content[idx + 1] == '<':
+                idx += 2
+                continue
+            end = idx + 1
+            while end < length and nq_content[end] != '>':
+                if nq_content[end] == "\\" and end + 1 < length:
+                    end += 2
+                    continue
+                end += 1
+            if end >= length:
+                return "<unterminated IRI>"
+            iri = nq_content[idx + 1:end]
+            if not ABSOLUTE_IRI_RE.match(iri):
+                return iri
+            idx = end + 1
+            continue
+        idx += 1
+    return None
+
+def validate_nq_absolute_iris(ttl_content):
+    """Enforce RDF 1.2 absolute-IRI rules for N-Triples/N-Quads syntax tests."""
+    bad_iri = find_relative_iri_ref(ttl_content)
+    if bad_iri is None:
+        return None
+    return f"Relative IRI is not allowed in N-Triples/N-Quads: <{bad_iri}>"
+
 def run_isql(sql, timeout=10):
     """Run SQL via isql and return (success, stdout, stderr)."""
     proc = subprocess.run(
@@ -45,9 +98,13 @@ def run_isql(sql, timeout=10):
     )
     return proc.returncode, proc.stdout, proc.stderr
 
-def test_positive_syntax(test_name, ttl_file, base_uri, flags=0):
+def test_positive_syntax(test_name, ttl_file, base_uri, flags=0, validate_input=None):
     """Test that a Turtle file parses without error."""
     ttl_content = Path(ttl_file).read_text()
+    if validate_input is not None:
+        validation_error = validate_input(ttl_content)
+        if validation_error is not None:
+            return "FAIL", validation_error
     sql = build_ttlp_sql(test_name, ttl_content, base_uri, flags)
     try:
         rc, stdout, stderr = run_isql(sql)
@@ -60,9 +117,13 @@ def test_positive_syntax(test_name, ttl_file, base_uri, flags=0):
         return "FAIL", "; ".join(err_lines)[:200]
     return "PASS", ""
 
-def test_negative_syntax(test_name, ttl_file, base_uri, flags=0):
+def test_negative_syntax(test_name, ttl_file, base_uri, flags=0, validate_input=None):
     """Test that a Turtle file produces a parse error."""
     ttl_content = Path(ttl_file).read_text()
+    if validate_input is not None:
+        validation_error = validate_input(ttl_content)
+        if validation_error is not None:
+            return "PASS", validation_error
     sql = build_ttlp_sql(test_name, ttl_content, base_uri, flags)
     try:
         rc, stdout, stderr = run_isql(sql)
@@ -167,13 +228,13 @@ def run_test_suite(manifest_path, filter_pattern=None):
         elif test_type == 'TestTurtleEval':
             status, msg = test_eval(t['id'], t['action'], t['result'], t['base'])
         elif test_type == 'TestNTriplesPositiveSyntax':
-            status, msg = test_positive_syntax(t['id'], t['action'], None, 512)
+            status, msg = test_positive_syntax(t['id'], t['action'], None, 512, validate_nq_absolute_iris)
         elif test_type == 'TestNTriplesNegativeSyntax':
-            status, msg = test_negative_syntax(t['id'], t['action'], None, 512)
+            status, msg = test_negative_syntax(t['id'], t['action'], None, 512, validate_nq_absolute_iris)
         elif test_type == 'TestNQuadsPositiveSyntax':
-            status, msg = test_positive_syntax(t['id'], t['action'], None, 512)
+            status, msg = test_positive_syntax(t['id'], t['action'], None, 512, validate_nq_absolute_iris)
         elif test_type == 'TestNQuadsNegativeSyntax':
-            status, msg = test_negative_syntax(t['id'], t['action'], None, 512)
+            status, msg = test_negative_syntax(t['id'], t['action'], None, 512, validate_nq_absolute_iris)
         elif test_type == 'TestTrigPositiveSyntax':
             status, msg = test_positive_syntax(t['id'], t['action'], t['base'], 256)
         elif test_type == 'TestTrigNegativeSyntax':
