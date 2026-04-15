@@ -1058,6 +1058,29 @@ ns_uri_found:
 #endif
 }
 
+int
+ttlp_uri_is_absolute (ccaddr_t uri)
+{
+  const unsigned char *tail = (const unsigned char *) uri;
+  unsigned char ch;
+  if ((NULL == tail) || (0 == tail[0]))
+    return 0;
+  ch = tail[0];
+  if (!((('A' <= ch) && ('Z' >= ch)) || (('a' <= ch) && ('z' >= ch))))
+    return 0;
+  for (tail++; 0 != tail[0]; tail++)
+    {
+      ch = tail[0];
+      if (':' == ch)
+        return 1;
+      if ((('A' <= ch) && ('Z' >= ch)) || (('a' <= ch) && ('z' >= ch)) ||
+          (('0' <= ch) && ('9' >= ch)) || ('+' == ch) || ('-' == ch) || ('.' == ch))
+        continue;
+      return 0;
+    }
+  return 0;
+}
+
 caddr_t
 ttlp_uri_resolve (ttlp_t *ttlp_arg, caddr_t qname)
 {

@@ -272,6 +272,7 @@ extern caddr_t DBG_NAME (tf_formula_bnode_iid) (DBG_PARAMS ttlp_t *ttlp_arg, cad
 #define tf_bnode_iid(tf, boxed_sparyytext) DBG_NAME (tf_bnode_iid) (__FILE__, __LINE__, (tf), (boxed_sparyytext))
 #define tf_formula_bnode_iid(ttlp,boxed_sparyytext) DBG_NAME (tf_formula_bnode_iid) (__FILE__, __LINE__, (ttlp), (boxed_sparyytext))
 #endif
+extern int ttlp_uri_is_absolute (ccaddr_t uri);
 extern caddr_t ttlp_uri_resolve (ttlp_t *ttlp_arg, caddr_t qname);
 
 /* Numeric values of these constants are important, do not alter them. They are used in tricky way. */

@@ -66,7 +66,9 @@ extern int ttlyylex (void *yylval_param, ttlp_t *ttlp_arg, yyscan_t yyscanner);
 
 #define TTLP_URI_RESOLVE_IF_NEEDED(rel) \
   do { \
-    if ((NULL != ttlp_arg->ttlp_tf->tf_base_uri) && strncmp ((rel), "http://", 7)) \
+    if ((ttlp_arg->ttlp_flags & TTLP_ALLOW_NQUAD) && !ttlp_uri_is_absolute (rel)) \
+      ttlyyerror_action ("Relative IRI is not allowed in NQuads or NTriples"); \
+    if ((NULL != ttlp_arg->ttlp_tf->tf_base_uri) && !ttlp_uri_is_absolute (rel)) \
       (rel) = ttlp_uri_resolve (ttlp_arg, (rel)); \
     } while (0)
 
