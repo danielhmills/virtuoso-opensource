@@ -3430,7 +3430,8 @@ Without the special optimization it becomes iri_to_id ('graph iri string from vi
   if (!bop_is_comparison &&
     ((SSG_VALMODE_LONG == right_vmode) || (SSG_VALMODE_SQLVAL == right_vmode)) && /* case (SSG_VALMODE_LONG == right_vmode) happens for IRI(?::0) and the like */
     ((SSG_VALMODE_LONG == left_vmode) ||
-      (IS_BOX_POINTER (left_vmode) && left_vmode->qmfIsBijection) ) &&
+      (IS_BOX_POINTER (left_vmode) &&
+        (left_vmode->qmfIsBijection || left_vmode->qmfOkForAnySqlvalue)) ) &&
     sparp_tree_is_global_expn (ssg->ssg_sparp, right) )
     {
       if ((BOP_NEQ != ttype) || !(IS_BOX_POINTER (left_vmode)) || left_vmode->qmfOkForAnySqlvalue)
@@ -3455,7 +3456,8 @@ Without the special optimization it becomes iri_to_id ('graph iri string from vi
     }
   if (!bop_is_comparison && (SSG_VALMODE_SQLVAL == left_vmode) &&
     ((SSG_VALMODE_LONG == right_vmode) ||
-      (IS_BOX_POINTER (right_vmode) && right_vmode->qmfIsBijection) ) &&
+      (IS_BOX_POINTER (right_vmode) &&
+        (right_vmode->qmfIsBijection || right_vmode->qmfOkForAnySqlvalue)) ) &&
     sparp_tree_is_global_expn (ssg->ssg_sparp, left) )
     {
       if ((BOP_NEQ == ttype) && (IS_BOX_POINTER (right_vmode)) && !right_vmode->qmfOkForAnySqlvalue)

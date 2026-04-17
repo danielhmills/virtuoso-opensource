@@ -364,6 +364,41 @@ sparql select * where { graph ?g { ?s ?p ?o . filter (?o in (10,20,30)) }};
 explain ('select * from DB.DBA.RDF_QUAD table option (index RDF_QUAD) where o in (10,20,30)');
 select * from DB.DBA.RDF_QUAD table option (index RDF_QUAD_OP) where o in (10,20,30);
 
+sparql clear graph <g_param>;
+sparql insert into <g_param> { <s_param> <p> 10 ; <r> <o_param> . };
+
+create procedure DB.DBA.RDF_OBJ_SQL_PARAM_COUNT (in obj any)
+{
+  declare cnt integer;
+  select count (*) into cnt
+    from DB.DBA.RDF_QUAD table option (index RDF_QUAD_OP)
+    where G = iri_to_id ('g_param', 0) and O = obj;
+  return cnt;
+}
+;
+
+create procedure DB.DBA.RDF_OBJ_SPARQL_PARAM_COUNT (in obj any)
+{
+  return (sparql select count (*) from <g_param> where { ?s ?p ?o . filter (?o = ?:obj) });
+}
+;
+
+select DB.DBA.RDF_OBJ_SQL_PARAM_COUNT (10);
+echo both $if $equ $LAST[1] 1 "PASSED" "***FAILED";
+echo both ": 1 row RDF_QUAD.O = SQL param numeric literal\n";
+
+select DB.DBA.RDF_OBJ_SQL_PARAM_COUNT (UNAME'o_param');
+echo both $if $equ $LAST[1] 1 "PASSED" "***FAILED";
+echo both ": 1 row RDF_QUAD.O = SQL param IRI\n";
+
+select DB.DBA.RDF_OBJ_SPARQL_PARAM_COUNT (10);
+echo both $if $equ $LAST[1] 1 "PASSED" "***FAILED";
+echo both ": 1 row SPARQL ?o = ?:param numeric literal\n";
+
+select DB.DBA.RDF_OBJ_SPARQL_PARAM_COUNT (UNAME'o_param');
+echo both $if $equ $LAST[1] 1 "PASSED" "***FAILED";
+echo both ": 1 row SPARQL ?o = ?:param IRI\n";
+
 --explain ('delete from rdf_quad table option (index RDF_QUAD) where g in ( __i2id ( UNAME\'g3\' ) , __i2id ( UNAME\'g2\' ) , __i2id ( UNAME\'g1\' ))');
 --explain ('delete from rdf_quad table option (index RDF_QUAD_GS) where g in ( __i2id ( UNAME\'g3\' ) , __i2id ( UNAME\'g2\' ) , __i2id ( UNAME\'g1\' ))');
 --delete from rdf_quad table option (index RDF_QUAD_GS) where g in ( __i2id ( UNAME'g3' ) , __i2id ( UNAME'g2' ) );
