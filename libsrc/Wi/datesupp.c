@@ -420,6 +420,7 @@ dt_now_GMT (caddr_t dt)
   static time_t last_time;
   static long last_frac;
   time_t tim;
+  long frac;
   long day;
   struct timeval tv;
   struct tm tm;
@@ -429,6 +430,19 @@ dt_now_GMT (caddr_t dt)
   mutex_enter (dt_now_mtx);
   gettimeofday (&tv, NULL);
   tim = (time_t)tv.tv_sec;
+  frac = tv.tv_usec;
+  if (tim < last_time || (tim == last_time && frac <= last_frac))
+    {
+      tim = last_time;
+      frac = last_frac + 1;
+      if (frac >= 1000000)
+        {
+          tim += frac / 1000000;
+          frac %= 1000000;
+        }
+    }
+  last_time = tim;
+  last_frac = frac;
 #if defined(HAVE_GMTIME_R)
   tm = *(struct tm *)gmtime_r (&tim, &result);
 #else
@@ -440,17 +454,7 @@ dt_now_GMT (caddr_t dt)
   DT_SET_HOUR (dt, tm.tm_hour);
   DT_SET_MINUTE (dt, tm.tm_min);
   DT_SET_SECOND (dt, tm.tm_sec);
-  if (tim == last_time && last_frac == tv.tv_usec)
-    {
-      last_frac++;
-      DT_SET_FRACTION (dt, (last_frac * 1000));
-    }
-  else
-    {
-      last_frac = tv.tv_usec;
-      last_time = tim;
-      DT_SET_FRACTION (dt, (tv.tv_usec * 1000));
-    }
+  DT_SET_FRACTION (dt, (frac * 1000));
   DT_SET_DT_TYPE (dt, DT_TYPE_DATETIME);
   mutex_leave (dt_now_mtx);
 }
