@@ -391,8 +391,11 @@ START_SERVER()
             stat=`$NETSTAT -an 2>/dev/null | grep "[\.\:]$port " | grep LISTEN`
             if [ "z$stat" != "z" ]
             then
-        	LOG "PASSED: Virtuoso Server successfully started on port $port"
-        	break
+                if $ISQL $HOST:$port dba dba '"EXEC=status();"' VERBOSE=OFF PROMPT=OFF ERRORS=STDOUT >/dev/null 2>&1
+                then
+        	    LOG "PASSED: Virtuoso Server successfully started on port $port"
+        	    break
+                fi
             fi
             nowh=`date | cut -f 2 -d :`
             nows=`date | cut -f 3 -d : | cut -f 1 -d " "`
