@@ -550,6 +550,142 @@ create procedure GQL_DEBUG (in line int, in text varchar)
 }
 ;
 
+create function GQL_IRI_TEXT (in v any) returns varchar
+{
+  if (isstring (v))
+    return v;
+  return id_to_iri (v);
+}
+;
+
+create function GQL_SPARQL_ROWS (in qry varchar) returns any
+{
+  declare state, message, md, rows any;
+  exec (concat ('SPARQL ', qry), state, message, vector (), 0, md, rows);
+  if (state <> 0 and state <> '00000')
+    signal (state, message);
+  if (not isvector (rows))
+    return vector ();
+  return rows;
+}
+;
+
+create function GQL_SPARQL_VALUES (in var_name varchar, in vals any) returns varchar
+{
+  declare inx int;
+  declare ses any;
+  ses := string_output ();
+  http (sprintf ('values ?%s { ', var_name), ses);
+  for (inx := 0; inx < length (vals); inx := inx + 1)
+    http (sprintf ('<%s> ', GQL_IRI_TEXT (vals[inx])), ses);
+  http ('} ', ses);
+  return string_output_string (ses);
+}
+;
+
+create function GQL_SCHEMA_CLASS_CHAIN (in g_iid any, in cls any) returns any
+{
+  declare g_iri, cur_iri, sup_iri any;
+  declare rows, row, seen, queue any;
+  declare inx, qx int;
+  g_iri := GQL_IRI_TEXT (g_iid);
+  queue := vector (GQL_IRI_TEXT (cls));
+  seen := dict_new (31);
+  qx := 0;
+  while (qx < length (queue))
+    {
+      cur_iri := queue[qx];
+      qx := qx + 1;
+      if (dict_get (seen, cur_iri) is not null)
+        goto next_cls;
+      dict_put (seen, cur_iri, 1);
+      rows := GQL_SPARQL_ROWS (sprintf (
+        'define input:storage "" prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> select ?sup where { graph <%s> { <%s> rdfs:subClassOf ?sup . }}',
+        g_iri, cur_iri));
+      for (inx := 0; inx < length (rows); inx := inx + 1)
+        {
+          row := rows[inx];
+          sup_iri := GQL_IRI_TEXT (row[0]);
+          if (dict_get (seen, sup_iri) is null)
+            queue := vector_concat (queue, vector (sup_iri));
+        }
+      next_cls:;
+    }
+  return dict_list_keys (seen, 1);
+}
+;
+
+create function GQL_SCHEMA_ARG_ROWS (in g_iid any, in cls any, in arg_iid any, in fld_iid any) returns any
+{
+  declare g_iri, domains, rows, ret, row any;
+  declare inx int;
+  g_iri := GQL_IRI_TEXT (g_iid);
+  domains := GQL_SCHEMA_CLASS_CHAIN (g_iid, cls);
+  rows := GQL_SPARQL_ROWS (sprintf (
+    'define input:storage "" prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> prefix gql: <http://www.openlinksw.com/schemas/graphql#> select ?prop0 ?tp0 ?range0 where { graph <%s> { %s ?prop0 rdfs:domain ?domain ; gql:type ?tp0 ; rdfs:range ?range0 ; gql:field <%s> . }}',
+    g_iri, GQL_SPARQL_VALUES ('domain', domains), GQL_IRI_TEXT (arg_iid)));
+  if (length (rows))
+    {
+      vectorbld_init (ret);
+      for (inx := 0; inx < length (rows); inx := inx + 1)
+        {
+          row := rows[inx];
+          vectorbld_acc (ret, vector (row[0], null, row[1], row[2]));
+        }
+      vectorbld_final (ret);
+      return ret;
+    }
+  rows := GQL_SPARQL_ROWS (sprintf (
+    'define input:storage "" prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> prefix gql: <http://www.openlinksw.com/schemas/graphql#> select ?prop1 ?tp1 ?range1 where { graph <%s> { %s [] rdfs:domain ?domain ; rdfs:range ?range ; gql:field <%s> . ?prop1 rdfs:domain ?range ; gql:type ?tp1 ; rdfs:range ?range1 ; gql:field <%s> . }}',
+    g_iri, GQL_SPARQL_VALUES ('domain', domains), GQL_IRI_TEXT (fld_iid), GQL_IRI_TEXT (arg_iid)));
+  vectorbld_init (ret);
+  for (inx := 0; inx < length (rows); inx := inx + 1)
+    {
+      row := rows[inx];
+      vectorbld_acc (ret, vector (null, row[0], row[1], row[2]));
+    }
+  vectorbld_final (ret);
+  return ret;
+}
+;
+
+create function GQL_SCHEMA_CHILD_OBJ_ROWS (in g_iid any, in parent_prop any, in fld_iid any) returns any
+{
+  declare g_iri, ranges, domains, rows, range_rows, row, ret any;
+  declare inx, rix int;
+  g_iri := GQL_IRI_TEXT (g_iid);
+  range_rows := GQL_SPARQL_ROWS (sprintf (
+    'define input:storage "" prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> select ?range where { graph <%s> { <%s> rdfs:range ?range . }}',
+    g_iri, GQL_IRI_TEXT (parent_prop)));
+  vectorbld_init (ranges);
+  for (inx := 0; inx < length (range_rows); inx := inx + 1)
+    {
+      row := range_rows[inx];
+      domains := GQL_SCHEMA_CLASS_CHAIN (g_iid, row[0]);
+      for (rix := 0; rix < length (domains); rix := rix + 1)
+        vectorbld_acc (ranges, domains[rix]);
+    }
+  vectorbld_final (ranges);
+  if (not length (ranges))
+    return vector ();
+  rows := GQL_SPARQL_ROWS (sprintf (
+    'define input:storage "" prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> prefix gql: <http://www.openlinksw.com/schemas/graphql#> select ?prop0 ?tp0 where { graph <%s> { %s ?prop0 rdfs:domain ?domain ; gql:field <%s> ; gql:type ?tp0 . }}',
+    g_iri, GQL_SPARQL_VALUES ('domain', ranges), GQL_IRI_TEXT (fld_iid)));
+  return rows;
+}
+;
+
+create function GQL_SCHEMA_CHILD_SCALAR_ROWS (in g_iid any, in parent_cls any, in fld_iid any) returns any
+{
+  declare g_iri, domains any;
+  g_iri := GQL_IRI_TEXT (g_iid);
+  domains := GQL_SCHEMA_CLASS_CHAIN (g_iid, parent_cls);
+  return GQL_SPARQL_ROWS (sprintf (
+    'define input:storage "" prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> prefix gql: <http://www.openlinksw.com/schemas/graphql#> select ?prop0 ?tp0 where { graph <%s> { %s ?prop0 rdfs:domain ?domain ; gql:field <%s> ; gql:type ?tp0 . }}',
+    g_iri, GQL_SPARQL_VALUES ('domain', domains), GQL_IRI_TEXT (fld_iid)));
+}
+;
+
 create function
 GQL_DIRECTIVES_CHECK (in directives_list any, inout variables any, inout known_directives any) returns int
 {
@@ -668,13 +804,14 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
     {
       declare cls, cls_type, prop, tp, parent_name, parent_prop, parent_cls, prefix, field_type, local_filter varchar;
       declare id_prop, alias varchar;
-      declare has_filter int;
+      declare has_filter, emit_pattern_block int;
       args := tree[2];
       directives := tree[6];
       sql_table_option := filter_exp := graph_exp := '';
 
       parent_name := parent_cls := parent_prop := cls := cls_type := null; id_prop := null;
       has_filter := 0;
+      emit_pattern_block := 0;
       alias := tree[4];
       if (isvector (parent))
         {
@@ -822,19 +959,18 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
                        '  ?prop1 rdfs:domain ?range ; gql:field <%s> . } }}'),
                       id_to_iri (g_iid), id_to_iri (cls), id_to_iri(arg_iid), id_to_iri(fld_iid), id_to_iri(arg_iid) ));
 
-                for select "prop0", "prop1", "tp0", "range0" from (sparql define input:storage "" select ?prop0 ?prop1 ?tp0 ?range0
-                    where { graph ?:g_iid {
-                        ?:cls rdfs:subClassOf* ?domain .
-                        ?prop0 rdfs:domain ?domain ; gql:type ?tp0 ; rdfs:range ?range0 ; gql:field ?:arg_iid .
-                        optional {  [] rdfs:domain ?domain  ; rdfs:range ?range ; gql:field ?:fld_iid .
-                                ?prop1 rdfs:domain ?range ; gql:field ?:arg_iid .
-                             }
-                    }}) dt0 do
+                {
+                  declare lookup_rows, lookup_row any;
+                  declare lookup_idx int;
+                  lookup_rows := GQL_SCHEMA_ARG_ROWS (g_iid, cls, arg_iid, fld_iid);
+                  for (lookup_idx := 0; lookup_idx < length (lookup_rows); lookup_idx := lookup_idx + 1)
                   {
-                    prop := coalesce ("prop1", "prop0");
-                    tp := iri_split ("tp0", null, 0, 1);
-                    xsd_type := "range0";
+                    lookup_row := lookup_rows[lookup_idx];
+                    prop := coalesce (lookup_row[1], lookup_row[0]);
+                    tp := iri_split (lookup_row[2], null, 0, 1);
+                    xsd_type := lookup_row[3];
                   }
+                }
                 if (prop is null)
                   signal ('GQL1X', sprintf ('Can not find property for argument "%s"', arg_name));
 
@@ -850,15 +986,27 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
                 arg_name := concat (prefix, var_name_only, '·', arg_name);
                 an := GQL_VAR_NAME (arg_name);
                 expression := GQL_FUNCTION_EXP (arg_value, neg);
-                http (sprintf (' ?%s <%s> ?%s . \n', vn, prop, an), patterns);
+                dict_put (dict, concat ('__bound__:', an), prop);
+                if (parent_cls is not null)
+                  local_filter := concat (local_filter, sprintf (' ?%s <%s> ?%s . \n', vn, prop, an));
+                else
+                  http (sprintf (' ?%s <%s> ?%s . \n', vn, prop, an), patterns);
                 if (arg_value is null)
-                  http (sprintf ('FILTER (?%s = rdf:nil) \n',  an), vals);
+                  {
+                    if (parent_cls is not null)
+                      local_filter := concat (local_filter, sprintf ('FILTER (?%s = rdf:nil) \n',  an));
+                    else
+                      http (sprintf ('FILTER (?%s = rdf:nil) \n',  an), vals);
+                  }
                 else if (expression is not null)
                   {
                     arg_value := arg_value[1][0][2];
                     if (gql_var (arg_value))
                       arg_value := get_keyword (arg_value[1], variables, NULL);
-                    http (sprintf ('FILTER (%s %s (?%s, %s)) \n', neg, expression, an, GQL_VAL_PRINT (arg_value, xsd_type)), vals);
+                    if (parent_cls is not null)
+                      local_filter := concat (local_filter, sprintf ('FILTER (%s %s (?%s, %s)) \n', neg, expression, an, GQL_VAL_PRINT (arg_value, xsd_type)));
+                    else
+                      http (sprintf ('FILTER (%s %s (?%s, %s)) \n', neg, expression, an, GQL_VAL_PRINT (arg_value, xsd_type)), vals);
                   }
                 else if (gql_expression (arg_value))
                   {
@@ -868,7 +1016,10 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
                     arg_value := arg_value[2];
                     if (gql_var (arg_value))
                       arg_value := get_keyword (arg_value[1], variables, NULL);
-                    http (sprintf ('FILTER (%s ?%s %s %s ) \n', neg, an, op, GQL_VAL_PRINT (arg_value, xsd_type)), vals);
+                    if (parent_cls is not null)
+                      local_filter := concat (local_filter, sprintf ('FILTER (%s ?%s %s %s ) \n', neg, an, op, GQL_VAL_PRINT (arg_value, xsd_type)));
+                    else
+                      http (sprintf ('FILTER (%s ?%s %s %s ) \n', neg, an, op, GQL_VAL_PRINT (arg_value, xsd_type)), vals);
                   }
                 else if (gql_obj (arg_value))
                   {
@@ -882,12 +1033,25 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
                   {
                     declare vlist varchar;
                     vlist := GQL_SQL_ARRAY_STR (arg_value, xsd_type);
-                    http (sprintf (' FILTER (?%s IN %s) \n',  an, vlist), vals);
+                    if (parent_cls is not null)
+                      local_filter := concat (local_filter, sprintf (' FILTER (?%s IN %s) \n',  an, vlist));
+                    else
+                      http (sprintf (' FILTER (?%s IN %s) \n',  an, vlist), vals);
                   }
                 else if (tp = 'IRI' or gqt_is_obj (tp) or gqt_is_list (tp))
-                  http (sprintf (' FILTER (?%s = <%s>) \n',  an, arg_value), vals);
+                  {
+                    if (parent_cls is not null)
+                      local_filter := concat (local_filter, sprintf (' FILTER (?%s = <%s>) \n',  an, arg_value));
+                    else
+                      http (sprintf (' FILTER (?%s = <%s>) \n',  an, arg_value), vals);
+                  }
                 else
-                  http (sprintf (' FILTER (?%s = %s) \n',  an, GQL_VAL_PRINT (arg_value, xsd_type)), vals);
+                  {
+                    if (parent_cls is not null)
+                      local_filter := concat (local_filter, sprintf (' FILTER (?%s = %s) \n',  an, GQL_VAL_PRINT (arg_value, xsd_type)));
+                    else
+                      http (sprintf (' FILTER (?%s = %s) \n',  an, GQL_VAL_PRINT (arg_value, xsd_type)), vals);
+                  }
                 has_filter := 1;
                 skip_filter:;
               }
@@ -910,18 +1074,17 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
                   ' { ?range rdfs:subClassOf* ?domain . <%s> rdfs:range  ?range . ?prop0 rdfs:domain ?domain ; gql:field <%s> ; gql:type ?tp0 . }}'),
                                 id_to_iri (g_iid), id_to_iri(parent_prop), id_to_iri(fld_iid)));
 
-              for select "prop0", "tp0" from (sparql define input:storage "" select ?prop0 ?tp0 where { graph ?:g_iid
-                   {
-                     ?range rdfs:subClassOf* ?domain .
-                     ?:parent_prop rdfs:range  ?range .
-                     ?prop0 rdfs:domain ?domain ;
-                            gql:field ?:fld_iid ;
-                            gql:type ?tp0 .
-                    }}) dt0 do
-               {
-                 prop := "prop0";
-                 tp := "tp0";
-               }
+              {
+                declare lookup_rows, lookup_row any;
+                declare lookup_idx int;
+                lookup_rows := GQL_SCHEMA_CHILD_OBJ_ROWS (g_iid, parent_prop, fld_iid);
+                for (lookup_idx := 0; lookup_idx < length (lookup_rows); lookup_idx := lookup_idx + 1)
+                  {
+                    lookup_row := lookup_rows[lookup_idx];
+                    prop := lookup_row[0];
+                    tp := lookup_row[1];
+                  }
+              }
             }
           else -- scalar
             {
@@ -929,17 +1092,17 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
                        ' { <%s> rdfs:subClassOf* ?domain . ?prop0 rdfs:domain ?domain ; gql:field <%s> ; gql:type ?tp0 . }}'),
                                 id_to_iri (g_iid), id_to_iri(parent_cls), id_to_iri(fld_iid)));
 
-              for select "prop0", "tp0"  from (sparql define input:storage "" select ?prop0 ?tp0 where { graph ?:g_iid
-                        {
-                          ?:parent_cls rdfs:subClassOf* ?domain .
-                          ?prop0 rdfs:domain ?domain ;
-                                 gql:field ?:fld_iid ;
-                                 gql:type ?tp0 .
-                        }}) dt0 do
-               {
-                 prop := "prop0";
-                 tp := "tp0";
-               }
+              {
+                declare lookup_rows, lookup_row any;
+                declare lookup_idx int;
+                lookup_rows := GQL_SCHEMA_CHILD_SCALAR_ROWS (g_iid, parent_cls, fld_iid);
+                for (lookup_idx := 0; lookup_idx < length (lookup_rows); lookup_idx := lookup_idx + 1)
+                  {
+                    lookup_row := lookup_rows[lookup_idx];
+                    prop := lookup_row[0];
+                    tp := lookup_row[1];
+                  }
+              }
             }
 
           -- `__typename` & `iri` are special cases, they built-in
@@ -951,25 +1114,31 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
 
           if (var_name_only not in ('__typename', 'iri'))
             {
+              declare bound_prop any;
               tp := iri_split (tp, null, 0,1);
               GQL_DIECTIVES_APPLY (vn, directives, variables, tp, sql_table_option, filter_exp, graph_exp);
               dict_put (dict, var_name, tp);
               parent [2] := prop;
+              bound_prop := dict_get (dict, concat ('__bound__:', vn));
               http (sprintf (' ?%s :%s ?%s . \n', pn, var_name, vn), triples);
-              if (not has_filter)
-                http (sprintf (' OPTIONAL {%s', graph_exp), patterns);
-              else
-                http (sprintf (' {%s\t', graph_exp), patterns);
-              -- IMPORTANT: make it hash, huge unions exhibit weird SQL engine problem on loop
-              if (connection_get ('__intro') = 1)
-                http (sprintf ('  ?%s <%s> ?%s option (table_option "hash") . \n', pn, prop, vn), patterns);
-              else
-                http (sprintf ('  ?%s <%s> ?%s %s. %s\n', pn, prop, vn, sql_table_option, filter_exp), patterns);
-              -- we filter non literals when not expected, in theory should not be needed, but practice shows different
-              -- do this with config setting and never for introspection
-              if (atoi (registry_get ('graphql-enable-non-object-fitering', '0'))
-                  and not(connection_get ('__intro')) and (gqt_is_obj (tp) or gqt_is_list (tp)))
-                http (sprintf (' FILTER (isIRI (?%s)) . \n', vn), patterns);
+              if (isnull (bound_prop) or bound_prop <> prop)
+                {
+                  emit_pattern_block := 1;
+                  if (not has_filter)
+                    http (sprintf (' OPTIONAL {%s', graph_exp), patterns);
+                  else
+                    http (sprintf (' {%s\t', graph_exp), patterns);
+                  -- IMPORTANT: make it hash, huge unions exhibit weird SQL engine problem on loop
+                  if (connection_get ('__intro') = 1)
+                    http (sprintf ('  ?%s <%s> ?%s option (table_option "hash") . \n', pn, prop, vn), patterns);
+                  else
+                    http (sprintf ('  ?%s <%s> ?%s %s. %s\n', pn, prop, vn, sql_table_option, filter_exp), patterns);
+                  -- we filter non literals when not expected, in theory should not be needed, but practice shows different
+                  -- do this with config setting and never for introspection
+                  if (atoi (registry_get ('graphql-enable-non-object-fitering', '0'))
+                      and not(connection_get ('__intro')) and (gqt_is_obj (tp) or gqt_is_list (tp)))
+                    http (sprintf (' FILTER (isIRI (?%s)) . \n', vn), patterns);
+                }
             }
           else if (var_name_only = '__typename')
             {
@@ -997,11 +1166,16 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
                }
 
               if (sdl_name is not null)
-                http (sprintf (' ?%s :%s "%s" . \n', pn, var_name, sdl_name), triples);
+                {
+                  http (sprintf (' ?%s :%s "%s" . \n', pn, var_name, sdl_name), triples);
+                  emit_pattern_block := 0;
+                }
               else
-                http (sprintf (' ?%s :%s `bif:iri_split(coalesce(?%s,""),0,0,1)` . \n', pn, var_name, vn), triples);
-
-              http (sprintf (' { ?%s rdf:type ?%s . \n', pn, vn), patterns);
+                {
+                  http (sprintf (' ?%s :%s `bif:iri_split(coalesce(?%s,""),0,0,1)` . \n', pn, var_name, vn), triples);
+                  http (sprintf (' { ?%s rdf:type ?%s . \n', pn, vn), patterns);
+                  emit_pattern_block := 1;
+                }
             }
           else
             {
@@ -1019,7 +1193,7 @@ GQL_CONSTRUCT (in g_iid any, in tree any, in variables any, in parent any,
         GQL_CONSTRUCT (g_iid, tree, variables, parent, triples, patterns, vals, clauses, dict, for_update);
 
       -- optional is only for fields which depend on parent, hence iri is excluded
-      if (parent_cls is not null and var_name_only <> 'iri')
+      if (parent_cls is not null and var_name_only <> 'iri' and emit_pattern_block)
         {
           http (local_filter, patterns);
         http (' }\n', patterns);
