@@ -369,11 +369,16 @@ START_SERVER()
     ddate=`date`
     starth=`date | cut -f 2 -d :`
     starts=`date | cut -f 3 -d :|cut -f 1 -d " "`
+    log_seek=1
     
     if test -f "$LOCKFILE"
     then
         echo Removing $LOCKFILE >> $LOGFILE
         rm $LOCKFILE
+    fi
+    if test -f "$SRVMSGLOGFILE"
+    then
+        log_seek=`expr \`wc -c < "$SRVMSGLOGFILE"\` + 1`
     fi
     
     if [ $timeout -eq 0 ]
@@ -391,7 +396,7 @@ START_SERVER()
             stat=`$NETSTAT -an 2>/dev/null | grep "[\.\:]$port " | grep LISTEN`
             if [ "z$stat" != "z" ]
             then
-                if $ISQL $HOST:$port dba dba '"EXEC=status();"' VERBOSE=OFF PROMPT=OFF ERRORS=STDOUT >/dev/null 2>&1
+                if test -f "$SRVMSGLOGFILE" && tail -c +$log_seek "$SRVMSGLOGFILE" 2>/dev/null | grep "Server online at $port" >/dev/null 2>&1
                 then
         	    LOG "PASSED: Virtuoso Server successfully started on port $port"
         	    break
