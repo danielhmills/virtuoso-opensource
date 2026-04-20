@@ -3490,36 +3490,12 @@ vmodes_found:
         }
       else if (!IS_BOX_POINTER (min_mode) || (1 == min_mode->qmfColumnCount))
         {
-          /* FIXME: check if DB.DBA.RDF_STAR_TT_VALUE_EQ is needed */
-          if (0 && (BOP_EQ == ttype) && (NULL == split) && SPAR_IS_BLANK_OR_VAR (left) && SPAR_IS_BLANK_OR_VAR (right))
-            {
-              ssg_puts (" (");
-              ssg_print_scalar_expn (ssg, left, min_mode, NULL_ASNAME);
-              ssg_puts (bool_op);
-              ssg_print_scalar_expn (ssg, right, min_mode, NULL_ASNAME);
-              ssg_puts (" OR (isiri_id (");
-              ssg_print_scalar_expn (ssg, left, min_mode, NULL_ASNAME);
-              ssg_puts (") and isiri_id (");
-              ssg_print_scalar_expn (ssg, right, min_mode, NULL_ASNAME);
-              ssg_puts (") and cast ( __id2in(");
-              ssg_print_scalar_expn (ssg, left, min_mode, NULL_ASNAME);
-              ssg_puts (") as varchar) like 'urn:rdf-star:triple:%' and cast ( __id2in(");
-              ssg_print_scalar_expn (ssg, right, min_mode, NULL_ASNAME);
-              ssg_puts (") as varchar) like 'urn:rdf-star:triple:%' and DB.DBA.RDF_STAR_TT_VALUE_EQ ( __id2in(");
-              ssg_print_scalar_expn (ssg, left, min_mode, NULL_ASNAME);
-              ssg_puts ("), __id2in(");
-              ssg_print_scalar_expn (ssg, right, min_mode, NULL_ASNAME);
-              ssg_puts ("))))");
-            }
+          ssg_print_scalar_expn (ssg, left, min_mode, NULL_ASNAME);
+          ssg_puts (bool_op);
+          if (NULL == split)
+            ssg_print_scalar_expn (ssg, right, min_mode, NULL_ASNAME);
           else
-            {
-              ssg_print_scalar_expn (ssg, left, min_mode, NULL_ASNAME);
-              ssg_puts (bool_op);
-              if (NULL == split)
-                ssg_print_scalar_expn (ssg, right, min_mode, NULL_ASNAME);
-              else
-                ssg_print_box_as_sql_atom (ssg, split[0], SQL_ATOM_ABORT_ON_CAST);
-            }
+            ssg_print_box_as_sql_atom (ssg, split[0], SQL_ATOM_ABORT_ON_CAST);
         }
       else
         {
