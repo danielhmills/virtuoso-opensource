@@ -3337,18 +3337,18 @@ spar_gp_add_union_of_rdf_type_and_domain_range (sparp_t *sparp, SPART *graph, SP
 }
 
 static void
-spar_gp_add_transitive_triple_anchor_filter (sparp_t *sparp, caddr_t fld_vname, SPART *orig_fld, int orig_fld_is_plain_var)
+spar_gp_add_transitive_triple_anchor_filter (sparp_t *sparp, caddr_t fld_vname, SPART *orig_fld)
 {
   SPART *filt;
-  if (!orig_fld_is_plain_var)
-    filt = spartlist (sparp, 3, BOP_EQ, spar_make_variable (sparp, fld_vname), orig_fld);
-  else
+  if (SPAR_VARIABLE == SPART_TYPE (orig_fld))
 #if 0
     filt = spar_make_funcall (sparp, 0, "sparql_only:args_in_same_eq",
       (SPART **)t_list (2, spar_make_variable (sparp, fld_vname), spar_make_variable (sparp, orig_fld->_.var.vname)) );
 #else
     filt = spartlist (sparp, 3, SPAR_BOP_EQNAMES, spar_make_variable (sparp, fld_vname), spar_make_variable (sparp, orig_fld->_.var.vname));
 #endif
+  else
+    filt = spartlist (sparp, 3, BOP_EQ, spar_make_variable (sparp, fld_vname), orig_fld);
   spar_gp_add_filter (sparp, filt, 0);
 }
 
@@ -3364,6 +3364,7 @@ spar_gp_add_transitive_triple (sparp_t *sparp, SPART *graph, SPART *subject, SPA
   SPART *subselect_top, *where_gp, *wrapper_gp, *fields[4];
   SPART *subj_var, *obj_var, **retvals;
   caddr_t subj_vname, obj_vname;
+  int graph_is_assigned_by_context = 0;
   char t_in_preset_fld = '\0';
   char t_out_preset_fld = '\0';
   int subj_is_plain_var = 0, obj_is_plain_var = 0, retvalctr, fld_ctr;
@@ -3379,6 +3380,8 @@ spar_gp_add_transitive_triple (sparp_t *sparp, SPART *graph, SPART *subject, SPA
     spar_error (sparp, "Object of transitive triple pattern should be variable or QName or literal, not blank node");
   if ((NULL == graph) && (NULL != sparp->sparp_env->spare_context_graphs))
     graph = (SPART *)t_box_copy_tree ((caddr_t)(sparp->sparp_env->spare_context_graphs->data));
+  graph_is_assigned_by_context =
+    ((NULL != graph) && (SPAR_VARIABLE == SPART_TYPE (graph)) && SPARP_ASSIGNED_BY_CONTEXT (graph->_.var.rvr.rvrRestrictions));
   subj_vname = spar_mkid (sparp, "_::trans_subj");
   obj_vname = spar_mkid (sparp, "_::trans_obj");
   spar_gp_init (sparp, 0);
@@ -3390,6 +3393,8 @@ spar_gp_add_transitive_triple (sparp_t *sparp, SPART *graph, SPART *subject, SPA
   retvalctr = 0;
   for (fld_ctr = 0; fld_ctr < 4; fld_ctr++)
     {
+      if ((SPART_TRIPLE_GRAPH_IDX == fld_ctr) && graph_is_assigned_by_context)
+        continue;
       if (SPAR_IS_BLANK_OR_VAR (fields[fld_ctr]))
         retvalctr++;
     }
@@ -3400,6 +3405,8 @@ spar_gp_add_transitive_triple (sparp_t *sparp, SPART *graph, SPART *subject, SPA
   for (fld_ctr = 0; fld_ctr < 4; fld_ctr++)
     {
       SPART *rval = NULL;
+      if ((SPART_TRIPLE_GRAPH_IDX == fld_ctr) && graph_is_assigned_by_context)
+        continue;
       switch (SPART_TYPE (fields[fld_ctr]))
         {
         case SPAR_BLANK_NODE_LABEL: rval = spar_make_blank_node (sparp, fields[fld_ctr]->_.var.vname, 0); break;
@@ -3477,6 +3484,11 @@ spar_gp_add_transitive_triple (sparp_t *sparp, SPART *graph, SPART *subject, SPA
         spartlist (sparp, 2, SPAR_LIST, t_list (1, spar_make_variable (sparp, obj_vname))),
         SPARP_SET_OPTION_REPLACING );
     }
+  if (graph_is_assigned_by_context
+      && (SPAR_VARIABLE == subj_stype) && SPART_VARNAME_IS_GLOB (subject->_.var.vname)
+      && obj_is_plain_var
+      && (NULL == sparp_get_option (sparp, options, T_DIRECTION_L)))
+    sparp_set_option (sparp, &options, T_DIRECTION_L, (SPART *)((ptrlong)1), SPARP_SET_OPTION_REPLACING);
   where_gp = spar_gp_finalize (sparp, NULL);
   subselect_top = spar_make_top (sparp, SELECT_L, retvals,
     where_gp,
@@ -3486,8 +3498,8 @@ spar_gp_add_transitive_triple (sparp_t *sparp, SPART *graph, SPART *subject, SPA
   t_check_tree (options);
   wrapper_gp = spar_gp_finalize_with_subquery (sparp, options, subselect_top);
   spar_gp_add_member (sparp, wrapper_gp);
-  spar_gp_add_transitive_triple_anchor_filter (sparp, subj_vname, subject, subj_is_plain_var);
-  spar_gp_add_transitive_triple_anchor_filter (sparp, obj_vname, object, obj_is_plain_var);
+  spar_gp_add_transitive_triple_anchor_filter (sparp, subj_vname, subject);
+  spar_gp_add_transitive_triple_anchor_filter (sparp, obj_vname, object);
 #ifdef DEBUG
   if (saved_env != sparp->sparp_env)
     spar_internal_error (sparp, "spar_" "gp_add_transitive_triple(): mismatch in env");
