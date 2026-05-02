@@ -1189,14 +1189,6 @@ ks_col_cast_check(it_cursor_t * itc, search_spec_t * sp)
   return;
 }
 
-static int
-sp_is_rdf_quad_object_col (search_spec_t * sp)
-{
-  dbe_column_t * col = ((NULL == sp) ? NULL : sp->sp_col);
-  dbe_table_t * tb = ((NULL == col) ? NULL : col->col_defined_in);
-  return ((NULL != col) && (NULL != col->col_name) && !stricmp (col->col_name, "O") && tb_is_rdf_quad (tb));
-}
-
 int
 ks_search_param_cast (it_cursor_t * itc, search_spec_t * sp, caddr_t data)
 {
@@ -1228,16 +1220,11 @@ ks_search_param_cast (it_cursor_t * itc, search_spec_t * sp, caddr_t data)
     }
   else if (DV_ANY == target_dtp)
     {
-      caddr_t cast_data = NULL;
-      if (sp_is_rdf_quad_object_col (sp) && (DV_UNAME == dtp) && rdf_obj_of_sqlval (data, &cast_data))
-        data = cast_data;
 #if 0
       if (itc_try_inline_any (itc, data))
 	return KS_CAST_OK;
 #endif
       data = box_to_any (data, &err);
-      if (NULL != cast_data)
-        dk_free_tree (cast_data);
       if (err)
 	sqlr_resignal (err);
       ITC_SEARCH_PARAM (itc, data);

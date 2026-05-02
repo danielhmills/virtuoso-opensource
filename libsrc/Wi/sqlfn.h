@@ -1607,7 +1607,6 @@ search_spec_t * sp_list_copy (search_spec_t * sp);
 void qi_assign_root_id (query_instance_t * qi);
 void qi_root_done (query_instance_t * qi);
 int qi_inc_branch_count (query_instance_t * qi, int max, int n);
-int rdf_obj_of_sqlval (caddr_t val, caddr_t * data_ret);
 
 #define BIT_IS_SET(b,i) (((db_buf_t)(b))[(i) / 8] & (1 << ((i) & 0x7)))
 #define BIT_SET(b, i) ((db_buf_t)(b))[(i) / 8] |= 1 << ((i) & 0x7);
