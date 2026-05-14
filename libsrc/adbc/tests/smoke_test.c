@@ -1,10 +1,10 @@
 /*
  *  smoke_test.c
  *
- *  Phase 1 smoke test for the Virtuoso ADBC driver.
- *  Calls AdbcDriverInit directly (linked, not dlopen) and verifies
- *  that the driver returns ADBC_STATUS_OK for both ADBC 1.0.0 and
- *  1.1.0, and ADBC_STATUS_NOT_IMPLEMENTED for an unknown version.
+ *  Smoke test for the Virtuoso ADBC driver dispatch table.
+ *  Verifies that AdbcDriverInit accepts ADBC 1.0.0 and 1.1.0,
+ *  rejects NULL drivers and unknown versions, and wires the
+ *  correct set of slots for the current phase.
  *
  *  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
  *  project.
@@ -75,16 +75,32 @@ case_version (int version, const char *label)
       return 1;
     }
   /*
-   *  Phase 1: all dispatch slots must still be NULL. A populated slot at
-   *  this stage would mean a phase-2+ change leaked in without updating
-   *  the smoke test, so fail loudly.
+   *  After phase 2, AdbcDatabase slots must be wired; AdbcConnection
+   *  and AdbcStatement slots remain NULL until phases 3 and 4. The
+   *  assertions below are intentionally strict so any wiring that
+   *  lands without updating this test fails loudly.
    */
-  if (drv.DatabaseNew != NULL
-      || drv.ConnectionNew != NULL
-      || drv.StatementNew != NULL)
+  if (drv.DatabaseNew == NULL || drv.DatabaseInit == NULL
+      || drv.DatabaseRelease == NULL || drv.DatabaseSetOption == NULL)
     {
       fprintf (stderr,
-               "[FAIL] %s: dispatch slot populated in phase 1\n", label);
+               "[FAIL] %s: required AdbcDatabase slot is NULL\n", label);
+      return 1;
+    }
+  if (drv.ConnectionNew != NULL || drv.StatementNew != NULL)
+    {
+      fprintf (stderr,
+               "[FAIL] %s: connection/statement slot populated before phase 3\n",
+               label);
+      return 1;
+    }
+  if (version >= ADBC_VERSION_1_1_0
+      && (drv.DatabaseSetOptionInt == NULL
+          || drv.DatabaseGetOption == NULL
+          || drv.ErrorGetDetailCount == NULL))
+    {
+      fprintf (stderr,
+               "[FAIL] %s: ADBC 1.1.0 database/error slot is NULL\n", label);
       return 1;
     }
   return 0;
@@ -105,6 +121,6 @@ main (void)
       fprintf (stderr, "%d smoke test case(s) failed\n", failed);
       return EXIT_FAILURE;
     }
-  fprintf (stdout, "OK -- ADBC phase 1 smoke test passed\n");
+  fprintf (stdout, "OK -- ADBC smoke test passed\n");
   return EXIT_SUCCESS;
 }
