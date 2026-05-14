@@ -3312,6 +3312,7 @@ AC_CONFIG_FILES([
 	docsrc/styleguide/Makefile
 	docsrc/stylesheets/Makefile
 	docsrc/xmlsource/Makefile
+	libsrc/adbc/Makefile
 	libsrc/Dk/Makefile
 	libsrc/JDBCDriverType4/Makefile
 	libsrc/JDBCDriverType4/testsuite_4.0/Makefile
