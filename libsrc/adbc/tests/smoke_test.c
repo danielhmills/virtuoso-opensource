@@ -75,29 +75,35 @@ case_version (int version, const char *label)
       return 1;
     }
   /*
-   *  After phase 3, AdbcDatabase and AdbcConnection slots must be wired;
-   *  AdbcStatement slots remain NULL until phase 4.
+   *  After phase 4, AdbcDatabase, AdbcConnection, and the
+   *  read+execute portion of AdbcStatement must be wired.
+   *  Bind/Prepare/GetParameterSchema remain NULL until phase 5.
    */
   if (drv.DatabaseNew == NULL || drv.DatabaseInit == NULL
       || drv.DatabaseRelease == NULL || drv.DatabaseSetOption == NULL
       || drv.ConnectionNew == NULL || drv.ConnectionInit == NULL
       || drv.ConnectionRelease == NULL || drv.ConnectionCommit == NULL
-      || drv.ConnectionRollback == NULL)
+      || drv.ConnectionRollback == NULL
+      || drv.StatementNew == NULL || drv.StatementRelease == NULL
+      || drv.StatementSetSqlQuery == NULL
+      || drv.StatementExecuteQuery == NULL)
     {
       fprintf (stderr,
-               "[FAIL] %s: required database/connection slot is NULL\n", label);
+               "[FAIL] %s: required dispatch slot is NULL\n", label);
       return 1;
     }
-  if (drv.StatementNew != NULL)
+  if (drv.StatementPrepare != NULL || drv.StatementBind != NULL)
     {
       fprintf (stderr,
-               "[FAIL] %s: StatementNew populated before phase 4\n", label);
+               "[FAIL] %s: Prepare/Bind populated before phase 5\n", label);
       return 1;
     }
   if (version >= ADBC_VERSION_1_1_0
       && (drv.ConnectionCancel == NULL
           || drv.DatabaseSetOptionInt == NULL
-          || drv.ConnectionGetOption == NULL))
+          || drv.ConnectionGetOption == NULL
+          || drv.StatementSetOptionInt == NULL
+          || drv.StatementGetOption == NULL))
     {
       fprintf (stderr,
                "[FAIL] %s: ADBC 1.1.0 slot missing\n", label);

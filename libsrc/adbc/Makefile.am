@@ -28,6 +28,9 @@ libvirtadbc_la_SOURCES = \
 	adbc_entry.c \
 	database.c \
 	connection.c \
+	statement.c \
+	arrow_reader.c \
+	type_map.c \
 	options.c \
 	error.c \
 	nanoarrow.c
@@ -90,6 +93,10 @@ tests_adbc_unit_test_SOURCES = \
 	error.c \
 	database.c \
 	connection.c \
+	statement.c \
+	arrow_reader.c \
+	type_map.c \
+	nanoarrow.c \
 	adbc_entry.c
 tests_adbc_unit_test_CFLAGS  = @VIRT_AM_CFLAGS@
 tests_adbc_unit_test_CFLAGS += -I$(srcdir) -I$(srcdir)/include

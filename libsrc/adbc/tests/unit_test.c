@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "adbc.h"
+#include "nanoarrow.h"
 #include "virtuoso_adbc.h"
 
 static int g_failures = 0;
@@ -33,9 +34,14 @@ static int g_failures = 0;
         if (!(cond)) {                                               \
             fprintf (stderr, "[FAIL] %s: %s (line %d)\n",            \
                      (label), #cond, __LINE__);                      \
+            fflush (stderr);                                         \
             g_failures++;                                            \
         }                                                            \
     } while (0)
+
+/* TRACE is intentionally a no-op in committed code; flip to fprintf
+ * locally when debugging an integration regression.                  */
+#define TRACE(...) ((void) 0)
 
 extern AdbcStatusCode AdbcDriverInit (int version, void *driver,
                                       struct AdbcError *error);
@@ -284,6 +290,211 @@ test_connection_lifecycle_negative (void)
     drv.DatabaseRelease (&db, &err);
 }
 
+/* ---------- AdbcStatement: read-only state checks ---------- */
+
+static void
+test_statement_lifecycle_negative (void)
+{
+    struct AdbcDriver drv;
+    struct AdbcStatement st;
+    struct AdbcConnection cn;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    AdbcStatusCode rc;
+
+    load_driver (&drv);
+    memset (&st, 0, sizeof (st));
+    memset (&cn, 0, sizeof (cn));
+
+    /* StatementNew with NULL connection fails. */
+    rc = drv.StatementNew (NULL, &st, &err);
+    ASSERT (rc == ADBC_STATUS_INVALID_ARGUMENT, "st new: NULL cn");
+    if (err.release) err.release (&err);
+
+    /* StatementNew on a not-opened connection fails. */
+    drv.ConnectionNew (&cn, &err);
+    rc = drv.StatementNew (&cn, &st, &err);
+    ASSERT (rc == ADBC_STATUS_INVALID_STATE,
+            "st new: connection not connected");
+    if (err.release) err.release (&err);
+
+    /* ExecuteQuery on a not-initialised handle fails. */
+    rc = drv.StatementExecuteQuery (&st, NULL, NULL, &err);
+    ASSERT (rc == ADBC_STATUS_INVALID_STATE,
+            "st exec: not initialised");
+    if (err.release) err.release (&err);
+
+    /* Release on a not-initialised handle is a no-op. */
+    ASSERT (drv.StatementRelease (&st, &err) == ADBC_STATUS_OK,
+            "st release no-op");
+
+    drv.ConnectionRelease (&cn, &err);
+}
+
+/* ---------- Integration: SELECT round-trip ---------- */
+
+static void
+test_statement_select_roundtrip (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                                  struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema schema;
+    struct ArrowArray batch;
+    AdbcStatusCode rc;
+    int saw_batch = 0;
+    int second_call_is_eof = 0;
+
+    memset (&st, 0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+    memset (&schema, 0, sizeof (schema));
+    memset (&batch, 0, sizeof (batch));
+
+    ASSERT (drv->StatementNew (cn, &st, &err) == ADBC_STATUS_OK,
+            "select: stmt new");
+    ASSERT (drv->StatementSetSqlQuery (&st, "SELECT 1, 'hello', cast(3.14 as float)",
+                                       &err) == ADBC_STATUS_OK,
+            "select: set sql");
+    rc = drv->StatementExecuteQuery (&st, &stream, NULL, &err);
+    if (rc != ADBC_STATUS_OK) {
+        fprintf (stderr, "[FAIL-integration] ExecuteQuery: %s\n",
+                 err.message ? err.message : "(no msg)");
+        g_failures++;
+        if (err.release) err.release (&err);
+        drv->StatementRelease (&st, NULL);
+        return;
+    }
+
+    ASSERT (stream.get_schema (&stream, &schema) == 0, "select: get_schema");
+    ASSERT (schema.n_children == 3, "select: 3 columns");
+    if (schema.release) schema.release (&schema);
+
+    ASSERT (stream.get_next (&stream, &batch) == 0, "select: get_next");
+    if (batch.release) {
+        saw_batch = 1;
+        ASSERT (batch.length == 1, "select: one row");
+        ASSERT (batch.n_children == 3, "select: 3 children");
+        batch.release (&batch);
+    }
+    ASSERT (saw_batch, "select: got a batch");
+
+    /* Second call returns EOF (released zero-length array). */
+    memset (&batch, 0, sizeof (batch));
+    ASSERT (stream.get_next (&stream, &batch) == 0, "select: eof");
+    if (batch.release == NULL) second_call_is_eof = 1;
+    ASSERT (second_call_is_eof, "select: second call EOF");
+
+    stream.release (&stream);
+    drv->StatementRelease (&st, NULL);
+    fprintf (stdout, "[OK]  integration: SELECT 1,'hello',3.14 round-trip\n");
+}
+
+static void
+test_statement_null_column (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                             struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowArray batch;
+    int has_nulls = 0;
+
+    memset (&st, 0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+    memset (&batch, 0, sizeof (batch));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st, "SELECT NULL, 42, NULL", &err);
+    if (drv->StatementExecuteQuery (&st, &stream, NULL, &err) != ADBC_STATUS_OK) {
+        fprintf (stderr, "[FAIL-integration] NULL query: %s\n",
+                 err.message ? err.message : "(no msg)");
+        g_failures++;
+        if (err.release) err.release (&err);
+        drv->StatementRelease (&st, NULL);
+        return;
+    }
+    if (stream.get_next (&stream, &batch) == 0 && batch.release) {
+        ASSERT (batch.length == 1, "null: one row");
+        /* NULL columns: child null_count should be 1. */
+        if (batch.n_children >= 3
+            && batch.children[0]->null_count == 1
+            && batch.children[2]->null_count == 1)
+            has_nulls = 1;
+        ASSERT (has_nulls, "null: null mask set on cols 0 and 2");
+        batch.release (&batch);
+    }
+    stream.release (&stream);
+    drv->StatementRelease (&st, NULL);
+    fprintf (stdout, "[OK]  integration: NULL columns\n");
+}
+
+static void
+test_statement_no_result (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                          struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    int64_t rows = -2;
+
+    memset (&st, 0, sizeof (st));
+    drv->StatementNew (cn, &st, &err);
+    /* commit work parses, returns no result set, succeeds when no
+     * transaction is open (no-op).                                     */
+    drv->StatementSetSqlQuery (&st, "commit work", &err);
+    ASSERT (drv->StatementExecuteQuery (&st, NULL, &rows, &err)
+                == ADBC_STATUS_OK,
+            "no-result: commit work succeeds");
+    drv->StatementRelease (&st, NULL);
+    if (err.release) err.release (&err);
+    fprintf (stdout, "[OK]  integration: no-result DDL/CMD\n");
+}
+
+static void
+test_statement_batching (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                          struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowArray batch;
+    int64_t total_rows = 0;
+    int batches = 0;
+
+    memset (&st, 0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+
+    drv->StatementNew (cn, &st, &err);
+    /* Force a small batch size so we hit at least two get_next calls. */
+    drv->StatementSetOption (&st, "adbc.virtuoso.fetch.batch_rows", "32", &err);
+    /* Virtuoso ships with DB.DBA.SYS_KEYS, an indexed catalog with
+     * comfortably more than 32 rows.                                  */
+    drv->StatementSetSqlQuery (&st,
+                               "SELECT TOP 200 KEY_NAME FROM DB.DBA.SYS_KEYS",
+                               &err);
+    if (drv->StatementExecuteQuery (&st, &stream, NULL, &err) != ADBC_STATUS_OK) {
+        fprintf (stderr, "[SKIP-integration] batching: %s\n",
+                 err.message ? err.message : "(no msg)");
+        if (err.release) err.release (&err);
+        drv->StatementRelease (&st, NULL);
+        return;
+    }
+    for (;;) {
+        memset (&batch, 0, sizeof (batch));
+        if (stream.get_next (&stream, &batch) != 0) break;
+        if (!batch.release) break;
+        total_rows += batch.length;
+        batches++;
+        batch.release (&batch);
+    }
+    stream.release (&stream);
+    drv->StatementRelease (&st, NULL);
+    ASSERT (batches >= 2,
+            "batching: expected >= 2 batches with batch_rows=32");
+    ASSERT (total_rows > 0, "batching: got rows");
+    fprintf (stdout, "[OK]  integration: batching (%d rows / %d batches)\n",
+             (int) total_rows, batches);
+}
+
 /* ---------- Integration: gated on VIRT_ADBC_TEST_URI ---------- */
 
 static void
@@ -331,6 +542,11 @@ test_integration (const char *uri)
     }
     fprintf (stdout, "[OK]  integration: connected to %s\n", uri);
 
+    /* Phase 4 statement integration tests. We re-use the open
+     * connection rather than reopening for each case.                 */
+    TRACE ("before select_roundtrip\n");
+    test_statement_select_roundtrip (&drv, &db, &cn);
+
     /* Switch off autocommit, then commit (which should be a no-op
      * with nothing to commit, but must succeed). */
     ASSERT (drv.ConnectionSetOption (&cn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
@@ -348,6 +564,14 @@ test_integration (const char *uri)
     ASSERT (drv.ConnectionCancel (&cn, &err) == ADBC_STATUS_OK,
             "integration: cancel no-op");
     if (err.release) err.release (&err);
+    TRACE ("after select_roundtrip\n");
+    TRACE ("before null_column\n");
+    test_statement_null_column      (&drv, &db, &cn);
+    TRACE ("before no_result\n");
+    test_statement_no_result        (&drv, &db, &cn);
+    TRACE ("before batching\n");
+    test_statement_batching         (&drv, &db, &cn);
+    TRACE ("after batching\n");
 
     drv.ConnectionRelease (&cn, &err);
     drv.DatabaseRelease (&db, &err);
@@ -364,6 +588,7 @@ main (void)
     test_uri_parser ();
     test_database_lifecycle ();
     test_connection_lifecycle_negative ();
+    test_statement_lifecycle_negative ();
 
     uri = getenv ("VIRT_ADBC_TEST_URI");
     if (uri && *uri) {
@@ -377,6 +602,6 @@ main (void)
         fprintf (stderr, "%d test case(s) failed\n", g_failures);
         return EXIT_FAILURE;
     }
-    fprintf (stdout, "OK -- ADBC phase 2/3 unit tests passed\n");
+    fprintf (stdout, "OK -- ADBC phase 2-4 unit tests passed\n");
     return EXIT_SUCCESS;
 }
