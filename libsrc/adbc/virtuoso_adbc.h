@@ -2,8 +2,8 @@
  *  virtuoso_adbc.h
  *
  *  Private header for the Virtuoso ADBC driver. Defines the
- *  internal handle layout for AdbcDatabase and the helper API
- *  shared across translation units.
+ *  internal handle layout for AdbcDatabase / AdbcConnection /
+ *  AdbcStatement and the helper API shared across translation units.
  *
  *  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
  *  project.
@@ -112,10 +112,27 @@ struct AdbcErrorDetail
 
 typedef struct VirtAdbcDatabase {
     virt_adbc_option_t *opts;     /* keys: uri, username, password,
-                                   *       adbc.virtuoso.charset, ... */
+                                   *       adbc.virtuoso.charset,
+                                   *       adbc.connection.timeout_s, ... */
     void               *henv;     /* virtodbc__SQLAllocEnv result        */
     int                 initialised;
 } VirtAdbcDatabase;
+
+typedef struct VirtAdbcConnection {
+    VirtAdbcDatabase   *db;
+    virt_adbc_option_t *opts;     /* per-connection knobs                */
+    void               *hdbc;     /* virtodbc__SQLAllocConnect result    */
+    int                 connected;
+    int                 autocommit;
+    int                 read_only;
+    int                 in_txn;   /* set on first write under !autocommit */
+    void               *current_hstmt; /* updated by statement.c, cleared
+                                        * on completion; read by Cancel  */
+    /* Phase 3 docs the contract as "serialised access" per ADBC, but we
+     * defensively guard the handle with a mutex so concurrent calls
+     * (notably Cancel from another thread) are safe.                    */
+    void               *mu;       /* mutex_allocate() -- opaque to ADBC  */
+} VirtAdbcConnection;
 
 /* -------------------------------------------------------------------
  *  Database vtable (database.c).
@@ -144,6 +161,42 @@ AdbcStatusCode virt_db_get_option_double (struct AdbcDatabase *db, const char *k
 AdbcStatusCode virt_db_init           (struct AdbcDatabase *db,
                                        struct AdbcError *err);
 AdbcStatusCode virt_db_release        (struct AdbcDatabase *db,
+                                       struct AdbcError *err);
+
+/* -------------------------------------------------------------------
+ *  Connection vtable (connection.c).
+ * ------------------------------------------------------------------- */
+AdbcStatusCode virt_cn_new            (struct AdbcConnection *cn,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_cn_set_option     (struct AdbcConnection *cn, const char *key,
+                                       const char *value, struct AdbcError *err);
+AdbcStatusCode virt_cn_set_option_bytes (struct AdbcConnection *cn, const char *key,
+                                         const uint8_t *value, size_t len,
+                                         struct AdbcError *err);
+AdbcStatusCode virt_cn_set_option_int (struct AdbcConnection *cn, const char *key,
+                                       int64_t value, struct AdbcError *err);
+AdbcStatusCode virt_cn_set_option_double (struct AdbcConnection *cn, const char *key,
+                                          double value, struct AdbcError *err);
+AdbcStatusCode virt_cn_get_option     (struct AdbcConnection *cn, const char *key,
+                                       char *out, size_t *len,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_cn_get_option_bytes (struct AdbcConnection *cn, const char *key,
+                                         uint8_t *out, size_t *len,
+                                         struct AdbcError *err);
+AdbcStatusCode virt_cn_get_option_int (struct AdbcConnection *cn, const char *key,
+                                       int64_t *out, struct AdbcError *err);
+AdbcStatusCode virt_cn_get_option_double (struct AdbcConnection *cn, const char *key,
+                                          double *out, struct AdbcError *err);
+AdbcStatusCode virt_cn_init           (struct AdbcConnection *cn,
+                                       struct AdbcDatabase *db,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_cn_release        (struct AdbcConnection *cn,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_cn_commit         (struct AdbcConnection *cn,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_cn_rollback       (struct AdbcConnection *cn,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_cn_cancel         (struct AdbcConnection *cn,
                                        struct AdbcError *err);
 
 /* -------------------------------------------------------------------

@@ -6,9 +6,8 @@ AUTOMAKE_OPTIONS = subdir-objects
 #  Builds libvirtadbc as a shared library (loadable module) that
 #  exports the canonical "AdbcDriverInit" entrypoint. The driver
 #  links Virtuoso's existing CLI/RPC convenience archives (libwic +
-#  libdk1t + libthrs + libutil) so DatabaseInit can allocate a
-#  Virtuoso CLI environment without needing an external ODBC driver
-#  manager.
+#  libdk1t + libthrs + libutil) so it can talk to a Virtuoso server
+#  over the same wire protocol that isql and JDBC use.
 #
 #  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
 #  project.
@@ -28,6 +27,7 @@ lib_LTLIBRARIES = libvirtadbc.la
 libvirtadbc_la_SOURCES = \
 	adbc_entry.c \
 	database.c \
+	connection.c \
 	options.c \
 	error.c \
 	nanoarrow.c
@@ -64,14 +64,12 @@ noinst_HEADERS = \
 # ----------------------------------------------------------------------
 #  Tests.
 #
-#  smoke_test       -- dispatch-table validation (asserts which slots
-#                      are wired at the current phase).
-#  unit_test        -- exercises the option store, the URI parser, and
-#                      the AdbcDatabase lifecycle state machine without
-#                      needing a live server. The unit test compiles
-#                      the relevant translation units directly into
-#                      itself because driver internals are hidden from
-#                      the shared library's exported ABI.
+#  smoke_test       -- exists since phase 1 (dispatch table validation).
+#  unit_test        -- phase 2/3 unit tests: options storage, URI parser,
+#                      AdbcDatabase lifecycle, AdbcConnection lifecycle
+#                      invariants. Integration paths that actually open
+#                      a Virtuoso connection are gated on the env var
+#                      VIRT_ADBC_TEST_URI; the test skips them when unset.
 # ----------------------------------------------------------------------
 check_PROGRAMS  = tests/adbc_smoke_test tests/adbc_unit_test
 TESTS           = tests/adbc_smoke_test tests/adbc_unit_test
@@ -80,11 +78,18 @@ tests_adbc_smoke_test_SOURCES = tests/smoke_test.c
 tests_adbc_smoke_test_CFLAGS  = @VIRT_AM_CFLAGS@ -I$(srcdir)/include
 tests_adbc_smoke_test_LDADD   = libvirtadbc.la @LIBDL@
 
+#
+#  The unit test exercises internal helpers (virt_opt_*, virt_build_connstr)
+#  that are hidden from the shared library's exported ABI. Compile the
+#  relevant translation units directly into the test binary so the test
+#  can call them without going through dlsym.
+#
 tests_adbc_unit_test_SOURCES = \
 	tests/unit_test.c \
 	options.c \
 	error.c \
 	database.c \
+	connection.c \
 	adbc_entry.c
 tests_adbc_unit_test_CFLAGS  = @VIRT_AM_CFLAGS@
 tests_adbc_unit_test_CFLAGS += -I$(srcdir) -I$(srcdir)/include

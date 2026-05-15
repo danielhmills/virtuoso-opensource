@@ -3,10 +3,9 @@
  *
  *  ADBC driver dispatch-table entrypoint for the Virtuoso ADBC driver.
  *
- *  Phase 1 stubbed every slot. Phase 2 wires up the AdbcDatabase
- *  vtable plus the ADBC 1.1.0 typed Database Get/Set option family
- *  and the error-detail hooks. Connection and statement slots remain
- *  NULL until phases 3 and 4.
+ *  Phase 1 stubbed every slot. Phases 2 and 3 populate the database
+ *  and connection vtables (plus the error-detail hooks). Statement
+ *  slots remain NULL until phase 4.
  *
  *  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
  *  project.
@@ -58,6 +57,14 @@ AdbcDriverInit (int version, void *raw_driver, struct AdbcError *error)
     driver->DatabaseInit      = virt_db_init;
     driver->DatabaseRelease   = virt_db_release;
 
+    /* ----- AdbcConnection (phase 3) ----- */
+    driver->ConnectionNew       = virt_cn_new;
+    driver->ConnectionSetOption = virt_cn_set_option;
+    driver->ConnectionInit      = virt_cn_init;
+    driver->ConnectionRelease   = virt_cn_release;
+    driver->ConnectionCommit    = virt_cn_commit;
+    driver->ConnectionRollback  = virt_cn_rollback;
+
     if (version >= ADBC_VERSION_1_1_0) {
         /* ----- ADBC 1.1.0 error detail ----- */
         driver->ErrorGetDetailCount = virt_err_detail_count;
@@ -71,8 +78,18 @@ AdbcDriverInit (int version, void *raw_driver, struct AdbcError *error)
         driver->DatabaseGetOptionBytes  = virt_db_get_option_bytes;
         driver->DatabaseGetOptionInt    = virt_db_get_option_int;
         driver->DatabaseGetOptionDouble = virt_db_get_option_double;
+
+        /* ----- Connection typed options + cancel ----- */
+        driver->ConnectionCancel             = virt_cn_cancel;
+        driver->ConnectionSetOptionBytes     = virt_cn_set_option_bytes;
+        driver->ConnectionSetOptionInt       = virt_cn_set_option_int;
+        driver->ConnectionSetOptionDouble    = virt_cn_set_option_double;
+        driver->ConnectionGetOption          = virt_cn_get_option;
+        driver->ConnectionGetOptionBytes     = virt_cn_get_option_bytes;
+        driver->ConnectionGetOptionInt       = virt_cn_get_option_int;
+        driver->ConnectionGetOptionDouble    = virt_cn_get_option_double;
     }
 
-    /* Connection and statement slots remain NULL -- phases 3 and 4. */
+    /* Statement slots remain NULL -- phase 4. */
     return ADBC_STATUS_OK;
 }
