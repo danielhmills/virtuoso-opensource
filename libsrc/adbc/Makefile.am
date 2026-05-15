@@ -30,6 +30,7 @@ libvirtadbc_la_SOURCES = \
 	connection.c \
 	statement.c \
 	arrow_reader.c \
+	arrow_writer.c \
 	type_map.c \
 	options.c \
 	error.c \
@@ -95,6 +96,7 @@ tests_adbc_unit_test_SOURCES = \
 	connection.c \
 	statement.c \
 	arrow_reader.c \
+	arrow_writer.c \
 	type_map.c \
 	nanoarrow.c \
 	adbc_entry.c

@@ -3,10 +3,9 @@
  *
  *  ADBC driver dispatch-table entrypoint for the Virtuoso ADBC driver.
  *
- *  Phase 1 stubbed every slot. Phases 2-4 populate the database,
- *  connection, and statement (read + execute) vtables plus the
- *  error-detail hooks. Bind / Prepare and the typed-statement-option
- *  family land in phase 5.
+ *  Phase 1 stubbed every slot. Phases 2-5 populate the database,
+ *  connection, and statement vtables (including Prepare, Bind, and
+ *  BindStream) plus the error-detail hooks.
  *
  *  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
  *  project.
@@ -72,6 +71,12 @@ AdbcDriverInit (int version, void *raw_driver, struct AdbcError *error)
     driver->StatementSetSqlQuery  = virt_st_set_sql_query;
     driver->StatementSetOption    = virt_st_set_option;
     driver->StatementExecuteQuery = virt_st_execute_query;
+
+    /* ----- AdbcStatement: prepared + parameter binding (phase 5) ----- */
+    driver->StatementPrepare             = virt_st_prepare;
+    driver->StatementBind                = virt_st_bind;
+    driver->StatementBindStream          = virt_st_bind_stream;
+    driver->StatementGetParameterSchema  = virt_st_get_parameter_schema;
 
     if (version >= ADBC_VERSION_1_1_0) {
         /* ----- ADBC 1.1.0 error detail ----- */

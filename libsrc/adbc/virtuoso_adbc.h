@@ -206,13 +206,26 @@ AdbcStatusCode virt_cn_cancel         (struct AdbcConnection *cn,
  *  Statement handle and vtable (statement.c).
  * ------------------------------------------------------------------- */
 
+/* Forward decl -- definition in arrow_writer.c.                       */
+typedef struct VirtAdbcWriter VirtAdbcWriter;
+
 typedef struct VirtAdbcStatement {
     VirtAdbcConnection *cn;
     char               *sql;       /* set by SetSqlQuery; freed in Release */
-    void               *hstmt;     /* normally owned by an outstanding
-                                    * reader; only non-NULL transiently   */
+    /* When prepared, hstmt holds the prepared CLI statement -- shared by
+     * every Execute that runs against it. When un-prepared, hstmt is NULL
+     * and ExecuteQuery uses SQLExecDirect on a fresh transient HSTMT.    */
+    void               *hstmt;
+    int                 prepared;
     int64_t             batch_rows;
     virt_adbc_option_t *opts;
+    /* Phase 5 bind state.                                              */
+    struct ArrowSchema  bound_schema;
+    struct ArrowArray   bound_batch;
+    int                 has_bound_batch;
+    struct ArrowArrayStream bound_stream;
+    int                 has_bound_stream;
+    VirtAdbcWriter     *writer;     /* lazily-built on first bound Execute */
 } VirtAdbcStatement;
 
 AdbcStatusCode virt_st_new (struct AdbcConnection *cn,
@@ -249,6 +262,30 @@ AdbcStatusCode virt_st_execute_query (struct AdbcStatement *st,
                                       struct ArrowArrayStream *out,
                                       int64_t *rows_affected,
                                       struct AdbcError *err);
+
+/* Phase 5: prepared statements and parameter binding.                */
+AdbcStatusCode virt_st_prepare (struct AdbcStatement *st,
+                                struct AdbcError *err);
+AdbcStatusCode virt_st_bind (struct AdbcStatement *st,
+                             struct ArrowArray *values,
+                             struct ArrowSchema *schema,
+                             struct AdbcError *err);
+AdbcStatusCode virt_st_bind_stream (struct AdbcStatement *st,
+                                    struct ArrowArrayStream *stream,
+                                    struct AdbcError *err);
+AdbcStatusCode virt_st_get_parameter_schema (struct AdbcStatement *st,
+                                             struct ArrowSchema *schema,
+                                             struct AdbcError *err);
+
+/* Writer factory (arrow_writer.c).                                   */
+AdbcStatusCode virt_writer_create (void *hstmt, struct ArrowSchema *bind_schema,
+                                   VirtAdbcWriter **out_writer,
+                                   struct AdbcError *err);
+void           virt_writer_destroy (VirtAdbcWriter *w);
+AdbcStatusCode virt_writer_execute_batch (VirtAdbcWriter *w,
+                                          struct ArrowArray *batch,
+                                          int64_t *rows_affected_inout,
+                                          struct AdbcError *err);
 
 /* -------------------------------------------------------------------
  *  Connection-string construction. Exposed so unit tests can verify

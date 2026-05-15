@@ -495,6 +495,339 @@ test_statement_batching (struct AdbcDriver *drv, struct AdbcDatabase *db,
              (int) total_rows, batches);
 }
 
+/* ---------- Integration: Phase 5 (prepare + bind) ---------- */
+
+static void
+test_prepared_select (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                      struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema schema;
+    struct ArrowArray batch;
+    int got = 0;
+    (void) db;
+
+    memset (&st, 0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st, "SELECT 7, 'phase5'", &err);
+    ASSERT (drv->StatementPrepare (&st, &err) == ADBC_STATUS_OK,
+            "prepared select: prepare");
+    /* Prepare is idempotent. */
+    ASSERT (drv->StatementPrepare (&st, &err) == ADBC_STATUS_OK,
+            "prepared select: prepare idempotent");
+
+    ASSERT (drv->StatementExecuteQuery (&st, &stream, NULL, &err)
+                == ADBC_STATUS_OK,
+            "prepared select: exec");
+    if (stream.release) {
+        memset (&schema, 0, sizeof (schema));
+        ASSERT (stream.get_schema (&stream, &schema) == 0,
+                "prepared select: schema");
+        ASSERT (schema.n_children == 2, "prepared select: 2 cols");
+        if (schema.release) schema.release (&schema);
+        memset (&batch, 0, sizeof (batch));
+        if (stream.get_next (&stream, &batch) == 0 && batch.release) {
+            got = (batch.length == 1 && batch.n_children == 2);
+            batch.release (&batch);
+        }
+        ASSERT (got, "prepared select: one row");
+        stream.release (&stream);
+    }
+    drv->StatementRelease (&st, NULL);
+    fprintf (stdout, "[OK]  integration: prepared SELECT (no params)\n");
+}
+
+static void
+test_parameter_schema (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                       struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowSchema sch;
+    (void) db;
+
+    memset (&st, 0, sizeof (st));
+    memset (&sch, 0, sizeof (sch));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st, "SELECT ?, ?", &err);
+    ASSERT (drv->StatementPrepare (&st, &err) == ADBC_STATUS_OK,
+            "param schema: prepare");
+    ASSERT (drv->StatementGetParameterSchema (&st, &sch, &err)
+                == ADBC_STATUS_OK,
+            "param schema: get");
+    ASSERT (sch.n_children == 2, "param schema: 2 params");
+    if (sch.release) sch.release (&sch);
+    drv->StatementRelease (&st, NULL);
+    fprintf (stdout, "[OK]  integration: GetParameterSchema (n=2)\n");
+}
+
+/* Builds a 2-column int64 + utf8 batch with the given pairs, hands
+ * the resulting (ArrowArray, ArrowSchema) to Bind. */
+static void
+build_int_str_batch (const int64_t *ids, const char *const *names, int64_t n,
+                     struct ArrowArray *out_arr, struct ArrowSchema *out_sch)
+{
+    struct ArrowError ae;
+    int64_t i;
+
+    ArrowSchemaInit (out_sch);
+    (void) ArrowSchemaSetTypeStruct (out_sch, 2);
+    (void) ArrowSchemaSetType (out_sch->children[0], NANOARROW_TYPE_INT64);
+    (void) ArrowSchemaSetName (out_sch->children[0], "id");
+    (void) ArrowSchemaSetType (out_sch->children[1], NANOARROW_TYPE_STRING);
+    (void) ArrowSchemaSetName (out_sch->children[1], "name");
+
+    memset (&ae, 0, sizeof (ae));
+    (void) ArrowArrayInitFromSchema (out_arr, out_sch, &ae);
+    (void) ArrowArrayStartAppending (out_arr);
+    for (i = 0; i < n; i++) {
+        struct ArrowStringView sv = ArrowCharView (names[i]);
+        (void) ArrowArrayAppendInt (out_arr->children[0], ids[i]);
+        if (names[i] == NULL)
+            (void) ArrowArrayAppendNull (out_arr->children[1], 1);
+        else
+            (void) ArrowArrayAppendString (out_arr->children[1], sv);
+        (void) ArrowArrayFinishElement (out_arr);
+    }
+    (void) ArrowArrayFinishBuildingDefault (out_arr, &ae);
+}
+
+static void
+test_bind_insert (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                  struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArray  arr;
+    struct ArrowSchema sch;
+    int64_t ids[]    = { 1, 2, 3, 4 };
+    const char *names[] = { "alpha", "beta", "gamma", NULL };
+    int64_t rows = 0;
+    AdbcStatusCode rc;
+    (void) db;
+
+    memset (&st, 0, sizeof (st));
+    memset (&arr, 0, sizeof (arr));
+    memset (&sch, 0, sizeof (sch));
+
+    /* Set up a fresh temp table. */
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st,
+        "drop table if exists DB.DBA.t_adbc_phase5", &err);
+    drv->StatementExecuteQuery (&st, NULL, NULL, &err);
+    drv->StatementRelease (&st, NULL);
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st,
+        "create table DB.DBA.t_adbc_phase5 (id integer, name varchar(64))",
+        &err);
+    rc = drv->StatementExecuteQuery (&st, NULL, NULL, &err);
+    if (rc != ADBC_STATUS_OK) {
+        fprintf (stderr, "[SKIP-integration] bind_insert: create table failed: %s\n",
+                 err.message ? err.message : "(no msg)");
+        if (err.release) err.release (&err);
+        drv->StatementRelease (&st, NULL);
+        return;
+    }
+    drv->StatementRelease (&st, NULL);
+
+    /* Prepare + Bind + ExecuteQuery on the INSERT. */
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st,
+        "insert into DB.DBA.t_adbc_phase5 (id, name) values (?, ?)", &err);
+    ASSERT (drv->StatementPrepare (&st, &err) == ADBC_STATUS_OK,
+            "bind_insert: prepare");
+
+    build_int_str_batch (ids, names, 4, &arr, &sch);
+    ASSERT (drv->StatementBind (&st, &arr, &sch, &err) == ADBC_STATUS_OK,
+            "bind_insert: bind");
+    ASSERT (drv->StatementExecuteQuery (&st, NULL, &rows, &err)
+                == ADBC_STATUS_OK,
+            "bind_insert: exec");
+    ASSERT (rows == 4, "bind_insert: 4 rows affected");
+    drv->StatementRelease (&st, NULL);
+
+    /* Read them back and verify NULL handling. */
+    {
+        struct AdbcStatement st2;
+        struct ArrowArrayStream stream;
+        struct ArrowArray batch;
+        int verified = 0;
+
+        memset (&st2, 0, sizeof (st2));
+        memset (&stream, 0, sizeof (stream));
+        memset (&batch, 0, sizeof (batch));
+
+        drv->StatementNew (cn, &st2, &err);
+        drv->StatementSetSqlQuery (&st2,
+            "select count(*), count(name) from DB.DBA.t_adbc_phase5", &err);
+        drv->StatementExecuteQuery (&st2, &stream, NULL, &err);
+        if (stream.get_next (&stream, &batch) == 0 && batch.release) {
+            /* count(*) = 4, count(name) = 3 (one NULL). */
+            int64_t total = -1, with_name = -1;
+            struct ArrowArrayView v;
+            struct ArrowError ae;
+            memset (&v, 0, sizeof (v));
+            memset (&ae, 0, sizeof (ae));
+            {
+                struct ArrowSchema rs;
+                memset (&rs, 0, sizeof (rs));
+                stream.get_schema (&stream, &rs);
+                if (ArrowArrayViewInitFromSchema (&v, &rs, &ae) == 0
+                    && ArrowArrayViewSetArray (&v, &batch, &ae) == 0) {
+                    total     = ArrowArrayViewGetIntUnsafe (v.children[0], 0);
+                    with_name = ArrowArrayViewGetIntUnsafe (v.children[1], 0);
+                }
+                ArrowArrayViewReset (&v);
+                if (rs.release) rs.release (&rs);
+            }
+            verified = (total == 4 && with_name == 3);
+            batch.release (&batch);
+        }
+        ASSERT (verified, "bind_insert: 4 rows / 3 non-null names");
+        if (stream.release) stream.release (&stream);
+        drv->StatementRelease (&st2, NULL);
+    }
+    fprintf (stdout, "[OK]  integration: prepared INSERT with bound batch (4 rows)\n");
+}
+
+/* A trivial ArrowArrayStream that emits two fixed batches then EOF.
+ * Used to validate StatementBindStream wiring without needing pyarrow. */
+typedef struct mock_stream_state {
+    int                 cur;
+    int                 nbatch;
+    const int64_t      *ids;     /* contiguous; lengths[0..nbatch-1]      */
+    const char *const  *names;
+    const int64_t      *lengths;
+    int64_t             offset;
+    struct ArrowSchema  schema;
+} mock_stream_state_t;
+
+static int
+mock_get_schema (struct ArrowArrayStream *s, struct ArrowSchema *out)
+{
+    mock_stream_state_t *m = (mock_stream_state_t *) s->private_data;
+    return ArrowSchemaDeepCopy (&m->schema, out);
+}
+
+static int
+mock_get_next (struct ArrowArrayStream *s, struct ArrowArray *out)
+{
+    mock_stream_state_t *m = (mock_stream_state_t *) s->private_data;
+    int64_t len;
+    int64_t i;
+    struct ArrowError ae;
+    memset (out, 0, sizeof (*out));
+    if (m->cur >= m->nbatch) return 0;
+    len = m->lengths[m->cur];
+    memset (&ae, 0, sizeof (ae));
+    if (ArrowArrayInitFromSchema (out, &m->schema, &ae) != 0) return EIO;
+    ArrowArrayStartAppending (out);
+    for (i = 0; i < len; i++) {
+        int64_t idx = m->offset + i;
+        ArrowArrayAppendInt (out->children[0], m->ids[idx]);
+        if (m->names[idx])
+            ArrowArrayAppendString (out->children[1],
+                                    ArrowCharView (m->names[idx]));
+        else
+            ArrowArrayAppendNull (out->children[1], 1);
+        ArrowArrayFinishElement (out);
+    }
+    ArrowArrayFinishBuildingDefault (out, &ae);
+    m->offset += len;
+    m->cur++;
+    return 0;
+}
+
+static const char *
+mock_last_err (struct ArrowArrayStream *s) { (void) s; return NULL; }
+
+static void
+mock_release (struct ArrowArrayStream *s)
+{
+    mock_stream_state_t *m = (mock_stream_state_t *) s->private_data;
+    if (m) {
+        if (m->schema.release) m->schema.release (&m->schema);
+        free (m);
+    }
+    s->private_data = NULL;
+    s->release      = NULL;
+}
+
+static void
+test_bind_stream_insert (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                         struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    mock_stream_state_t *state;
+    int64_t rows = 0;
+    AdbcStatusCode rc;
+    static const int64_t ids[] = { 100, 101, 102, 103, 104, 105 };
+    static const char *const names[] = {
+        "one", "two", "three", "four", "five", "six"
+    };
+    static const int64_t lengths[] = { 3, 3 };
+    (void) db;
+
+    memset (&st, 0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st,
+        "delete from DB.DBA.t_adbc_phase5", &err);
+    drv->StatementExecuteQuery (&st, NULL, NULL, &err);
+    drv->StatementRelease (&st, NULL);
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st,
+        "insert into DB.DBA.t_adbc_phase5 (id, name) values (?, ?)", &err);
+    ASSERT (drv->StatementPrepare (&st, &err) == ADBC_STATUS_OK,
+            "bind_stream: prepare");
+
+    state = (mock_stream_state_t *) calloc (1, sizeof (*state));
+    state->ids     = ids;
+    state->names   = names;
+    state->lengths = lengths;
+    state->nbatch  = 2;
+    state->cur     = 0;
+    state->offset  = 0;
+    ArrowSchemaInit (&state->schema);
+    ArrowSchemaSetTypeStruct (&state->schema, 2);
+    ArrowSchemaSetType (state->schema.children[0], NANOARROW_TYPE_INT64);
+    ArrowSchemaSetName (state->schema.children[0], "id");
+    ArrowSchemaSetType (state->schema.children[1], NANOARROW_TYPE_STRING);
+    ArrowSchemaSetName (state->schema.children[1], "name");
+
+    stream.private_data   = state;
+    stream.get_schema     = mock_get_schema;
+    stream.get_next       = mock_get_next;
+    stream.get_last_error = mock_last_err;
+    stream.release        = mock_release;
+
+    ASSERT (drv->StatementBindStream (&st, &stream, &err) == ADBC_STATUS_OK,
+            "bind_stream: bind");
+    rc = drv->StatementExecuteQuery (&st, NULL, &rows, &err);
+    ASSERT (rc == ADBC_STATUS_OK, "bind_stream: exec");
+    ASSERT (rows == 6, "bind_stream: 6 rows from 2 batches");
+    drv->StatementRelease (&st, NULL);
+
+    /* Drop the temp table. */
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st,
+        "drop table DB.DBA.t_adbc_phase5", &err);
+    drv->StatementExecuteQuery (&st, NULL, NULL, &err);
+    drv->StatementRelease (&st, NULL);
+
+    fprintf (stdout, "[OK]  integration: BindStream (6 rows / 2 batches)\n");
+}
+
 /* ---------- Integration: gated on VIRT_ADBC_TEST_URI ---------- */
 
 static void
@@ -571,7 +904,12 @@ test_integration (const char *uri)
     test_statement_no_result        (&drv, &db, &cn);
     TRACE ("before batching\n");
     test_statement_batching         (&drv, &db, &cn);
-    TRACE ("after batching\n");
+
+    /* Phase 5 integration tests. */
+    test_prepared_select            (&drv, &db, &cn);
+    test_parameter_schema           (&drv, &db, &cn);
+    test_bind_insert                (&drv, &db, &cn);
+    test_bind_stream_insert         (&drv, &db, &cn);
 
     drv.ConnectionRelease (&cn, &err);
     drv.DatabaseRelease (&db, &err);
@@ -602,6 +940,6 @@ main (void)
         fprintf (stderr, "%d test case(s) failed\n", g_failures);
         return EXIT_FAILURE;
     }
-    fprintf (stdout, "OK -- ADBC phase 2-4 unit tests passed\n");
+    fprintf (stdout, "OK -- ADBC phase 2-5 unit tests passed\n");
     return EXIT_SUCCESS;
 }

@@ -40,12 +40,20 @@
 extern SQLRETURN SQL_API virtodbc__SQLAllocStmt    (SQLHDBC, SQLHSTMT *);
 extern SQLRETURN SQL_API virtodbc__SQLFreeStmt     (SQLHSTMT, SQLUSMALLINT);
 extern SQLRETURN SQL_API virtodbc__SQLNumResultCols (SQLHSTMT, SQLSMALLINT *);
+extern SQLRETURN SQL_API virtodbc__SQLPrepare      (SQLHSTMT, SQLCHAR *,
+                                                    SQLINTEGER);
+extern SQLRETURN SQL_API SQLExecute      (SQLHSTMT);
+extern SQLRETURN SQL_API SQLNumParams    (SQLHSTMT, SQLSMALLINT *);
+extern SQLRETURN SQL_API SQLDescribeParam (SQLHSTMT, SQLUSMALLINT,
+                                           SQLSMALLINT *, SQLULEN *,
+                                           SQLSMALLINT *, SQLSMALLINT *);
 
-/* The public SQLExecDirect entry handles input-escape preprocessing
- * (NMAKE_INPUT_ESCAPED_NARROW) which the raw virtodbc__SQLExecDirect
- * does not.                                                          */
+/* The public SQLExecDirect / SQLPrepare entries handle input-escape
+ * preprocessing (NMAKE_INPUT_ESCAPED_NARROW) which the raw
+ * virtodbc__ forms do not.                                           */
 extern SQLRETURN SQL_API SQLExecDirect (SQLHSTMT, SQLCHAR *, SQLINTEGER);
-extern SQLRETURN SQL_API SQLRowCount (SQLHSTMT, SQLLEN *);
+extern SQLRETURN SQL_API SQLPrepare    (SQLHSTMT, SQLCHAR *, SQLINTEGER);
+extern SQLRETURN SQL_API SQLRowCount   (SQLHSTMT, SQLLEN *);
 
 /* From arrow_reader.c */
 extern AdbcStatusCode virt_reader_create (VirtAdbcConnection *cn, void *hstmt,
@@ -95,6 +103,27 @@ virt_st_new (struct AdbcConnection *cn, struct AdbcStatement *st,
     return ADBC_STATUS_OK;
 }
 
+static void
+release_bound (VirtAdbcStatement *self)
+{
+    if (self->has_bound_batch) {
+        if (self->bound_batch.release)
+            self->bound_batch.release (&self->bound_batch);
+        if (self->bound_schema.release)
+            self->bound_schema.release (&self->bound_schema);
+        self->has_bound_batch = 0;
+    }
+    if (self->has_bound_stream) {
+        if (self->bound_stream.release)
+            self->bound_stream.release (&self->bound_stream);
+        self->has_bound_stream = 0;
+    }
+    if (self->writer) {
+        virt_writer_destroy (self->writer);
+        self->writer = NULL;
+    }
+}
+
 AdbcStatusCode
 virt_st_release (struct AdbcStatement *st, struct AdbcError *err)
 {
@@ -106,12 +135,13 @@ virt_st_release (struct AdbcStatement *st, struct AdbcError *err)
     if (!self)
         return ADBC_STATUS_OK;
 
-    /* If there's an unconsumed reader still owning an HSTMT, release it. */
+    release_bound (self);
     if (self->hstmt) {
         virtodbc__SQLFreeStmt ((SQLHSTMT) self->hstmt, SQL_DROP);
         self->hstmt = NULL;
     }
     free (self->sql);
+    virt_opt_free_all (&self->opts);
     free (self);
     st->private_data = NULL;
     (void) err;
@@ -258,8 +288,245 @@ virt_st_get_option_double (struct AdbcStatement *st, const char *key,
 }
 
 /* ------------------------------------------------------------------ */
+/* Prepare                                                             */
+/* ------------------------------------------------------------------ */
+
+AdbcStatusCode
+virt_st_prepare (struct AdbcStatement *st, struct AdbcError *err)
+{
+    SQLHSTMT hstmt = SQL_NULL_HSTMT;
+    SQLRETURN sr;
+    ST_SELF (st, err);
+
+    if (!self->sql)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "Prepare: no SQL set");
+    if (!self->cn || !self->cn->hdbc)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "Prepare: connection closed");
+    if (self->prepared)
+        return ADBC_STATUS_OK;       /* idempotent */
+
+    sr = virtodbc__SQLAllocStmt ((SQLHDBC) self->cn->hdbc, &hstmt);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+        return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, self->cn->hdbc,
+                                   NULL, err);
+
+    sr = SQLPrepare (hstmt, (SQLCHAR *) self->sql, SQL_NTS);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        AdbcStatusCode rc =
+            virt_err_from_odbc (ADBC_STATUS_INVALID_ARGUMENT, NULL, NULL,
+                                hstmt, err);
+        virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+        return rc;
+    }
+    self->hstmt    = hstmt;
+    self->prepared = 1;
+    return ADBC_STATUS_OK;
+}
+
+/* ------------------------------------------------------------------ */
+/* GetParameterSchema                                                  */
+/*                                                                    */
+/* Derived from SQLNumParams + SQLDescribeParam on the prepared       */
+/* statement. Virtuoso's DescribeParam may return SQL_UNKNOWN_TYPE    */
+/* for ambiguous parameters; we surface those as utf8 so callers can */
+/* still bind something.                                              */
+/* ------------------------------------------------------------------ */
+
+extern enum ArrowType virt_sql_to_arrow_type (int sql_type, int *fallback);
+
+AdbcStatusCode
+virt_st_get_parameter_schema (struct AdbcStatement *st,
+                              struct ArrowSchema *out,
+                              struct AdbcError *err)
+{
+    SQLSMALLINT nparams = 0;
+    SQLRETURN sr;
+    int i;
+    ST_SELF (st, err);
+
+    if (!self->prepared || !self->hstmt)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "GetParameterSchema: statement not prepared");
+    if (!out)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "GetParameterSchema: NULL out");
+
+    sr = SQLNumParams ((SQLHSTMT) self->hstmt, &nparams);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+        return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, NULL,
+                                   self->hstmt, err);
+
+    ArrowSchemaInit (out);
+    if (ArrowSchemaSetTypeStruct (out, nparams) != 0)
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "ArrowSchemaSetTypeStruct failed");
+
+    for (i = 0; i < nparams; i++) {
+        SQLSMALLINT sql_type = 0, scale = 0, nullable = 0;
+        SQLULEN col_size = 0;
+        enum ArrowType atype;
+        int fallback = 0;
+        char  name[32];
+
+        sr = SQLDescribeParam ((SQLHSTMT) self->hstmt,
+                               (SQLUSMALLINT) (i + 1),
+                               &sql_type, &col_size, &scale, &nullable);
+        if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+            sql_type = SQL_VARCHAR;  /* tolerate unknowns */
+
+        atype = virt_sql_to_arrow_type ((int) sql_type, &fallback);
+        if (ArrowSchemaSetType (out->children[i], atype) != 0)
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "SetType for param %d failed", i);
+        snprintf (name, sizeof (name), "p%d", i + 1);
+        if (ArrowSchemaSetName (out->children[i], name) != 0)
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "SetName for param %d failed", i);
+    }
+    return ADBC_STATUS_OK;
+}
+
+/* ------------------------------------------------------------------ */
+/* Bind / BindStream                                                   */
+/* ------------------------------------------------------------------ */
+
+AdbcStatusCode
+virt_st_bind (struct AdbcStatement *st, struct ArrowArray *values,
+              struct ArrowSchema *schema, struct AdbcError *err)
+{
+    ST_SELF (st, err);
+    if (!values || !schema)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "Bind: NULL array/schema");
+
+    release_bound (self);
+    /* Move ownership of the caller's array+schema onto the statement. */
+    memcpy (&self->bound_batch, values, sizeof (*values));
+    memcpy (&self->bound_schema, schema, sizeof (*schema));
+    memset (values, 0, sizeof (*values));
+    memset (schema, 0, sizeof (*schema));
+    self->has_bound_batch = 1;
+    return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode
+virt_st_bind_stream (struct AdbcStatement *st,
+                     struct ArrowArrayStream *stream, struct AdbcError *err)
+{
+    ST_SELF (st, err);
+    if (!stream)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "BindStream: NULL stream");
+
+    release_bound (self);
+    memcpy (&self->bound_stream, stream, sizeof (*stream));
+    memset (stream, 0, sizeof (*stream));
+    self->has_bound_stream = 1;
+    return ADBC_STATUS_OK;
+}
+
+/* ------------------------------------------------------------------ */
 /* ExecuteQuery                                                        */
 /* ------------------------------------------------------------------ */
+
+static AdbcStatusCode
+execute_bound (VirtAdbcStatement *self, int64_t *rows_affected,
+               struct AdbcError *err)
+{
+    AdbcStatusCode rc;
+    int64_t affected = 0;
+
+    /* Bound parameters require an explicitly prepared HSTMT. */
+    if (!self->prepared || !self->hstmt)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ExecuteQuery: bound parameters require Prepare first");
+
+    /* Build the writer lazily once we know the bind schema. */
+    if (!self->writer) {
+        struct ArrowSchema *bs = self->has_bound_batch
+                                 ? &self->bound_schema : NULL;
+        struct ArrowSchema  stream_schema;
+        memset (&stream_schema, 0, sizeof (stream_schema));
+        if (!bs && self->has_bound_stream) {
+            if (self->bound_stream.get_schema (&self->bound_stream,
+                                               &stream_schema) != 0)
+                return virt_err_set (err, ADBC_STATUS_IO, NULL, 0,
+                                     "BindStream: get_schema failed: %s",
+                                     self->bound_stream.get_last_error
+                                     ? self->bound_stream.get_last_error (
+                                           &self->bound_stream)
+                                     : "(no msg)");
+            bs = &stream_schema;
+        }
+        if (!bs)
+            return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                                 "ExecuteQuery: bound data has no schema");
+        rc = virt_writer_create (self->hstmt, bs, &self->writer, err);
+        if (stream_schema.release)
+            stream_schema.release (&stream_schema);
+        if (rc != ADBC_STATUS_OK)
+            return rc;
+    }
+
+    /* Single bound batch: execute and consume. */
+    if (self->has_bound_batch) {
+        rc = virt_writer_execute_batch (self->writer, &self->bound_batch,
+                                        &affected, err);
+        /* Consume so the next ExecuteQuery doesn't replay. */
+        if (self->bound_batch.release)
+            self->bound_batch.release (&self->bound_batch);
+        memset (&self->bound_batch, 0, sizeof (self->bound_batch));
+        if (self->bound_schema.release)
+            self->bound_schema.release (&self->bound_schema);
+        memset (&self->bound_schema, 0, sizeof (self->bound_schema));
+        self->has_bound_batch = 0;
+        if (rc != ADBC_STATUS_OK)
+            return rc;
+        if (rows_affected) *rows_affected = affected;
+        return ADBC_STATUS_OK;
+    }
+
+    /* Bound stream: pull batches one at a time. */
+    if (self->has_bound_stream) {
+        for (;;) {
+            struct ArrowArray batch;
+            memset (&batch, 0, sizeof (batch));
+            if (self->bound_stream.get_next (&self->bound_stream, &batch) != 0) {
+                if (self->bound_stream.release)
+                    self->bound_stream.release (&self->bound_stream);
+                self->has_bound_stream = 0;
+                return virt_err_set (err, ADBC_STATUS_IO, NULL, 0,
+                                     "BindStream: get_next failed: %s",
+                                     self->bound_stream.get_last_error
+                                     ? self->bound_stream.get_last_error (
+                                           &self->bound_stream)
+                                     : "(no msg)");
+            }
+            if (!batch.release)
+                break;            /* end of stream */
+            rc = virt_writer_execute_batch (self->writer, &batch,
+                                            &affected, err);
+            batch.release (&batch);
+            if (rc != ADBC_STATUS_OK) {
+                if (self->bound_stream.release)
+                    self->bound_stream.release (&self->bound_stream);
+                self->has_bound_stream = 0;
+                return rc;
+            }
+        }
+        if (self->bound_stream.release)
+            self->bound_stream.release (&self->bound_stream);
+        self->has_bound_stream = 0;
+        if (rows_affected) *rows_affected = affected;
+        return ADBC_STATUS_OK;
+    }
+
+    /* Unreachable -- caller of execute_bound checked has_bound_*. */
+    return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                         "execute_bound called with no bound data");
+}
 
 AdbcStatusCode
 virt_st_execute_query (struct AdbcStatement *st,
@@ -281,6 +548,47 @@ virt_st_execute_query (struct AdbcStatement *st,
 
     if (rows_affected) *rows_affected = -1;
 
+    /* Bound-parameter path: prepared HSTMT + per-row execute, no
+     * result-set support in this phase.                                */
+    if (self->has_bound_batch || self->has_bound_stream) {
+        if (out_stream)
+            memset (out_stream, 0, sizeof (*out_stream));
+        return execute_bound (self, rows_affected, err);
+    }
+
+    /* Prepared-without-binds path: SQLExecute on the persistent HSTMT. */
+    if (self->prepared && self->hstmt) {
+        sr = SQLExecute ((SQLHSTMT) self->hstmt);
+        if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+            return virt_err_from_odbc (ADBC_STATUS_IO, NULL, NULL,
+                                       self->hstmt, err);
+        sr = virtodbc__SQLNumResultCols ((SQLHSTMT) self->hstmt, &ncols);
+        if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+            return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, NULL,
+                                       self->hstmt, err);
+        if (ncols == 0) {
+            SQLLEN n = -1;
+            SQLRowCount ((SQLHSTMT) self->hstmt, &n);
+            if (rows_affected) *rows_affected = (int64_t) n;
+            if (out_stream)
+                memset (out_stream, 0, sizeof (*out_stream));
+            return ADBC_STATUS_OK;
+        }
+        if (!out_stream)
+            return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                                 "ExecuteQuery: result set requires out_stream");
+        /* The reader takes ownership of the HSTMT; that ends the
+         * prepared state.                                              */
+        rc = virt_reader_create (self->cn, self->hstmt, self->batch_rows,
+                                 out_stream, err);
+        if (rc != ADBC_STATUS_OK)
+            return rc;
+        self->hstmt    = NULL;
+        self->prepared = 0;
+        return ADBC_STATUS_OK;
+    }
+
+    /* Phase-4 path: transient HSTMT + SQLExecDirect.                   */
     sr = virtodbc__SQLAllocStmt ((SQLHDBC) self->cn->hdbc, &hstmt);
     if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
         return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, self->cn->hdbc,

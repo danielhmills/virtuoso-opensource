@@ -75,9 +75,8 @@ case_version (int version, const char *label)
       return 1;
     }
   /*
-   *  After phase 4, AdbcDatabase, AdbcConnection, and the
-   *  read+execute portion of AdbcStatement must be wired.
-   *  Bind/Prepare/GetParameterSchema remain NULL until phase 5.
+   *  After phase 5, AdbcDatabase, AdbcConnection, and AdbcStatement
+   *  (read + execute + prepare + bind) must all be wired.
    */
   if (drv.DatabaseNew == NULL || drv.DatabaseInit == NULL
       || drv.DatabaseRelease == NULL || drv.DatabaseSetOption == NULL
@@ -86,16 +85,14 @@ case_version (int version, const char *label)
       || drv.ConnectionRollback == NULL
       || drv.StatementNew == NULL || drv.StatementRelease == NULL
       || drv.StatementSetSqlQuery == NULL
-      || drv.StatementExecuteQuery == NULL)
+      || drv.StatementExecuteQuery == NULL
+      || drv.StatementPrepare == NULL
+      || drv.StatementBind == NULL
+      || drv.StatementBindStream == NULL
+      || drv.StatementGetParameterSchema == NULL)
     {
       fprintf (stderr,
                "[FAIL] %s: required dispatch slot is NULL\n", label);
-      return 1;
-    }
-  if (drv.StatementPrepare != NULL || drv.StatementBind != NULL)
-    {
-      fprintf (stderr,
-               "[FAIL] %s: Prepare/Bind populated before phase 5\n", label);
       return 1;
     }
   if (version >= ADBC_VERSION_1_1_0
