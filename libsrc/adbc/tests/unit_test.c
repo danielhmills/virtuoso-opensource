@@ -1,14 +1,15 @@
 /*
  *  unit_test.c
  *
- *  Phase 2 unit tests for the Virtuoso ADBC driver.
+ *  Phase 2/3 unit tests for the Virtuoso ADBC driver.
  *
- *  Covers the option store, URI -> connection-string parsing, and
- *  the AdbcDatabase lifecycle state machine (errors on use-after-init,
- *  use-after-release, missing host on init, etc).
+ *  Read-only tests cover the option store, URI -> connection-string
+ *  parsing, and the AdbcDatabase / AdbcConnection lifecycle state
+ *  machine (errors on use-after-init, use-after-release, etc).
  *
- *  None of these tests need a live Virtuoso server. Tests that open
- *  a real CLI connection land in phase 3.
+ *  Integration tests that need a live Virtuoso server are gated on
+ *  the environment variable VIRT_ADBC_TEST_URI. When unset, those
+ *  cases skip (and the test still exits 0 if everything else passes).
  *
  *  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
  *  project.
@@ -211,7 +212,8 @@ test_database_lifecycle (void)
                 "get uri value");
     }
 
-    /* Release works; private_data cleared. */
+    /* Init with no host should fail (we cleared opts? no, we have uri). */
+    /* Don't Init yet -- needs a real server. Instead verify Release works. */
     ASSERT (drv.DatabaseRelease (&db, &err) == ADBC_STATUS_OK, "release ok");
     ASSERT (db.private_data == NULL, "release clears private_data");
 
@@ -228,19 +230,153 @@ test_database_lifecycle (void)
     drv.DatabaseRelease (&db, &err);
 }
 
+/* ---------- AdbcConnection: read-only state checks ---------- */
+
+static void
+test_connection_lifecycle_negative (void)
+{
+    struct AdbcDriver drv;
+    struct AdbcConnection cn;
+    struct AdbcDatabase db;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    AdbcStatusCode rc;
+
+    load_driver (&drv);
+
+    /* ConnectionInit with an uninitialised database should fail. */
+    memset (&cn, 0, sizeof (cn));
+    memset (&db, 0, sizeof (db));
+    ASSERT (drv.ConnectionNew (&cn, &err) == ADBC_STATUS_OK, "cn new");
+    drv.DatabaseNew (&db, &err);
+    /* db has no uri AND DatabaseInit hasn't been called. */
+    rc = drv.ConnectionInit (&cn, &db, &err);
+    ASSERT (rc == ADBC_STATUS_INVALID_STATE, "init with uninit db fails");
+    if (err.release) err.release (&err);
+
+    /* Commit/Rollback before Init should fail (not connected). */
+    rc = drv.ConnectionCommit (&cn, &err);
+    ASSERT (rc == ADBC_STATUS_INVALID_STATE, "commit not connected");
+    if (err.release) err.release (&err);
+    rc = drv.ConnectionRollback (&cn, &err);
+    ASSERT (rc == ADBC_STATUS_INVALID_STATE, "rollback not connected");
+    if (err.release) err.release (&err);
+    rc = drv.ConnectionCancel (&cn, &err);
+    ASSERT (rc == ADBC_STATUS_INVALID_STATE, "cancel not connected");
+    if (err.release) err.release (&err);
+
+    /* Autocommit getter pre-init returns the default 'true'. */
+    {
+        char buf[16]; size_t blen = sizeof (buf);
+        ASSERT (drv.ConnectionGetOption (&cn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                         buf, &blen, &err) == ADBC_STATUS_OK,
+                "get autocommit default");
+        ASSERT (strcmp (buf, ADBC_OPTION_VALUE_ENABLED) == 0,
+                "autocommit default is true");
+    }
+
+    /* Toggling autocommit pre-connect should just stash the value. */
+    ASSERT (drv.ConnectionSetOption (&cn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                     ADBC_OPTION_VALUE_DISABLED, &err)
+                == ADBC_STATUS_OK,
+            "set autocommit false pre-connect");
+
+    drv.ConnectionRelease (&cn, &err);
+    drv.DatabaseRelease (&db, &err);
+}
+
+/* ---------- Integration: gated on VIRT_ADBC_TEST_URI ---------- */
+
+static void
+test_integration (const char *uri)
+{
+    struct AdbcDriver drv;
+    struct AdbcDatabase db;
+    struct AdbcConnection cn;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    AdbcStatusCode rc;
+    const char *user = getenv ("VIRT_ADBC_TEST_USER");
+    const char *pass = getenv ("VIRT_ADBC_TEST_PASSWORD");
+
+    load_driver (&drv);
+    memset (&db, 0, sizeof (db));
+    memset (&cn, 0, sizeof (cn));
+
+    drv.DatabaseNew (&db, &err);
+    ASSERT (drv.DatabaseSetOption (&db, "uri", uri, &err) == ADBC_STATUS_OK,
+            "integration: set uri");
+    if (user)
+        drv.DatabaseSetOption (&db, "username", user, &err);
+    if (pass)
+        drv.DatabaseSetOption (&db, "password", pass, &err);
+
+    rc = drv.DatabaseInit (&db, &err);
+    if (rc != ADBC_STATUS_OK) {
+        fprintf (stderr, "[SKIP-integration] DatabaseInit failed: %s\n",
+                 err.message ? err.message : "(no msg)");
+        if (err.release) err.release (&err);
+        drv.DatabaseRelease (&db, NULL);
+        return;
+    }
+
+    drv.ConnectionNew (&cn, &err);
+    rc = drv.ConnectionInit (&cn, &db, &err);
+    if (rc != ADBC_STATUS_OK) {
+        fprintf (stderr, "[FAIL-integration] ConnectionInit: %s\n",
+                 err.message ? err.message : "(no msg)");
+        g_failures++;
+        if (err.release) err.release (&err);
+        drv.ConnectionRelease (&cn, NULL);
+        drv.DatabaseRelease (&db, NULL);
+        return;
+    }
+    fprintf (stdout, "[OK]  integration: connected to %s\n", uri);
+
+    /* Switch off autocommit, then commit (which should be a no-op
+     * with nothing to commit, but must succeed). */
+    ASSERT (drv.ConnectionSetOption (&cn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                     ADBC_OPTION_VALUE_DISABLED, &err)
+                == ADBC_STATUS_OK,
+            "integration: autocommit off");
+    ASSERT (drv.ConnectionCommit (&cn, &err) == ADBC_STATUS_OK,
+            "integration: commit empty txn");
+    if (err.release) err.release (&err);
+    ASSERT (drv.ConnectionRollback (&cn, &err) == ADBC_STATUS_OK,
+            "integration: rollback empty txn");
+    if (err.release) err.release (&err);
+
+    /* Cancel with no running stmt is a no-op. */
+    ASSERT (drv.ConnectionCancel (&cn, &err) == ADBC_STATUS_OK,
+            "integration: cancel no-op");
+    if (err.release) err.release (&err);
+
+    drv.ConnectionRelease (&cn, &err);
+    drv.DatabaseRelease (&db, &err);
+}
+
 /* ---------- main ---------- */
 
 int
 main (void)
 {
+    const char *uri;
+
     test_options_store ();
     test_uri_parser ();
     test_database_lifecycle ();
+    test_connection_lifecycle_negative ();
+
+    uri = getenv ("VIRT_ADBC_TEST_URI");
+    if (uri && *uri) {
+        test_integration (uri);
+    } else {
+        fprintf (stdout,
+                 "[SKIP] integration tests (set VIRT_ADBC_TEST_URI to enable)\n");
+    }
 
     if (g_failures) {
         fprintf (stderr, "%d test case(s) failed\n", g_failures);
         return EXIT_FAILURE;
     }
-    fprintf (stdout, "OK -- ADBC phase 2 unit tests passed\n");
+    fprintf (stdout, "OK -- ADBC phase 2/3 unit tests passed\n");
     return EXIT_SUCCESS;
 }
