@@ -5,6 +5,9 @@
  *  internal handle layout for AdbcDatabase / AdbcConnection /
  *  AdbcStatement and the helper API shared across translation units.
  *
+ *  Phase 4 adds VirtAdbcStatement plus the SQL-type -> Arrow-type
+ *  mapping helpers and the ArrowArrayStream factory.
+ *
  *  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
  *  project.
  *
@@ -198,6 +201,54 @@ AdbcStatusCode virt_cn_rollback       (struct AdbcConnection *cn,
                                        struct AdbcError *err);
 AdbcStatusCode virt_cn_cancel         (struct AdbcConnection *cn,
                                        struct AdbcError *err);
+
+/* -------------------------------------------------------------------
+ *  Statement handle and vtable (statement.c).
+ * ------------------------------------------------------------------- */
+
+typedef struct VirtAdbcStatement {
+    VirtAdbcConnection *cn;
+    char               *sql;       /* set by SetSqlQuery; freed in Release */
+    void               *hstmt;     /* normally owned by an outstanding
+                                    * reader; only non-NULL transiently   */
+    int64_t             batch_rows;
+    virt_adbc_option_t *opts;
+} VirtAdbcStatement;
+
+AdbcStatusCode virt_st_new (struct AdbcConnection *cn,
+                            struct AdbcStatement *st, struct AdbcError *err);
+AdbcStatusCode virt_st_release (struct AdbcStatement *st,
+                                struct AdbcError *err);
+AdbcStatusCode virt_st_set_sql_query (struct AdbcStatement *st,
+                                      const char *query,
+                                      struct AdbcError *err);
+AdbcStatusCode virt_st_set_option (struct AdbcStatement *st, const char *key,
+                                   const char *value, struct AdbcError *err);
+AdbcStatusCode virt_st_set_option_bytes (struct AdbcStatement *st,
+                                         const char *key, const uint8_t *value,
+                                         size_t len, struct AdbcError *err);
+AdbcStatusCode virt_st_set_option_int (struct AdbcStatement *st,
+                                       const char *key, int64_t value,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_st_set_option_double (struct AdbcStatement *st,
+                                          const char *key, double value,
+                                          struct AdbcError *err);
+AdbcStatusCode virt_st_get_option (struct AdbcStatement *st, const char *key,
+                                   char *out, size_t *len,
+                                   struct AdbcError *err);
+AdbcStatusCode virt_st_get_option_bytes (struct AdbcStatement *st,
+                                         const char *key, uint8_t *out,
+                                         size_t *len, struct AdbcError *err);
+AdbcStatusCode virt_st_get_option_int (struct AdbcStatement *st,
+                                       const char *key, int64_t *out,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_st_get_option_double (struct AdbcStatement *st,
+                                          const char *key, double *out,
+                                          struct AdbcError *err);
+AdbcStatusCode virt_st_execute_query (struct AdbcStatement *st,
+                                      struct ArrowArrayStream *out,
+                                      int64_t *rows_affected,
+                                      struct AdbcError *err);
 
 /* -------------------------------------------------------------------
  *  Connection-string construction. Exposed so unit tests can verify

@@ -3,9 +3,10 @@
  *
  *  ADBC driver dispatch-table entrypoint for the Virtuoso ADBC driver.
  *
- *  Phase 1 stubbed every slot. Phases 2 and 3 populate the database
- *  and connection vtables (plus the error-detail hooks). Statement
- *  slots remain NULL until phase 4.
+ *  Phase 1 stubbed every slot. Phases 2-4 populate the database,
+ *  connection, and statement (read + execute) vtables plus the
+ *  error-detail hooks. Bind / Prepare and the typed-statement-option
+ *  family land in phase 5.
  *
  *  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
  *  project.
@@ -65,6 +66,13 @@ AdbcDriverInit (int version, void *raw_driver, struct AdbcError *error)
     driver->ConnectionCommit    = virt_cn_commit;
     driver->ConnectionRollback  = virt_cn_rollback;
 
+    /* ----- AdbcStatement (phase 4) ----- */
+    driver->StatementNew          = virt_st_new;
+    driver->StatementRelease      = virt_st_release;
+    driver->StatementSetSqlQuery  = virt_st_set_sql_query;
+    driver->StatementSetOption    = virt_st_set_option;
+    driver->StatementExecuteQuery = virt_st_execute_query;
+
     if (version >= ADBC_VERSION_1_1_0) {
         /* ----- ADBC 1.1.0 error detail ----- */
         driver->ErrorGetDetailCount = virt_err_detail_count;
@@ -88,8 +96,17 @@ AdbcDriverInit (int version, void *raw_driver, struct AdbcError *error)
         driver->ConnectionGetOptionBytes     = virt_cn_get_option_bytes;
         driver->ConnectionGetOptionInt       = virt_cn_get_option_int;
         driver->ConnectionGetOptionDouble    = virt_cn_get_option_double;
+
+        /* ----- Statement typed options (phase 4) ----- */
+        driver->StatementSetOptionBytes      = virt_st_set_option_bytes;
+        driver->StatementSetOptionInt        = virt_st_set_option_int;
+        driver->StatementSetOptionDouble     = virt_st_set_option_double;
+        driver->StatementGetOption           = virt_st_get_option;
+        driver->StatementGetOptionBytes      = virt_st_get_option_bytes;
+        driver->StatementGetOptionInt        = virt_st_get_option_int;
+        driver->StatementGetOptionDouble     = virt_st_get_option_double;
     }
 
-    /* Statement slots remain NULL -- phase 4. */
+    /* Bind/Prepare/GetParameterSchema slots remain NULL -- phase 5. */
     return ADBC_STATUS_OK;
 }
