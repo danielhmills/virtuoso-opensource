@@ -58,6 +58,7 @@ extern SQLRETURN SQL_API SQLRowCount   (SQLHSTMT, SQLLEN *);
 /* From arrow_reader.c */
 extern AdbcStatusCode virt_reader_create (VirtAdbcConnection *cn, void *hstmt,
                                           int64_t batch_rows,
+                                          int sparql_dialect,
                                           struct ArrowArrayStream *out,
                                           struct AdbcError *err);
 
@@ -185,6 +186,20 @@ virt_st_set_option (struct AdbcStatement *st, const char *key,
         return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
                              "SetOption: NULL key");
 
+    if (strcmp (key, "adbc.virtuoso.dialect") == 0) {
+        /* Accept "sparql" or "sql" (default). The chosen value is
+         * applied lazily at ExecuteQuery / Prepare time by prefixing
+         * the statement text on the wire.                            */
+        if (!value || strcmp (value, "sql") == 0)
+            self->sparql_dialect = 0;
+        else if (strcmp (value, "sparql") == 0)
+            self->sparql_dialect = 1;
+        else
+            return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                                 "%s: expected 'sparql' or 'sql', got '%s'",
+                                 key, value);
+        return ADBC_STATUS_OK;
+    }
     if (strcmp (key, "adbc.virtuoso.fetch.batch_rows") == 0) {
         long n;
         char *end = NULL;
@@ -347,6 +362,48 @@ virt_st_get_option_double (struct AdbcStatement *st, const char *key,
 {
     ST_SELF (st, err);
     return virt_opt_get_double (self->opts, key, out, err);
+}
+
+/* ====================================================================
+ *  Phase 8 -- Dialect (SPARQL passthrough)
+ *
+ *  Virtuoso's "Type 4" SQL parser treats a leading bare-word "sparql"
+ *  as a switch into the SPARQL grammar for the rest of the statement
+ *  (the same convention isql, JDBC and the existing ODBC tooling
+ *  use). When the user has set adbc.virtuoso.dialect=sparql we
+ *  prepend that token before SQLPrepare / SQLExecDirect.
+ *
+ *  The output schema's metadata is annotated as virtuoso:dialect=sparql
+ *  with each column carrying virtuoso:rdf=true, so downstream tools
+ *  can recognise that string cells encode IRIs / blanks / literals.
+ *  No further interpretation happens in the driver: typed literals
+ *  and lang tags pass through as Virtuoso-formatted strings (e.g.
+ *  "value"@en or "value"^^<http://...#int>). DV_IRI_ID, DV_RDF and
+ *  DV_GEOMETRY columns are not distinguishable through the ODBC
+ *  descriptor (Virtuoso maps them all to SQL_VARCHAR in
+ *  dv_to_sql_type) -- exposing them as distinct Arrow types will
+ *  require a server-side helper and is deferred.
+ * ==================================================================== */
+
+/* Returns a newly malloc'd "sparql <sql>" string when the dialect is
+ * SPARQL, else NULL. Caller frees on success; if the return is NULL,
+ * use the original self->sql verbatim.                              */
+static char *
+sql_with_dialect_prefix (const VirtAdbcStatement *self)
+{
+    const char *prefix = "sparql ";
+    size_t plen, slen;
+    char *out;
+
+    if (!self->sparql_dialect || !self->sql)
+        return NULL;
+    plen = strlen (prefix);
+    slen = strlen (self->sql);
+    out = (char *) malloc (plen + slen + 1);
+    if (!out) return NULL;
+    memcpy (out, prefix, plen);
+    memcpy (out + plen, self->sql, slen + 1);
+    return out;
 }
 
 /* ====================================================================
@@ -774,7 +831,12 @@ virt_st_prepare (struct AdbcStatement *st, struct AdbcError *err)
         return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, self->cn->hdbc,
                                    NULL, err);
 
-    sr = SQLPrepare (hstmt, (SQLCHAR *) self->sql, SQL_NTS);
+    {
+        char *prefixed = sql_with_dialect_prefix (self);
+        const char *q = prefixed ? prefixed : self->sql;
+        sr = SQLPrepare (hstmt, (SQLCHAR *) q, SQL_NTS);
+        free (prefixed);
+    }
     if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
         AdbcStatusCode rc =
             virt_err_from_odbc (ADBC_STATUS_INVALID_ARGUMENT, NULL, NULL,
@@ -1052,7 +1114,7 @@ virt_st_execute_query (struct AdbcStatement *st,
         /* The reader takes ownership of the HSTMT; that ends the
          * prepared state.                                              */
         rc = virt_reader_create (self->cn, self->hstmt, self->batch_rows,
-                                 out_stream, err);
+                                 self->sparql_dialect, out_stream, err);
         if (rc != ADBC_STATUS_OK)
             return rc;
         self->hstmt    = NULL;
@@ -1066,7 +1128,12 @@ virt_st_execute_query (struct AdbcStatement *st,
         return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, self->cn->hdbc,
                                    NULL, err);
 
-    sr = SQLExecDirect (hstmt, (SQLCHAR *) self->sql, SQL_NTS);
+    {
+        char *prefixed = sql_with_dialect_prefix (self);
+        const char *q = prefixed ? prefixed : self->sql;
+        sr = SQLExecDirect (hstmt, (SQLCHAR *) q, SQL_NTS);
+        free (prefixed);
+    }
     if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
         rc = virt_err_from_odbc (ADBC_STATUS_IO, NULL, NULL, hstmt, err);
         virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
@@ -1101,7 +1168,7 @@ virt_st_execute_query (struct AdbcStatement *st,
     }
 
     rc = virt_reader_create (self->cn, hstmt, self->batch_rows,
-                             out_stream, err);
+                             self->sparql_dialect, out_stream, err);
     if (rc != ADBC_STATUS_OK) {
         virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
         return rc;

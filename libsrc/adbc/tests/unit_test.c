@@ -1350,6 +1350,172 @@ test_ingest_roundtrip (struct AdbcDriver *drv, struct AdbcDatabase *db,
     fprintf (stdout, "[OK]  integration: ingest round-trip (3-col schema)\n");
 }
 
+/* ---------- Integration: Phase 8 (Virtuoso extras / SPARQL) ---------- */
+
+/* Find a key=value pair in a packed Arrow metadata buffer. Returns
+ * 1 if found (and copies the value into out_value), else 0.        */
+static int
+metadata_lookup (const char *metadata, const char *key,
+                 char *out_value, size_t out_cap)
+{
+    int32_t i, n;
+    const char *p = metadata;
+    if (!p) return 0;
+    memcpy (&n, p, 4); p += 4;
+    for (i = 0; i < n; i++) {
+        int32_t klen, vlen;
+        memcpy (&klen, p, 4); p += 4;
+        if ((int) strlen (key) == klen && memcmp (p, key, (size_t) klen) == 0) {
+            p += klen;
+            memcpy (&vlen, p, 4); p += 4;
+            if ((size_t) vlen + 1 > out_cap) vlen = (int32_t) out_cap - 1;
+            memcpy (out_value, p, (size_t) vlen);
+            out_value[vlen] = 0;
+            return 1;
+        }
+        p += klen;
+        memcpy (&vlen, p, 4); p += 4;
+        p += vlen;
+    }
+    return 0;
+}
+
+static void
+test_sparql_passthrough (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                         struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema sch;
+    struct ArrowArray batch;
+    char metaval[64];
+    int saw_meta = 0, saw_rdf_col = 0;
+    int n_children = 0;
+    AdbcStatusCode rc;
+    (void) db;
+
+    memset (&st,     0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+    memset (&sch,    0, sizeof (sch));
+    memset (&batch,  0, sizeof (batch));
+
+    drv->StatementNew (cn, &st, &err);
+    ASSERT (drv->StatementSetOption (&st, "adbc.virtuoso.dialect",
+                                     "sparql", &err) == ADBC_STATUS_OK,
+            "sparql: set dialect");
+    /* Triple pattern against an empty graph still returns a 3-col
+     * schema; LIMIT 5 keeps the result small even on a populated
+     * server.                                                        */
+    drv->StatementSetSqlQuery (&st,
+        "select ?s ?p ?o where { ?s ?p ?o } limit 5", &err);
+
+    rc = drv->StatementExecuteQuery (&st, &stream, NULL, &err);
+    ASSERT (rc == ADBC_STATUS_OK, "sparql: exec");
+    if (rc == ADBC_STATUS_OK) {
+        ASSERT (stream.get_schema (&stream, &sch) == 0, "sparql: schema");
+        n_children = (int) sch.n_children;
+        ASSERT (n_children == 3, "sparql: 3 columns (s,p,o)");
+        if (sch.metadata
+            && metadata_lookup (sch.metadata, "virtuoso:dialect",
+                                metaval, sizeof (metaval))
+            && strcmp (metaval, "sparql") == 0)
+            saw_meta = 1;
+        ASSERT (saw_meta, "sparql: top-level virtuoso:dialect=sparql metadata");
+        if (n_children > 0 && sch.children[0]->metadata
+            && metadata_lookup (sch.children[0]->metadata, "virtuoso:rdf",
+                                metaval, sizeof (metaval))
+            && strcmp (metaval, "true") == 0)
+            saw_rdf_col = 1;
+        ASSERT (saw_rdf_col, "sparql: child virtuoso:rdf=true metadata");
+
+        if (sch.release) sch.release (&sch);
+
+        /* Drain (>= 0 rows -- empty result is fine).                 */
+        while (stream.get_next (&stream, &batch) == 0 && batch.release) {
+            batch.release (&batch);
+            memset (&batch, 0, sizeof (batch));
+        }
+    } else if (err.release) {
+        err.release (&err);
+    }
+    if (stream.release) stream.release (&stream);
+    drv->StatementRelease (&st, NULL);
+    fprintf (stdout, "[OK]  integration: SPARQL passthrough (3 cols, metadata)\n");
+}
+
+static void
+test_sparql_via_prepare (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                         struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    AdbcStatusCode rc;
+    (void) db;
+
+    memset (&st,     0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetOption (&st, "adbc.virtuoso.dialect", "sparql", &err);
+    drv->StatementSetSqlQuery (&st,
+        "select (count(*) as ?n) where { ?s ?p ?o }", &err);
+    ASSERT (drv->StatementPrepare (&st, &err) == ADBC_STATUS_OK,
+            "sparql prepare: prepare");
+    rc = drv->StatementExecuteQuery (&st, &stream, NULL, &err);
+    ASSERT (rc == ADBC_STATUS_OK, "sparql prepare: exec");
+    if (rc == ADBC_STATUS_OK) {
+        struct ArrowArray batch;
+        memset (&batch, 0, sizeof (batch));
+        if (stream.get_next (&stream, &batch) == 0 && batch.release)
+            batch.release (&batch);
+        if (stream.release) stream.release (&stream);
+    } else if (err.release) {
+        err.release (&err);
+    }
+    drv->StatementRelease (&st, NULL);
+    fprintf (stdout, "[OK]  integration: SPARQL via Prepare\n");
+}
+
+/* Toggling the dialect off must restore plain SQL behaviour.        */
+static void
+test_dialect_toggle (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                     struct AdbcConnection *cn)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    AdbcStatusCode rc;
+    (void) db;
+
+    memset (&st,     0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetOption (&st, "adbc.virtuoso.dialect", "sparql", &err);
+    drv->StatementSetOption (&st, "adbc.virtuoso.dialect", "sql",    &err);
+    drv->StatementSetSqlQuery (&st, "select 42 as the_answer", &err);
+    rc = drv->StatementExecuteQuery (&st, &stream, NULL, &err);
+    ASSERT (rc == ADBC_STATUS_OK, "dialect toggle: SQL succeeds after toggle");
+    if (rc == ADBC_STATUS_OK) {
+        struct ArrowSchema sch;
+        char metaval[64];
+        memset (&sch, 0, sizeof (sch));
+        stream.get_schema (&stream, &sch);
+        ASSERT (!sch.metadata
+                || !metadata_lookup (sch.metadata, "virtuoso:dialect",
+                                     metaval, sizeof (metaval))
+                || strcmp (metaval, "sparql") != 0,
+                "dialect toggle: no sparql metadata after toggle to sql");
+        if (sch.release) sch.release (&sch);
+        if (stream.release) stream.release (&stream);
+    } else if (err.release) {
+        err.release (&err);
+    }
+    drv->StatementRelease (&st, NULL);
+    fprintf (stdout, "[OK]  integration: dialect toggle SPARQL -> SQL\n");
+}
+
 /* ---------- Integration: gated on VIRT_ADBC_TEST_URI ---------- */
 
 static void
@@ -1449,6 +1615,11 @@ test_integration (const char *uri)
     test_ingest_create_append       (&drv, &db, &cn);
     test_ingest_roundtrip           (&drv, &db, &cn);
 
+    /* Phase 8 SPARQL / dialect tests. */
+    test_sparql_passthrough         (&drv, &db, &cn);
+    test_sparql_via_prepare         (&drv, &db, &cn);
+    test_dialect_toggle             (&drv, &db, &cn);
+
     drv.ConnectionRelease (&cn, &err);
     drv.DatabaseRelease (&db, &err);
 }
@@ -1478,6 +1649,6 @@ main (void)
         fprintf (stderr, "%d test case(s) failed\n", g_failures);
         return EXIT_FAILURE;
     }
-    fprintf (stdout, "OK -- ADBC phase 2-7 unit tests passed\n");
+    fprintf (stdout, "OK -- ADBC phase 2-8 unit tests passed\n");
     return EXIT_SUCCESS;
 }
