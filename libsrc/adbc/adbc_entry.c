@@ -3,9 +3,10 @@
  *
  *  ADBC driver dispatch-table entrypoint for the Virtuoso ADBC driver.
  *
- *  Phase 1 stubbed every slot. Phases 2-5 populate the database,
- *  connection, and statement vtables (including Prepare, Bind, and
- *  BindStream) plus the error-detail hooks.
+ *  Phase 1 stubbed every slot. Phases 2-6 populate the database,
+ *  connection (lifecycle + transactions + catalog), and statement
+ *  (read + execute + prepare + bind) vtables plus the error-detail
+ *  hooks.
  *
  *  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
  *  project.
@@ -64,6 +65,12 @@ AdbcDriverInit (int version, void *raw_driver, struct AdbcError *error)
     driver->ConnectionRelease   = virt_cn_release;
     driver->ConnectionCommit    = virt_cn_commit;
     driver->ConnectionRollback  = virt_cn_rollback;
+
+    /* ----- AdbcConnection: catalog / metadata (phase 6) ----- */
+    driver->ConnectionGetInfo        = virt_cn_get_info;
+    driver->ConnectionGetObjects     = virt_cn_get_objects;
+    driver->ConnectionGetTableTypes  = virt_cn_get_table_types;
+    driver->ConnectionGetTableSchema = virt_cn_get_table_schema;
 
     /* ----- AdbcStatement (phase 4) ----- */
     driver->StatementNew          = virt_st_new;

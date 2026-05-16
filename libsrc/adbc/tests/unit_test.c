@@ -828,6 +828,181 @@ test_bind_stream_insert (struct AdbcDriver *drv, struct AdbcDatabase *db,
     fprintf (stdout, "[OK]  integration: BindStream (6 rows / 2 batches)\n");
 }
 
+/* ---------- Integration: Phase 6 (catalog / metadata) ---------- */
+
+static void
+test_get_table_types (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                      struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema sch;
+    struct ArrowArray arr;
+    (void) db;
+
+    memset (&stream, 0, sizeof (stream));
+    memset (&sch,    0, sizeof (sch));
+    memset (&arr,    0, sizeof (arr));
+
+    ASSERT (drv->ConnectionGetTableTypes (cn, &stream, &err) == ADBC_STATUS_OK,
+            "get_table_types: invoke");
+    ASSERT (stream.get_schema (&stream, &sch) == 0,
+            "get_table_types: schema");
+    ASSERT (sch.n_children == 1, "get_table_types: 1 column");
+    if (sch.release) sch.release (&sch);
+
+    ASSERT (stream.get_next (&stream, &arr) == 0, "get_table_types: batch");
+    if (arr.release) {
+        ASSERT (arr.length == 3, "get_table_types: 3 rows");
+        arr.release (&arr);
+    } else {
+        ASSERT (0, "get_table_types: no batch");
+    }
+    stream.release (&stream);
+    fprintf (stdout, "[OK]  integration: GetTableTypes (3 rows)\n");
+}
+
+static void
+test_get_info (struct AdbcDriver *drv, struct AdbcDatabase *db,
+               struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema sch;
+    struct ArrowArray arr;
+    (void) db;
+
+    memset (&stream, 0, sizeof (stream));
+    memset (&sch,    0, sizeof (sch));
+    memset (&arr,    0, sizeof (arr));
+
+    /* NULL info_codes -> driver returns its default set. */
+    ASSERT (drv->ConnectionGetInfo (cn, NULL, 0, &stream, &err)
+                == ADBC_STATUS_OK,
+            "get_info: invoke");
+    ASSERT (stream.get_schema (&stream, &sch) == 0, "get_info: schema");
+    ASSERT (sch.n_children == 2, "get_info: 2 columns (name, value)");
+    if (sch.release) sch.release (&sch);
+    ASSERT (stream.get_next (&stream, &arr) == 0, "get_info: batch");
+    if (arr.release) {
+        /* default set has 5 codes. */
+        ASSERT (arr.length == 5, "get_info: 5 rows from default set");
+        arr.release (&arr);
+    }
+    stream.release (&stream);
+    fprintf (stdout, "[OK]  integration: GetInfo (5 default rows)\n");
+}
+
+static void
+test_get_table_schema (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                       struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowSchema sch;
+    AdbcStatusCode rc;
+    (void) db;
+
+    memset (&sch, 0, sizeof (sch));
+    /* SYS_KEYS is shipped with every Virtuoso instance. */
+    rc = drv->ConnectionGetTableSchema (cn, NULL, "DB.DBA", "SYS_KEYS",
+                                        &sch, &err);
+    if (rc != ADBC_STATUS_OK) {
+        /* Virtuoso quotes are odd; retry with a known-fully-qualified
+         * path without the catalog filter. */
+        if (err.release) err.release (&err);
+        memset (&err, 0, sizeof (err));
+        rc = drv->ConnectionGetTableSchema (cn, NULL, NULL, "SYS_KEYS",
+                                            &sch, &err);
+    }
+    ASSERT (rc == ADBC_STATUS_OK, "get_table_schema: invoke");
+    if (rc == ADBC_STATUS_OK) {
+        ASSERT (sch.n_children > 0, "get_table_schema: has columns");
+        if (sch.release) sch.release (&sch);
+        fprintf (stdout, "[OK]  integration: GetTableSchema(SYS_KEYS)\n");
+    } else if (err.release) {
+        fprintf (stderr, "  err: %s\n", err.message ? err.message : "");
+        err.release (&err);
+    }
+
+    /* Unknown table -> NOT_FOUND. */
+    memset (&sch, 0, sizeof (sch));
+    memset (&err, 0, sizeof (err));
+    rc = drv->ConnectionGetTableSchema (cn, NULL, NULL,
+                                        "no_such_table_xyz_42", &sch, &err);
+    ASSERT (rc != ADBC_STATUS_OK,
+            "get_table_schema: missing table is rejected");
+    if (sch.release) sch.release (&sch);
+    if (err.release) err.release (&err);
+}
+
+static void
+test_get_objects (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                  struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema sch;
+    struct ArrowArray arr;
+    int rows = 0;
+    (void) db;
+
+    memset (&stream, 0, sizeof (stream));
+    memset (&sch,    0, sizeof (sch));
+    memset (&arr,    0, sizeof (arr));
+
+    /* CATALOGS depth: just the catalog list, no schemas/tables. */
+    ASSERT (drv->ConnectionGetObjects (cn, ADBC_OBJECT_DEPTH_CATALOGS,
+                                       NULL, NULL, NULL, NULL, NULL,
+                                       &stream, &err) == ADBC_STATUS_OK,
+            "get_objects(CATALOGS): invoke");
+    ASSERT (stream.get_schema (&stream, &sch) == 0,
+            "get_objects(CATALOGS): schema");
+    if (sch.release) sch.release (&sch);
+    if (stream.get_next (&stream, &arr) == 0 && arr.release) {
+        rows = (int) arr.length;
+        arr.release (&arr);
+    }
+    ASSERT (rows >= 1, "get_objects(CATALOGS): at least one catalog");
+    stream.release (&stream);
+    fprintf (stdout, "[OK]  integration: GetObjects(CATALOGS, %d rows)\n",
+             rows);
+
+    /* TABLES depth, unfiltered. Virtuoso ships with dozens of system
+     * tables; any non-zero count proves the SQLTables call worked. */
+    memset (&stream, 0, sizeof (stream));
+    memset (&arr,    0, sizeof (arr));
+    rows = 0;
+    ASSERT (drv->ConnectionGetObjects (cn, ADBC_OBJECT_DEPTH_TABLES,
+                                       NULL, NULL, NULL, NULL, NULL,
+                                       &stream, &err) == ADBC_STATUS_OK,
+            "get_objects(TABLES): invoke");
+    if (stream.get_next (&stream, &arr) == 0 && arr.release) {
+        rows = (int) arr.length;
+        arr.release (&arr);
+    }
+    ASSERT (rows >= 1, "get_objects(TABLES): >=1 catalog row");
+    stream.release (&stream);
+    fprintf (stdout, "[OK]  integration: GetObjects(TABLES, %d catalog rows)\n",
+             rows);
+
+    /* ALL depth -- exercise the columns walk. We pass a tight schema
+     * filter to keep the response small. */
+    memset (&stream, 0, sizeof (stream));
+    memset (&arr,    0, sizeof (arr));
+    rows = 0;
+    ASSERT (drv->ConnectionGetObjects (cn, ADBC_OBJECT_DEPTH_ALL,
+                                       NULL, "DBA", NULL, NULL, NULL,
+                                       &stream, &err) == ADBC_STATUS_OK,
+            "get_objects(ALL): invoke");
+    if (stream.get_next (&stream, &arr) == 0 && arr.release) {
+        rows = (int) arr.length;
+        arr.release (&arr);
+    }
+    ASSERT (rows >= 1, "get_objects(ALL): rows");
+    stream.release (&stream);
+    fprintf (stdout, "[OK]  integration: GetObjects(ALL, schema=DBA)\n");
+}
+
 /* ---------- Integration: gated on VIRT_ADBC_TEST_URI ---------- */
 
 static void
@@ -911,6 +1086,12 @@ test_integration (const char *uri)
     test_bind_insert                (&drv, &db, &cn);
     test_bind_stream_insert         (&drv, &db, &cn);
 
+    /* Phase 6 catalog tests. */
+    test_get_table_types            (&drv, &db, &cn);
+    test_get_info                   (&drv, &db, &cn);
+    test_get_table_schema           (&drv, &db, &cn);
+    test_get_objects                (&drv, &db, &cn);
+
     drv.ConnectionRelease (&cn, &err);
     drv.DatabaseRelease (&db, &err);
 }
@@ -940,6 +1121,6 @@ main (void)
         fprintf (stderr, "%d test case(s) failed\n", g_failures);
         return EXIT_FAILURE;
     }
-    fprintf (stdout, "OK -- ADBC phase 2-5 unit tests passed\n");
+    fprintf (stdout, "OK -- ADBC phase 2-6 unit tests passed\n");
     return EXIT_SUCCESS;
 }

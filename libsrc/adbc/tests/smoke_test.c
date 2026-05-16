@@ -83,6 +83,10 @@ case_version (int version, const char *label)
       || drv.ConnectionNew == NULL || drv.ConnectionInit == NULL
       || drv.ConnectionRelease == NULL || drv.ConnectionCommit == NULL
       || drv.ConnectionRollback == NULL
+      || drv.ConnectionGetInfo == NULL
+      || drv.ConnectionGetObjects == NULL
+      || drv.ConnectionGetTableTypes == NULL
+      || drv.ConnectionGetTableSchema == NULL
       || drv.StatementNew == NULL || drv.StatementRelease == NULL
       || drv.StatementSetSqlQuery == NULL
       || drv.StatementExecuteQuery == NULL
