@@ -135,6 +135,34 @@ virt_sql_to_c_type (int sql_type)
 }
 
 /* ------------------------------------------------------------------ */
+/*  virt_arrow_to_virtuoso_ddl: pick a Virtuoso SQL column type for an */
+/*  Arrow type. Used by phase-7 bulk-ingest CREATE TABLE synthesis.    */
+/*  Returns NULL for unsupported types (caller errors INVALID_DATA).   */
+/* ------------------------------------------------------------------ */
+
+const char *
+virt_arrow_to_virtuoso_ddl (enum ArrowType atype)
+{
+    switch (atype) {
+    case NANOARROW_TYPE_BOOL:           return "SMALLINT";
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_INT16:          return "SMALLINT";
+    case NANOARROW_TYPE_INT32:          return "INTEGER";
+    case NANOARROW_TYPE_INT64:          return "BIGINT";
+    case NANOARROW_TYPE_FLOAT:          return "REAL";
+    case NANOARROW_TYPE_DOUBLE:         return "DOUBLE PRECISION";
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:   return "VARCHAR";
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:   return "VARBINARY";
+    case NANOARROW_TYPE_DATE32:         return "DATE";
+    case NANOARROW_TYPE_TIME64:         return "TIME";
+    case NANOARROW_TYPE_TIMESTAMP:      return "TIMESTAMP";
+    default:                            return NULL;
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /*  virt_sql_type_name: human-readable label for diagnostics.          */
 /* ------------------------------------------------------------------ */
 
