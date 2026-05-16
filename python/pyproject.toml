@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adbc-driver-virtuoso"
+version = "0.0.1.dev0"
+description = "ADBC driver for OpenLink Virtuoso"
+readme = "README.md"
+license = { text = "GPL-2.0-only" }
+requires-python = ">=3.9"
+authors = [
+    { name = "OpenLink Software", email = "vos.admin@openlinksw.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Database :: Database Engines/Servers",
+]
+
+[project.entry-points."adbc_driver_manager.driver"]
+virtuoso = "adbc_driver_virtuoso:connect"
+
+[tool.setuptools]
+packages = ["adbc_driver_virtuoso"]
+package-data = { adbc_driver_virtuoso = ["libvirtadbc.*"] }

@@ -1,0 +1,26 @@
+#
+#  adbc-driver-virtuoso.pc.in
+#
+#  Pkg-config metadata for the Virtuoso ADBC driver (libvirtadbc).
+#  Consumed by the arrow-adbc driver manager and downstream packaging
+#  (Python wheel, R package, CMake find-module, etc.).
+#
+#  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
+#  project.
+#
+#  Copyright (C) 1998-2026 OpenLink Software
+#
+#  Licensed under the GNU GPL v2; see COPYING in the project root.
+#
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: adbc-driver-virtuoso
+Description: ADBC driver for OpenLink Virtuoso
+URL: https://github.com/openlink/virtuoso-opensource
+Version: @PACKAGE_VERSION@
+Libs: -L${libdir} -lvirtadbc
+Cflags: -I${includedir}

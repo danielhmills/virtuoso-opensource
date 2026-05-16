@@ -1164,3 +1164,480 @@ fail:
     if (schema.release) schema.release (&schema);
     return rc;
 }
+
+/* ====================================================================
+ *  Phase 9b — ConnectionGetStatisticNames
+ *
+ *  Returns the list of driver-specific statistic names. We support
+ *  the predefined ADBC statistics for row counts; additional
+ *  Virtuoso-specific statistics (e.g. index cardinality) may be
+ *  added in a later phase.
+ * ==================================================================== */
+
+AdbcStatusCode
+virt_cn_get_statistic_names (struct AdbcConnection *cn,
+                             struct ArrowArrayStream *out,
+                             struct AdbcError *err)
+{
+    struct ArrowSchema schema;
+    struct ArrowArray  array;
+    struct ArrowError  ae;
+
+    (void) cn;
+    if (!out)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "GetStatisticNames: NULL out");
+
+    memset (&schema, 0, sizeof (schema));
+    memset (&array,  0, sizeof (array));
+    memset (&ae, 0, sizeof (ae));
+
+    ArrowSchemaInit (&schema);
+    if (ArrowSchemaSetTypeStruct (&schema, 2) != 0
+        || ArrowSchemaSetType (schema.children[0], NANOARROW_TYPE_STRING) != 0
+        || ArrowSchemaSetName (schema.children[0], "statistic_name") != 0
+        || ArrowSchemaSetType (schema.children[1], NANOARROW_TYPE_INT16) != 0
+        || ArrowSchemaSetName (schema.children[1], "statistic_key") != 0)
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "schema init failed");
+    schema.children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+    schema.children[1]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    if (ArrowArrayInitFromSchema (&array, &schema, &ae) != 0
+        || ArrowArrayStartAppending (&array) != 0)
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "array init failed: %s", ae.message);
+
+    /* Predefined ADBC statistics we support. */
+    {
+        const struct {
+            const char *name;
+            int16_t     key;
+        } names[] = {
+            { ADBC_STATISTIC_ROW_COUNT_NAME, ADBC_STATISTIC_ROW_COUNT_KEY }
+        };
+        size_t i;
+        for (i = 0; i < sizeof (names) / sizeof (names[0]); i++) {
+            if (ArrowArrayAppendString (array.children[0],
+                                        ArrowCharView (names[i].name)) != 0
+                || ArrowArrayAppendInt (array.children[1], names[i].key) != 0
+                || ArrowArrayFinishElement (&array) != 0)
+                goto build_err;
+        }
+    }
+
+    if (ArrowArrayFinishBuildingDefault (&array, &ae) != 0)
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "FinishBuilding: %s", ae.message);
+
+    return publish_one_batch (&schema, &array, out, err);
+
+build_err:
+    if (array.release)  array.release  (&array);
+    if (schema.release) schema.release (&schema);
+    return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                         "array build failed");
+}
+
+/* ====================================================================
+ *  Phase 9b — ConnectionGetStatistics
+ *
+ *  Returns row-count statistics for tables matching the optional
+ *  catalog / db_schema / table_name patterns, querying
+ *  DB.DBA.SYS_KEYS for KEY_ROWS estimates.
+ *
+ *  The result follows the ADBC STATISTICS_SCHEMA with the dense-union
+ *  VALUE_SCHEMA, one row per (table, statistic).
+ *  Approximate flag is always set (SYS_KEYS row counts are estimates).
+ * ==================================================================== */
+
+/* Build the complex AdbcStatistics result schema.
+ * We use ArrowSchemaSetTypeUnion to correctly initialise the dense
+ * union VALUE_SCHEMA.                                                  */
+static AdbcStatusCode
+stats_schema_init (struct ArrowSchema *s)
+{
+    struct ArrowSchema *list_sch, *db_sch, *stat_list, *stat, *val;
+
+    ArrowSchemaInit (s);
+    if (ArrowSchemaSetTypeStruct (s, 2) != 0) return ADBC_STATUS_INTERNAL;
+    /* catalog_name (utf8) */
+    if (ArrowSchemaSetType   (s->children[0], NANOARROW_TYPE_STRING) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName   (s->children[0], "catalog_name") != 0) return ADBC_STATUS_INTERNAL;
+
+    /* catalog_db_schemas (list<DB_SCHEMA_SCHEMA>) */
+    list_sch = s->children[1];
+    if (ArrowSchemaSetType (list_sch, NANOARROW_TYPE_LIST) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (list_sch, "catalog_db_schemas") != 0) return ADBC_STATUS_INTERNAL;
+    list_sch->flags &= ~ARROW_FLAG_NULLABLE;
+    db_sch = list_sch->children[0];
+
+    /* DB_SCHEMA_SCHEMA: struct<db_schema_name, db_schema_statistics> */
+    if (ArrowSchemaSetTypeStruct (db_sch, 2) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetType (db_sch->children[0], NANOARROW_TYPE_STRING) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (db_sch->children[0], "db_schema_name") != 0) return ADBC_STATUS_INTERNAL;
+
+    /* db_schema_statistics = list<STATISTICS_SCHEMA> */
+    stat_list = db_sch->children[1];
+    if (ArrowSchemaSetType (stat_list, NANOARROW_TYPE_LIST) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (stat_list, "db_schema_statistics") != 0) return ADBC_STATUS_INTERNAL;
+    stat_list->flags &= ~ARROW_FLAG_NULLABLE;
+    stat = stat_list->children[0];
+
+    /* STATISTICS_SCHEMA: struct<table_name, column_name,
+     *                          statistic_key, statistic_value,
+     *                          statistic_is_approximate>                */
+    if (ArrowSchemaSetTypeStruct (stat, 5) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetType (stat->children[0], NANOARROW_TYPE_STRING) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (stat->children[0], "table_name") != 0) return ADBC_STATUS_INTERNAL;
+    stat->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
+    if (ArrowSchemaSetType (stat->children[1], NANOARROW_TYPE_STRING) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (stat->children[1], "column_name") != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetType (stat->children[2], NANOARROW_TYPE_INT16) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (stat->children[2], "statistic_key") != 0) return ADBC_STATUS_INTERNAL;
+    stat->children[2]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    /* statistic_value: dense union<int64, uint64, float64, binary> */
+    val = stat->children[3];
+    if (ArrowSchemaSetTypeUnion (val, NANOARROW_TYPE_DENSE_UNION, 4) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (val, "statistic_value") != 0) return ADBC_STATUS_INTERNAL;
+    val->flags &= ~ARROW_FLAG_NULLABLE;
+    if (ArrowSchemaSetType (val->children[0], NANOARROW_TYPE_INT64) != 0)  return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (val->children[0], "int64") != 0)  return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetType (val->children[1], NANOARROW_TYPE_UINT64) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (val->children[1], "uint64") != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetType (val->children[2], NANOARROW_TYPE_FLOAT) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (val->children[2], "float64") != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetType (val->children[3], NANOARROW_TYPE_BINARY) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (val->children[3], "binary") != 0) return ADBC_STATUS_INTERNAL;
+
+    /* statistic_is_approximate: bool not null */
+    if (ArrowSchemaSetType (stat->children[4], NANOARROW_TYPE_BOOL) != 0) return ADBC_STATUS_INTERNAL;
+    if (ArrowSchemaSetName (stat->children[4], "statistic_is_approximate") != 0) return ADBC_STATUS_INTERNAL;
+    stat->children[4]->flags &= ~ARROW_FLAG_NULLABLE;
+
+    return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode
+virt_cn_get_statistics (struct AdbcConnection *cn,
+                        const char *catalog, const char *db_schema,
+                        const char *table_name, char approximate,
+                        struct ArrowArrayStream *out,
+                        struct AdbcError *err)
+{
+    VirtAdbcConnection *vcn;
+    SQLHSTMT hstmt = SQL_NULL_HSTMT;
+    SQLRETURN sr;
+    SQLSMALLINT ncols;
+    char query[2048];
+    int query_len;
+    struct ArrowSchema schema;
+    struct ArrowArray  array;
+    struct ArrowError  ae;
+    AdbcStatusCode rc = ADBC_STATUS_OK;
+
+    if (!cn || !cn->private_data)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "GetStatistics: connection not initialised");
+    vcn = (VirtAdbcConnection *) cn->private_data;
+    if (!vcn->connected)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "GetStatistics: connection is not open");
+    if (!out)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "GetStatistics: NULL out");
+
+    /* Build the query against SYS_KEYS for table-level row counts.
+     * SYS_KEYS has: KEY_TABLE (fully qualified "DB"."DBA"."TAB"),
+     * KEY_ROWS (estimated row count), KEY_IS_MAIN, KEY_MIGRATE_TO.
+     * We filter KEY_IS_MAIN = 1, KEY_MIGRATE_TO IS NULL for "real"
+     * user tables.                                                     */
+    query_len = snprintf (query, sizeof (query),
+        "SELECT "
+        "  KEY_TABLE, "
+        "  KEY_ROWS "
+        "FROM DB.DBA.SYS_KEYS "
+        "WHERE KEY_IS_MAIN = 1 "
+        "  AND KEY_MIGRATE_TO IS NULL "
+        "  AND KEY_ROWS IS NOT NULL");
+    if (query_len < 0 || query_len >= (int) sizeof (query))
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "query buffer overflow");
+
+    /* Append optional catalog / schema / table filters. */
+    if (table_name && *table_name) {
+        /* SYS_KEYS.KEY_TABLE is fully qualified: "DB"."DBA"."TAB"
+         * We match on the unquoted table portion.                       */
+        query_len += snprintf (query + query_len, sizeof (query) - (size_t) query_len,
+                              " AND KEY_TABLE LIKE '%%\"%s\"'",
+                              table_name);
+    }
+    if (db_schema && *db_schema) {
+        query_len += snprintf (query + query_len, sizeof (query) - (size_t) query_len,
+                              " AND KEY_TABLE LIKE '\"%%\".\"%s\".\"%%\"'",
+                              db_schema);
+    }
+    /* catalog filter: our catalog is always "DB", so if the caller
+     * specifies something else, return empty results.                   */
+    if (catalog && *catalog && strcmp (catalog, "DB") != 0
+        && strcmp (catalog, "%") != 0) {
+        /* No tables in unknown catalogs — return empty. */
+        if (stats_schema_init (&schema) != 0)
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "schema init failed");
+        memset (&array, 0, sizeof (array));
+        memset (&ae, 0, sizeof (ae));
+        if (ArrowArrayInitFromSchema (&array, &schema, &ae) != 0
+            || ArrowArrayFinishBuildingDefault (&array, &ae) != 0) {
+            if (array.release) array.release (&array);
+            if (schema.release) schema.release (&schema);
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "array init failed");
+        }
+        return publish_one_batch (&schema, &array, out, err);
+    }
+
+    sr = virtodbc__SQLAllocStmt ((SQLHDBC) vcn->hdbc, &hstmt);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+        return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, vcn->hdbc, NULL, err);
+
+    sr = SQLExecDirect (hstmt, (SQLCHAR *) query, SQL_NTS);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        rc = virt_err_from_odbc (ADBC_STATUS_IO, NULL, NULL, hstmt, err);
+        virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+        return rc;
+    }
+
+    /* Build the nested schema and populate it. We group rows by
+     * (catalog, db_schema) — since we return only one catalog ("DB"),
+     * we produce one catalog entry with potentially multiple
+     * db_schema entries.                                                */
+
+    if (stats_schema_init (&schema) != 0) {
+        virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "stats schema init failed");
+    }
+    memset (&array, 0, sizeof (array));
+    memset (&ae, 0, sizeof (ae));
+    if (ArrowArrayInitFromSchema (&array, &schema, &ae) != 0) {
+        virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+        if (schema.release) schema.release (&schema);
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "array init: %s", ae.message);
+    }
+
+    sr = virtodbc__SQLNumResultCols (hstmt, &ncols);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        rc = virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, NULL, hstmt, err);
+        goto fail;
+    }
+
+    /* For each row from SYS_KEYS, extract KEY_TABLE (col 1) and
+     * KEY_ROWS (col 2). KEY_TABLE is like "DB.DBA.TABLE_NAME" or
+     * "DB"."DBA"."TABLE_NAME" — we parse it to extract catalog,
+     * schema, and table name.                                            */
+    {
+        /* We will append one catalog entry ("DB") containing a list of
+         * db_schema entries, each containing a list of statistics.       */
+
+        /* Top-level: start appending to the catalog_name field and
+         * the list of catalog_db_schemas.                                */
+        if (ArrowArrayStartAppending (&array) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+
+        if (ArrowArrayAppendString (array.children[0],
+                                    ArrowCharView ("DB")) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+
+        /* catalog_db_schemas is a list. We'll collect rows into
+         * (db_schema -> [statistics]) groups. For simplicity in this
+         * implementation, we produce one db_schema entry per table,
+         * each with one statistic (row_count).                           */
+        {
+            struct ArrowArray *cat_dbs = array.children[1];  /* list<catalog_db_schemas> */
+            struct ArrowArray *dbs    = cat_dbs->children[0]; /* struct<name, stat_list> */
+            char key_table[512];
+            char tb_name[256], sch_name[256];
+            SQLLEN key_rows_i;
+            SQLLEN cb;
+            int started = 0;
+
+            if (ArrowArrayStartAppending (cat_dbs) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+
+            while (1) {
+                sr = virtodbc__SQLFetch (hstmt);
+                if (sr == SQL_NO_DATA) break;
+                if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+                    rc = virt_err_from_odbc (ADBC_STATUS_IO, NULL, NULL, hstmt, err);
+                    goto fail;
+                }
+
+                /* Read KEY_TABLE (col 1) as string. */
+                cb = 0;
+                sr = virtodbc__SQLGetData (hstmt, 1, SQL_C_CHAR, key_table,
+                                           (SQLLEN)(sizeof (key_table) - 1), &cb);
+                if (cb > 0 && cb < (SQLLEN) sizeof (key_table))
+                    key_table[(int) cb] = '\0';
+                else
+                    key_table[0] = '\0';
+
+                /* Read KEY_ROWS (col 2) as int64. */
+                cb = 0;
+                sr = virtodbc__SQLGetData (hstmt, 2, SQL_C_SBIGINT, &key_rows_i,
+                                           (SQLLEN) sizeof (key_rows_i), &cb);
+
+                /* Parse KEY_TABLE into schema + table. KEY_TABLE is
+                 * like "DB.DBA.TAB" or "\"DB\".\"DBA\".\"TAB\"".        */
+                {
+                    char *p = key_table;
+                    char *dot1, *dot2;
+                    /* Strip quotes if present. */
+                    if (*p == '"') { p++; while (*p && *p != '"') p++; if (*p == '"') p++; }
+                    if (*p == '.') p++;
+                    dot1 = strchr (p, '.');
+                    if (!dot1) continue;      /* malformed — skip */
+                    if (*(dot1 - 1) == '"') *(dot1 - 1) = '\0'; /* remove closing quote */
+                    *dot1 = '\0';
+                    dot1++;
+                    if (*dot1 == '"') dot1++; /* skip opening quote */
+
+                    dot2 = strchr (dot1, '.');
+                    if (!dot2) { /* no catalog prefix — just "SCH.TAB" */
+                        strncpy (sch_name, p, sizeof (sch_name) - 1);
+                        sch_name[sizeof (sch_name) - 1] = '\0';
+                        strncpy (tb_name, dot1, sizeof (tb_name) - 1);
+                        tb_name[sizeof (tb_name) - 1] = '\0';
+                    } else {
+                        if (*(dot2 - 1) == '"') *(dot2 - 1) = '\0';
+                        *dot2 = '\0';
+                        dot2++;
+                        if (*dot2 == '"') dot2++;
+                        strncpy (sch_name, dot1, sizeof (sch_name) - 1);
+                        sch_name[sizeof (sch_name) - 1] = '\0';
+                        strncpy (tb_name, dot2, sizeof (tb_name) - 1);
+                        tb_name[sizeof (tb_name) - 1] = '\0';
+                        /* Remove trailing quote. */
+                        {
+                            size_t l = strlen (tb_name);
+                            if (l > 0 && tb_name[l-1] == '"') tb_name[l-1] = '\0';
+                        }
+                    }
+                }
+
+                if (started) {
+                    if (ArrowArrayFinishElement (dbs) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+                }
+                started = 1;
+
+                /* db_schema_name */
+                if (ArrowArrayAppendString (dbs->children[0],
+                                            ArrowCharView (sch_name)) != 0) {
+                    rc = ADBC_STATUS_INTERNAL; goto fail;
+                }
+
+                /* db_schema_statistics is a list<STATISTICS_SCHEMA>.
+                 * Each entry is one statistic.                            */
+                {
+                    struct ArrowArray *stat_list = dbs->children[1]; /* list */
+                    struct ArrowArray *stat      = stat_list->children[0]; /* struct */
+
+                    if (ArrowArrayStartAppending (stat_list) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+
+                    /* table_name */
+                    if (ArrowArrayAppendString (stat->children[0],
+                                                ArrowCharView (tb_name)) != 0) {
+                        rc = ADBC_STATUS_INTERNAL; goto fail;
+                    }
+                    /* column_name (null — table-level stat) */
+                    if (ArrowArrayAppendNull (stat->children[1], 1) != 0) {
+                        rc = ADBC_STATUS_INTERNAL; goto fail;
+                    }
+                    /* statistic_key = ADBC_STATISTIC_ROW_COUNT_KEY (6) */
+                    if (ArrowArrayAppendInt (stat->children[2],
+                                             (int64_t) ADBC_STATISTIC_ROW_COUNT_KEY) != 0) {
+                        rc = ADBC_STATUS_INTERNAL; goto fail;
+                    }
+                    /* statistic_value: dense union <int64, uint64, float64, binary>.
+                     * For row_count we use the int64 member (type_id = 0).
+                     * We use the Arrow C Data buffer API directly because
+                     * nanoarrow's ArrowArrayAppend* functions are designed
+                     * for primitive types and don't handle unions.       */
+                    {
+                        struct ArrowArray *uv = stat->children[3];
+                        struct ArrowBuffer *type_buf = ArrowArrayBuffer (uv, 0);
+                        struct ArrowBuffer *off_buf  = ArrowArrayBuffer (uv, 1);
+                        int32_t child_len;
+                        uint8_t type_id = 0;
+
+                        if (!type_buf || !off_buf) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+
+                        /* Child[0] (int64) holds the actual row_count value. */
+                        if (ArrowArrayAppendInt (uv->children[0],
+                                                 (cb > 0) ? key_rows_i : 0) != 0) {
+                            rc = ADBC_STATUS_INTERNAL; goto fail;
+                        }
+                        child_len = (int32_t) uv->children[0]->length;
+
+                        /* Append type_id (0 = int64 member). */
+                        ArrowBufferAppendInt8 (type_buf, (int8_t) type_id);
+                        /* Append offset = index into child[0]. */
+                        ArrowBufferAppendInt32 (off_buf, child_len - 1);
+
+                        /* Null-fill unused union members. */
+                        if (ArrowArrayAppendNull (uv->children[1], 1) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+                        if (ArrowArrayAppendNull (uv->children[2], 1) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+                        if (ArrowArrayAppendNull (uv->children[3], 1) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+                        uv->length++;
+                    }
+                    /* statistic_is_approximate = true (SYS_KEYS rows are estimates) */
+                    {
+                        struct ArrowArray *approx_child = stat->children[4];
+                        uint8_t byte_val = 1;
+                        struct ArrowBuffer *buf = ArrowArrayBuffer (approx_child, 0);
+                        if (!buf || ArrowBufferAppend (buf, &byte_val, 1) != 0) {
+                            rc = ADBC_STATUS_INTERNAL; goto fail;
+                        }
+                        approx_child->length++;
+                        approx_child->null_count = 0;
+                    }
+
+                    /* Also increment stat's length. */
+                    stat->length++;
+
+                    if (ArrowArrayFinishElement (stat_list) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+                }
+
+                (void) approximate;     /* SYS_KEYS is always approximate */
+            }
+
+            if (started) {
+                if (ArrowArrayFinishElement (dbs) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+            }
+            dbs->length = started ? 1 : 0;
+
+            if (ArrowArrayFinishElement (cat_dbs) != 0) {
+                rc = ADBC_STATUS_INTERNAL; goto fail;
+            }
+            cat_dbs->length = started ? 1 : 0;
+            dbs->null_count = 0;
+            cat_dbs->null_count = 0;
+        }
+
+        if (ArrowArrayFinishElement (&array) != 0) { rc = ADBC_STATUS_INTERNAL; goto fail; }
+    }
+
+    if (ArrowArrayFinishBuildingDefault (&array, &ae) != 0) {
+        rc = virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                           "FinishBuilding: %s", ae.message);
+        goto fail;
+    }
+
+    virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+    return publish_one_batch (&schema, &array, out, err);
+
+fail:
+    virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+    if (array.release)  array.release  (&array);
+    if (schema.release) schema.release (&schema);
+    return rc;
+}

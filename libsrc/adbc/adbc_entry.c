@@ -117,6 +117,16 @@ AdbcDriverInit (int version, void *raw_driver, struct AdbcError *error)
         driver->StatementGetOptionBytes      = virt_st_get_option_bytes;
         driver->StatementGetOptionInt        = virt_st_get_option_int;
         driver->StatementGetOptionDouble     = virt_st_get_option_double;
+
+        /* ----- Statement 1.1.0 additions (phase 9) ----- */
+        driver->StatementCancel           = virt_st_cancel;
+        driver->StatementExecuteSchema    = virt_st_execute_schema;
+        driver->StatementExecutePartitions = virt_st_execute_partitions;
+
+        /* ----- Connection 1.1.0 additions (phase 9) ----- */
+        driver->ConnectionGetStatistics     = virt_cn_get_statistics;
+        driver->ConnectionGetStatisticNames = virt_cn_get_statistic_names;
+        driver->ConnectionReadPartition     = virt_cn_read_partition;
     }
 
     /* Bind/Prepare/GetParameterSchema slots remain NULL -- phase 5. */

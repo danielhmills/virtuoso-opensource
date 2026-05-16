@@ -31,6 +31,12 @@ extern "C" {
 #define VIRT_ADBC_DRIVER_NAME    "ADBC Driver for Virtuoso"
 #define VIRT_ADBC_DRIVER_VERSION "0.0.1-dev"
 
+/* Phase 9c: single-partition descriptor format used by
+ * StatementExecutePartitions / ConnectionReadPartition.            */
+#define VIRT_PARTITION_MAGIC    "VIRT"
+#define VIRT_PARTITION_VERSION  1
+#define VIRT_PARTITION_HDR_LEN  12
+
 /* -------------------------------------------------------------------
  *  Option storage. A small linked list keyed by string; values are
  *  one of {string, bytes, int, double}.
@@ -270,6 +276,9 @@ typedef struct VirtAdbcStatement {
      * statement text on the wire, and the resulting Arrow schema
      * carries virtuoso:dialect=sparql metadata).                       */
     int                 sparql_dialect;
+    /* Phase 9d: StatementCancel — updated under cn->mu before any
+     * blocking SQL call; read by virt_st_cancel from another thread.   */
+    void               *pending_hstmt;
 } VirtAdbcStatement;
 
 AdbcStatusCode virt_st_new (struct AdbcConnection *cn,
@@ -306,6 +315,35 @@ AdbcStatusCode virt_st_execute_query (struct AdbcStatement *st,
                                       struct ArrowArrayStream *out,
                                       int64_t *rows_affected,
                                       struct AdbcError *err);
+
+/* Phase 9: ADBC 1.1.0 polish.                                         */
+AdbcStatusCode virt_st_cancel           (struct AdbcStatement *st,
+                                         struct AdbcError *err);
+AdbcStatusCode virt_st_execute_schema   (struct AdbcStatement *st,
+                                         struct ArrowSchema *out,
+                                         struct AdbcError *err);
+AdbcStatusCode virt_st_execute_partitions (struct AdbcStatement *st,
+                                           struct ArrowSchema *schema,
+                                           struct AdbcPartitions *partitions,
+                                           int64_t *rows_affected,
+                                           struct AdbcError *err);
+
+/* Phase 9: Connection-level 1.1.0 additions.                           */
+AdbcStatusCode virt_cn_get_statistics (struct AdbcConnection *cn,
+                                       const char *catalog,
+                                       const char *db_schema,
+                                       const char *table_name,
+                                       char approximate,
+                                       struct ArrowArrayStream *out,
+                                       struct AdbcError *err);
+AdbcStatusCode virt_cn_get_statistic_names (struct AdbcConnection *cn,
+                                            struct ArrowArrayStream *out,
+                                            struct AdbcError *err);
+AdbcStatusCode virt_cn_read_partition (struct AdbcConnection *cn,
+                                       const uint8_t *serialized,
+                                       size_t length,
+                                       struct ArrowArrayStream *out,
+                                       struct AdbcError *err);
 
 /* Phase 5: prepared statements and parameter binding.                */
 AdbcStatusCode virt_st_prepare (struct AdbcStatement *st,
