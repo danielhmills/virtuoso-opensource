@@ -233,6 +233,15 @@ AdbcStatusCode virt_cn_get_objects (struct AdbcConnection *cn, int depth,
 /* Forward decl -- definition in arrow_writer.c.                       */
 typedef struct VirtAdbcWriter VirtAdbcWriter;
 
+/* Phase 7: bulk-ingest modes (numeric form of the spec strings).     */
+typedef enum {
+    VIRT_INGEST_NONE          = 0,
+    VIRT_INGEST_CREATE,
+    VIRT_INGEST_APPEND,
+    VIRT_INGEST_REPLACE,
+    VIRT_INGEST_CREATE_APPEND
+} virt_ingest_mode_t;
+
 typedef struct VirtAdbcStatement {
     VirtAdbcConnection *cn;
     char               *sql;       /* set by SetSqlQuery; freed in Release */
@@ -250,6 +259,12 @@ typedef struct VirtAdbcStatement {
     struct ArrowArrayStream bound_stream;
     int                 has_bound_stream;
     VirtAdbcWriter     *writer;     /* lazily-built on first bound Execute */
+    /* Phase 7 bulk-ingest state.                                       */
+    virt_ingest_mode_t  ingest_mode;
+    char               *ingest_target_table;
+    char               *ingest_target_catalog;
+    char               *ingest_target_db_schema;
+    int                 ingest_temporary;
 } VirtAdbcStatement;
 
 AdbcStatusCode virt_st_new (struct AdbcConnection *cn,

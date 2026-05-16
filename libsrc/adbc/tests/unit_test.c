@@ -1003,6 +1003,353 @@ test_get_objects (struct AdbcDriver *drv, struct AdbcDatabase *db,
     fprintf (stdout, "[OK]  integration: GetObjects(ALL, schema=DBA)\n");
 }
 
+/* ---------- Integration: Phase 7 (bulk ingest) ---------- */
+
+/* Quick helper: execute a SQL command, ignore result. */
+static AdbcStatusCode
+exec_one (struct AdbcDriver *drv, struct AdbcConnection *cn, const char *sql,
+          struct AdbcError *err)
+{
+    struct AdbcStatement st;
+    AdbcStatusCode rc;
+    memset (&st, 0, sizeof (st));
+    drv->StatementNew (cn, &st, err);
+    drv->StatementSetSqlQuery (&st, sql, err);
+    rc = drv->StatementExecuteQuery (&st, NULL, NULL, err);
+    drv->StatementRelease (&st, NULL);
+    return rc;
+}
+
+/* Read a single int64 from SELECT ... LIMIT 1. */
+static int64_t
+select_count (struct AdbcDriver *drv, struct AdbcConnection *cn,
+              const char *sql)
+{
+    struct AdbcStatement st;
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema sch;
+    struct ArrowArray batch;
+    struct ArrowArrayView v;
+    struct ArrowError ae;
+    int64_t result = -1;
+
+    memset (&st,     0, sizeof (st));
+    memset (&stream, 0, sizeof (stream));
+    memset (&sch,    0, sizeof (sch));
+    memset (&batch,  0, sizeof (batch));
+    memset (&v,      0, sizeof (v));
+    memset (&ae,     0, sizeof (ae));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetSqlQuery (&st, sql, &err);
+    if (drv->StatementExecuteQuery (&st, &stream, NULL, &err) != ADBC_STATUS_OK)
+        goto out;
+    if (stream.get_schema (&stream, &sch) != 0) goto out;
+    if (stream.get_next (&stream, &batch) != 0 || !batch.release) goto out;
+    if (ArrowArrayViewInitFromSchema (&v, &sch, &ae) == 0
+        && ArrowArrayViewSetArray (&v, &batch, &ae) == 0)
+        result = ArrowArrayViewGetIntUnsafe (v.children[0], 0);
+    ArrowArrayViewReset (&v);
+    if (batch.release) batch.release (&batch);
+out:
+    if (sch.release)    sch.release (&sch);
+    if (stream.release) stream.release (&stream);
+    drv->StatementRelease (&st, NULL);
+    if (err.release) err.release (&err);
+    return result;
+}
+
+static void
+build_int_str_dbl_batch (struct ArrowArray *out_arr,
+                         struct ArrowSchema *out_sch)
+{
+    struct ArrowError ae;
+    static const int64_t ids[]  = { 1, 2, 3 };
+    static const char *const names[] = { "alpha", "beta", NULL };
+    static const double  vals[] = { 1.1, 2.2, 3.3 };
+    int i;
+
+    ArrowSchemaInit (out_sch);
+    (void) ArrowSchemaSetTypeStruct (out_sch, 3);
+    (void) ArrowSchemaSetType (out_sch->children[0], NANOARROW_TYPE_INT64);
+    (void) ArrowSchemaSetName (out_sch->children[0], "id");
+    (void) ArrowSchemaSetType (out_sch->children[1], NANOARROW_TYPE_STRING);
+    (void) ArrowSchemaSetName (out_sch->children[1], "name");
+    (void) ArrowSchemaSetType (out_sch->children[2], NANOARROW_TYPE_DOUBLE);
+    (void) ArrowSchemaSetName (out_sch->children[2], "score");
+
+    memset (&ae, 0, sizeof (ae));
+    (void) ArrowArrayInitFromSchema (out_arr, out_sch, &ae);
+    (void) ArrowArrayStartAppending (out_arr);
+    for (i = 0; i < 3; i++) {
+        (void) ArrowArrayAppendInt (out_arr->children[0], ids[i]);
+        if (names[i])
+            (void) ArrowArrayAppendString (out_arr->children[1],
+                                           ArrowCharView (names[i]));
+        else
+            (void) ArrowArrayAppendNull (out_arr->children[1], 1);
+        (void) ArrowArrayAppendDouble (out_arr->children[2], vals[i]);
+        (void) ArrowArrayFinishElement (out_arr);
+    }
+    (void) ArrowArrayFinishBuildingDefault (out_arr, &ae);
+}
+
+/* CREATE mode: derive CREATE TABLE + INSERT. */
+static void
+test_ingest_create (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                    struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct AdbcStatement st;
+    struct ArrowArray  arr;
+    struct ArrowSchema sch;
+    int64_t rows = 0;
+    int64_t cnt;
+    AdbcStatusCode rc;
+    (void) db;
+
+    /* Make sure no remnants from previous runs exist. The two flavours
+     * below cover both (a) the correct 3-part qualified name and
+     * (b) the literal dotted name a buggy earlier build might have
+     * created.                                                       */
+    exec_one (drv, cn, "drop table DB.DBA.t_adbc_p7_create", &err);
+    if (err.release) err.release (&err);
+    memset (&err, 0, sizeof (err));
+    exec_one (drv, cn,
+              "drop table \"DB.DBA.t_adbc_p7_create\"", &err);
+    if (err.release) err.release (&err);
+    memset (&err, 0, sizeof (err));
+
+    memset (&st,  0, sizeof (st));
+    memset (&arr, 0, sizeof (arr));
+    memset (&sch, 0, sizeof (sch));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_CATALOG,
+                             "DB", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                             "DBA", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_TABLE,
+                             "t_adbc_p7_create", &err);
+    drv->StatementSetOption (&st,
+                             ADBC_INGEST_OPTION_MODE,
+                             ADBC_INGEST_OPTION_MODE_CREATE, &err);
+
+    build_int_str_dbl_batch (&arr, &sch);
+    ASSERT (drv->StatementBind (&st, &arr, &sch, &err) == ADBC_STATUS_OK,
+            "ingest CREATE: bind");
+    rc = drv->StatementExecuteQuery (&st, NULL, &rows, &err);
+    ASSERT (rc == ADBC_STATUS_OK, "ingest CREATE: exec");
+    ASSERT (rows == 3, "ingest CREATE: 3 rows affected");
+    drv->StatementRelease (&st, NULL);
+
+    cnt = select_count (drv, cn,
+                        "select count(*) from DB.DBA.t_adbc_p7_create");
+    ASSERT (cnt == 3, "ingest CREATE: SELECT COUNT(*) = 3");
+
+    /* Calling CREATE again on the same table must error. */
+    memset (&st, 0, sizeof (st));
+    memset (&arr, 0, sizeof (arr));
+    memset (&sch, 0, sizeof (sch));
+    if (err.release) err.release (&err);
+    memset (&err, 0, sizeof (err));
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_CATALOG,
+                             "DB", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                             "DBA", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_TABLE,
+                             "t_adbc_p7_create", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_MODE,
+                             ADBC_INGEST_OPTION_MODE_CREATE, &err);
+    build_int_str_dbl_batch (&arr, &sch);
+    drv->StatementBind (&st, &arr, &sch, &err);
+    rc = drv->StatementExecuteQuery (&st, NULL, NULL, &err);
+    ASSERT (rc != ADBC_STATUS_OK,
+            "ingest CREATE on existing table is rejected");
+    if (err.release) err.release (&err);
+    drv->StatementRelease (&st, NULL);
+
+    fprintf (stdout, "[OK]  integration: ingest CREATE (3 rows)\n");
+}
+
+/* APPEND mode: same table, extra rows. */
+static void
+test_ingest_append (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                    struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct AdbcStatement st;
+    struct ArrowArray  arr;
+    struct ArrowSchema sch;
+    int64_t rows = 0;
+    int64_t cnt;
+    (void) db;
+
+    memset (&st,  0, sizeof (st));
+    memset (&arr, 0, sizeof (arr));
+    memset (&sch, 0, sizeof (sch));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_CATALOG,
+                             "DB", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                             "DBA", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_TABLE,
+                             "t_adbc_p7_create", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_MODE,
+                             ADBC_INGEST_OPTION_MODE_APPEND, &err);
+    build_int_str_dbl_batch (&arr, &sch);
+    ASSERT (drv->StatementBind (&st, &arr, &sch, &err) == ADBC_STATUS_OK,
+            "ingest APPEND: bind");
+    ASSERT (drv->StatementExecuteQuery (&st, NULL, &rows, &err)
+                == ADBC_STATUS_OK,
+            "ingest APPEND: exec");
+    ASSERT (rows == 3, "ingest APPEND: 3 rows affected");
+    drv->StatementRelease (&st, NULL);
+
+    cnt = select_count (drv, cn,
+                        "select count(*) from DB.DBA.t_adbc_p7_create");
+    ASSERT (cnt == 6, "ingest APPEND: total now 6");
+    fprintf (stdout, "[OK]  integration: ingest APPEND (6 rows total)\n");
+}
+
+/* REPLACE: drop + recreate. */
+static void
+test_ingest_replace (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                     struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct AdbcStatement st;
+    struct ArrowArray  arr;
+    struct ArrowSchema sch;
+    int64_t rows = 0;
+    int64_t cnt;
+    (void) db;
+
+    memset (&st,  0, sizeof (st));
+    memset (&arr, 0, sizeof (arr));
+    memset (&sch, 0, sizeof (sch));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_CATALOG,
+                             "DB", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                             "DBA", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_TABLE,
+                             "t_adbc_p7_create", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_MODE,
+                             ADBC_INGEST_OPTION_MODE_REPLACE, &err);
+    build_int_str_dbl_batch (&arr, &sch);
+    drv->StatementBind (&st, &arr, &sch, &err);
+    ASSERT (drv->StatementExecuteQuery (&st, NULL, &rows, &err)
+                == ADBC_STATUS_OK,
+            "ingest REPLACE: exec");
+    ASSERT (rows == 3, "ingest REPLACE: 3 rows after replace");
+    drv->StatementRelease (&st, NULL);
+
+    cnt = select_count (drv, cn,
+                        "select count(*) from DB.DBA.t_adbc_p7_create");
+    ASSERT (cnt == 3, "ingest REPLACE: SELECT COUNT(*) = 3");
+    fprintf (stdout, "[OK]  integration: ingest REPLACE (3 rows)\n");
+}
+
+/* CREATE_APPEND on a brand-new table.                                */
+static void
+test_ingest_create_append (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                           struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct AdbcStatement st;
+    struct ArrowArray  arr;
+    struct ArrowSchema sch;
+    int64_t rows = 0;
+    int64_t cnt;
+    (void) db;
+
+    exec_one (drv, cn, "drop table DB.DBA.t_adbc_p7_ca", &err);
+    if (err.release) err.release (&err);
+
+    memset (&st,  0, sizeof (st));
+    memset (&arr, 0, sizeof (arr));
+    memset (&sch, 0, sizeof (sch));
+
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_CATALOG,
+                             "DB", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                             "DBA", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_TABLE,
+                             "t_adbc_p7_ca", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_MODE,
+                             ADBC_INGEST_OPTION_MODE_CREATE_APPEND, &err);
+    build_int_str_dbl_batch (&arr, &sch);
+    drv->StatementBind (&st, &arr, &sch, &err);
+    ASSERT (drv->StatementExecuteQuery (&st, NULL, &rows, &err)
+                == ADBC_STATUS_OK,
+            "ingest CREATE_APPEND first call: exec");
+    ASSERT (rows == 3, "ingest CREATE_APPEND first: 3 rows");
+    drv->StatementRelease (&st, NULL);
+
+    /* Second call: table now exists -> just APPEND. */
+    memset (&st,  0, sizeof (st));
+    memset (&arr, 0, sizeof (arr));
+    memset (&sch, 0, sizeof (sch));
+    if (err.release) err.release (&err);
+    memset (&err, 0, sizeof (err));
+    drv->StatementNew (cn, &st, &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_CATALOG,
+                             "DB", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA,
+                             "DBA", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_TARGET_TABLE,
+                             "t_adbc_p7_ca", &err);
+    drv->StatementSetOption (&st, ADBC_INGEST_OPTION_MODE,
+                             ADBC_INGEST_OPTION_MODE_CREATE_APPEND, &err);
+    build_int_str_dbl_batch (&arr, &sch);
+    drv->StatementBind (&st, &arr, &sch, &err);
+    ASSERT (drv->StatementExecuteQuery (&st, NULL, &rows, &err)
+                == ADBC_STATUS_OK,
+            "ingest CREATE_APPEND second call: exec");
+    drv->StatementRelease (&st, NULL);
+
+    cnt = select_count (drv, cn,
+                        "select count(*) from DB.DBA.t_adbc_p7_ca");
+    ASSERT (cnt == 6, "ingest CREATE_APPEND: total now 6");
+
+    /* Clean up. */
+    exec_one (drv, cn, "drop table DB.DBA.t_adbc_p7_ca", NULL);
+    fprintf (stdout, "[OK]  integration: ingest CREATE_APPEND (6 rows total)\n");
+}
+
+/* Phase 7d: round-trip. Ingest creates a table, then GetTableSchema
+ * + SELECT * confirm we can read the same column count back.         */
+static void
+test_ingest_roundtrip (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                       struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowSchema sch;
+    AdbcStatusCode rc;
+    (void) db;
+
+    memset (&sch, 0, sizeof (sch));
+    rc = drv->ConnectionGetTableSchema (cn, NULL, NULL,
+                                        "t_adbc_p7_create", &sch, &err);
+    ASSERT (rc == ADBC_STATUS_OK, "ingest round-trip: GetTableSchema");
+    if (rc == ADBC_STATUS_OK) {
+        ASSERT (sch.n_children == 3,
+                "ingest round-trip: 3 columns survive");
+        if (sch.release) sch.release (&sch);
+    }
+    if (err.release) err.release (&err);
+
+    /* Clean up the table.                                            */
+    exec_one (drv, cn, "drop table DB.DBA.t_adbc_p7_create", NULL);
+    fprintf (stdout, "[OK]  integration: ingest round-trip (3-col schema)\n");
+}
+
 /* ---------- Integration: gated on VIRT_ADBC_TEST_URI ---------- */
 
 static void
@@ -1092,6 +1439,16 @@ test_integration (const char *uri)
     test_get_table_schema           (&drv, &db, &cn);
     test_get_objects                (&drv, &db, &cn);
 
+    /* Phase 7 bulk ingest tests. Force autocommit ON since DDL
+     * mid-transaction is fragile in Virtuoso.                        */
+    drv.ConnectionSetOption (&cn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                             ADBC_OPTION_VALUE_ENABLED, &err);
+    test_ingest_create              (&drv, &db, &cn);
+    test_ingest_append              (&drv, &db, &cn);
+    test_ingest_replace             (&drv, &db, &cn);
+    test_ingest_create_append       (&drv, &db, &cn);
+    test_ingest_roundtrip           (&drv, &db, &cn);
+
     drv.ConnectionRelease (&cn, &err);
     drv.DatabaseRelease (&db, &err);
 }
@@ -1121,6 +1478,6 @@ main (void)
         fprintf (stderr, "%d test case(s) failed\n", g_failures);
         return EXIT_FAILURE;
     }
-    fprintf (stdout, "OK -- ADBC phase 2-6 unit tests passed\n");
+    fprintf (stdout, "OK -- ADBC phase 2-7 unit tests passed\n");
     return EXIT_SUCCESS;
 }

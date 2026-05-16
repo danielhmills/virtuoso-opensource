@@ -61,6 +61,9 @@ extern AdbcStatusCode virt_reader_create (VirtAdbcConnection *cn, void *hstmt,
                                           struct ArrowArrayStream *out,
                                           struct AdbcError *err);
 
+/* From type_map.c */
+extern const char *virt_arrow_to_virtuoso_ddl (enum ArrowType atype);
+
 #define ST_SELF(st, err)                                                 \
     VirtAdbcStatement *self;                                             \
     if (!(st) || !(st)->private_data)                                    \
@@ -141,6 +144,9 @@ virt_st_release (struct AdbcStatement *st, struct AdbcError *err)
         self->hstmt = NULL;
     }
     free (self->sql);
+    free (self->ingest_target_table);
+    free (self->ingest_target_catalog);
+    free (self->ingest_target_db_schema);
     virt_opt_free_all (&self->opts);
     free (self);
     st->private_data = NULL;
@@ -191,6 +197,62 @@ virt_st_set_option (struct AdbcStatement *st, const char *key,
                                  "%s: expected positive integer, got '%s'",
                                  key, value);
         self->batch_rows = (int64_t) n;
+        return ADBC_STATUS_OK;
+    }
+
+    /* Phase 7 bulk-ingest options. Setting target_table flips the
+     * statement into ingest mode -- SetSqlQuery is then ignored and
+     * the SQL is synthesised at ExecuteQuery time.                    */
+    if (strcmp (key, ADBC_INGEST_OPTION_TARGET_TABLE) == 0) {
+        char *dup = value ? strdup (value) : NULL;
+        if (value && !dup)
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "out of memory");
+        free (self->ingest_target_table);
+        self->ingest_target_table = dup;
+        /* Default mode if not explicitly set yet. */
+        if (self->ingest_mode == VIRT_INGEST_NONE)
+            self->ingest_mode = VIRT_INGEST_CREATE;
+        return ADBC_STATUS_OK;
+    }
+    if (strcmp (key, ADBC_INGEST_OPTION_TARGET_CATALOG) == 0) {
+        char *dup = value ? strdup (value) : NULL;
+        if (value && !dup)
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "out of memory");
+        free (self->ingest_target_catalog);
+        self->ingest_target_catalog = dup;
+        return ADBC_STATUS_OK;
+    }
+    if (strcmp (key, ADBC_INGEST_OPTION_TARGET_DB_SCHEMA) == 0) {
+        char *dup = value ? strdup (value) : NULL;
+        if (value && !dup)
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "out of memory");
+        free (self->ingest_target_db_schema);
+        self->ingest_target_db_schema = dup;
+        return ADBC_STATUS_OK;
+    }
+    if (strcmp (key, ADBC_INGEST_OPTION_MODE) == 0) {
+        if (!value)
+            return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                                 "%s: missing value", key);
+        if (strcmp (value, ADBC_INGEST_OPTION_MODE_CREATE) == 0)
+            self->ingest_mode = VIRT_INGEST_CREATE;
+        else if (strcmp (value, ADBC_INGEST_OPTION_MODE_APPEND) == 0)
+            self->ingest_mode = VIRT_INGEST_APPEND;
+        else if (strcmp (value, ADBC_INGEST_OPTION_MODE_REPLACE) == 0)
+            self->ingest_mode = VIRT_INGEST_REPLACE;
+        else if (strcmp (value, ADBC_INGEST_OPTION_MODE_CREATE_APPEND) == 0)
+            self->ingest_mode = VIRT_INGEST_CREATE_APPEND;
+        else
+            return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                                 "%s: unknown mode '%s'", key, value);
+        return ADBC_STATUS_OK;
+    }
+    if (strcmp (key, ADBC_INGEST_OPTION_TEMPORARY) == 0) {
+        self->ingest_temporary =
+            (value && strcmp (value, ADBC_OPTION_VALUE_ENABLED) == 0) ? 1 : 0;
         return ADBC_STATUS_OK;
     }
 
@@ -285,6 +347,406 @@ virt_st_get_option_double (struct AdbcStatement *st, const char *key,
 {
     ST_SELF (st, err);
     return virt_opt_get_double (self->opts, key, out, err);
+}
+
+/* ====================================================================
+ *  Phase 7 -- Bulk ingestion
+ *
+ *  When adbc.ingest.target_table is set, ExecuteQuery ignores any SQL
+ *  the caller set via SetSqlQuery. Instead it derives:
+ *
+ *    - the qualified table name from target_catalog / target_db_schema
+ *      / target_table
+ *    - a CREATE TABLE DDL from the Arrow schema of the bound data
+ *      (mapped through virt_arrow_to_virtuoso_ddl)
+ *    - an INSERT statement parameterised on the same column list
+ *
+ *  Mode semantics:
+ *    CREATE          -- always CREATE, error if table exists.
+ *    APPEND          -- skip CREATE, INSERT into existing table.
+ *    REPLACE         -- DROP TABLE IF EXISTS, then CREATE + INSERT.
+ *    CREATE_APPEND   -- CREATE TABLE IF NOT EXISTS, then INSERT.
+ *
+ *  The INSERT loop reuses the phase-5 writer (Prepare -> bind ->
+ *  per-row SQLExecute). rows_affected reports the total inserted.
+ * ==================================================================== */
+
+extern AdbcStatusCode virt_writer_create (void *hstmt,
+                                          struct ArrowSchema *bind_schema,
+                                          VirtAdbcWriter **out_writer,
+                                          struct AdbcError *err);
+extern void           virt_writer_destroy (VirtAdbcWriter *w);
+extern AdbcStatusCode virt_writer_execute_batch (VirtAdbcWriter *w,
+                                                 struct ArrowArray *batch,
+                                                 int64_t *rows_affected_inout,
+                                                 struct AdbcError *err);
+
+/* Quote a Virtuoso identifier into out. Caller frees. Returns NULL
+ * on OOM. Embedded double-quotes are doubled.                         */
+static char *
+quote_ident (const char *id)
+{
+    size_t n, out_cap, off = 0;
+    char *out;
+    if (!id) return NULL;
+    n = strlen (id);
+    out_cap = n * 2 + 3;        /* "..." plus doubled quotes */
+    out = (char *) malloc (out_cap);
+    if (!out) return NULL;
+    out[off++] = '"';
+    while (*id) {
+        if (*id == '"') out[off++] = '"';
+        out[off++] = *id++;
+    }
+    out[off++] = '"';
+    out[off]   = '\0';
+    return out;
+}
+
+/* Build a qualified ".cat"."sch"."tab" or fallback. Caller frees.    */
+static char *
+build_qualified_table_name (VirtAdbcStatement *self)
+{
+    char *qc = self->ingest_target_catalog
+               ? quote_ident (self->ingest_target_catalog) : NULL;
+    char *qs = self->ingest_target_db_schema
+               ? quote_ident (self->ingest_target_db_schema) : NULL;
+    char *qt = quote_ident (self->ingest_target_table);
+    size_t need;
+    char *out;
+
+    if (!qt) { free (qc); free (qs); return NULL; }
+    need = (qc ? strlen (qc) + 1 : 0)
+         + (qs ? strlen (qs) + 1 : 0)
+         + strlen (qt) + 1;
+    out = (char *) malloc (need);
+    if (!out) { free (qc); free (qs); free (qt); return NULL; }
+    out[0] = '\0';
+    if (qc) { strcat (out, qc); strcat (out, "."); }
+    if (qs) { strcat (out, qs); strcat (out, "."); }
+    strcat (out, qt);
+    free (qc); free (qs); free (qt);
+    return out;
+}
+
+/* Build "CREATE TABLE <qname> (col1 TYPE, col2 TYPE, ...)" from a
+ * bind schema (top-level struct). Caller frees. err may be NULL.     */
+static char *
+build_create_ddl (const char *qname, const struct ArrowSchema *schema,
+                  int if_not_exists, int temporary,
+                  struct AdbcError *err)
+{
+    struct ArrowError ae;
+    int64_t i;
+    /* dynamic growable buffer */
+    size_t cap = 256, off = 0;
+    char  *buf = (char *) malloc (cap);
+    if (!buf) {
+        virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0, "out of memory");
+        return NULL;
+    }
+    /* Virtuoso doesn't accept "IF NOT EXISTS" in CREATE TABLE; the
+     * CREATE_APPEND path uses the silent-error flag instead.         */
+    (void) if_not_exists;
+    off += (size_t) snprintf (buf + off, cap - off,
+        "CREATE %sTABLE %s (",
+        temporary ? "TEMPORARY " : "",
+        qname);
+
+    for (i = 0; i < schema->n_children; i++) {
+        struct ArrowSchema *child = schema->children[i];
+        struct ArrowSchemaView sv;
+        const char *ddl;
+        char *qcol;
+        size_t add;
+
+        memset (&ae, 0, sizeof (ae));
+        if (ArrowSchemaViewInit (&sv, child, &ae) != 0) {
+            virt_err_set (err, ADBC_STATUS_INVALID_DATA, NULL, 0,
+                          "ingest: cannot parse column %lld type: %s",
+                          (long long) i, ae.message[0] ? ae.message : "");
+            free (buf);
+            return NULL;
+        }
+        ddl = virt_arrow_to_virtuoso_ddl (sv.type);
+        if (!ddl) {
+            virt_err_set (err, ADBC_STATUS_NOT_IMPLEMENTED, NULL, 0,
+                          "ingest: column %lld has unsupported Arrow type %d",
+                          (long long) i, (int) sv.type);
+            free (buf);
+            return NULL;
+        }
+        qcol = quote_ident (child->name && child->name[0]
+                            ? child->name
+                            : "col");
+        if (!qcol) { free (buf); return NULL; }
+
+        add = strlen (qcol) + 1 + strlen (ddl) + 3;     /* "x" TYPE, */
+        if (off + add + 2 >= cap) {
+            size_t nc = cap * 2;
+            char *nb;
+            while (nc < off + add + 2) nc *= 2;
+            nb = realloc (buf, nc);
+            if (!nb) { free (qcol); free (buf); return NULL; }
+            buf = nb; cap = nc;
+        }
+        if (i > 0) { buf[off++] = ','; buf[off++] = ' '; }
+        memcpy (buf + off, qcol, strlen (qcol));  off += strlen (qcol);
+        buf[off++] = ' ';
+        memcpy (buf + off, ddl, strlen (ddl));    off += strlen (ddl);
+        free (qcol);
+    }
+    if (off + 2 >= cap) {
+        cap += 4;
+        buf = realloc (buf, cap);
+        if (!buf) return NULL;
+    }
+    buf[off++] = ')';
+    buf[off]   = '\0';
+    return buf;
+}
+
+/* Build "INSERT INTO <qname> ("c1","c2") VALUES (?,?)" from a bind
+ * schema.                                                            */
+static char *
+build_insert_sql (const char *qname, const struct ArrowSchema *schema)
+{
+    size_t cap = 256, off = 0;
+    char  *buf = (char *) malloc (cap);
+    int64_t i;
+    if (!buf) return NULL;
+    off += (size_t) snprintf (buf + off, cap - off, "INSERT INTO %s (", qname);
+
+    for (i = 0; i < schema->n_children; i++) {
+        char *qcol = quote_ident (schema->children[i]->name
+                                  && schema->children[i]->name[0]
+                                  ? schema->children[i]->name : "col");
+        size_t add;
+        if (!qcol) { free (buf); return NULL; }
+        add = strlen (qcol) + 2;
+        if (off + add + 32 >= cap) {
+            size_t nc = cap * 2;
+            char *nb;
+            while (nc < off + add + 32) nc *= 2;
+            nb = realloc (buf, nc); if (!nb) { free (qcol); free (buf); return NULL; }
+            buf = nb; cap = nc;
+        }
+        if (i > 0) { buf[off++] = ','; buf[off++] = ' '; }
+        memcpy (buf + off, qcol, strlen (qcol)); off += strlen (qcol);
+        free (qcol);
+    }
+    if (off + 16 >= cap) {
+        cap += 32;
+        buf = realloc (buf, cap);
+        if (!buf) return NULL;
+    }
+    off += (size_t) snprintf (buf + off, cap - off, ") VALUES (");
+    for (i = 0; i < schema->n_children; i++) {
+        if (off + 4 >= cap) {
+            cap *= 2;
+            buf = realloc (buf, cap);
+            if (!buf) return NULL;
+        }
+        if (i > 0) { buf[off++] = ','; buf[off++] = ' '; }
+        buf[off++] = '?';
+    }
+    buf[off++] = ')';
+    buf[off]   = '\0';
+    return buf;
+}
+
+/* Run a DDL statement on a fresh transient HSTMT. is_silent=1 lets a
+ * "does not exist" error pass (for DROP TABLE IF EXISTS).            */
+static AdbcStatusCode
+exec_ddl (VirtAdbcConnection *cn, const char *sql, int is_silent,
+          struct AdbcError *err)
+{
+    SQLHSTMT hstmt = SQL_NULL_HSTMT;
+    SQLRETURN sr;
+    AdbcStatusCode rc = ADBC_STATUS_OK;
+
+    sr = virtodbc__SQLAllocStmt ((SQLHDBC) cn->hdbc, &hstmt);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+        return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, cn->hdbc, NULL,
+                                   err);
+    sr = SQLExecDirect (hstmt, (SQLCHAR *) sql, SQL_NTS);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        if (!is_silent)
+            rc = virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, NULL, hstmt,
+                                     err);
+    }
+    virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+    return rc;
+}
+
+/* The bound-data schema: either bound_schema (single batch) or
+ * peeled off the bound stream via get_schema. *owned is set to 1 if
+ * the caller must release the returned schema, 0 if the schema is
+ * borrowed from the statement. */
+static AdbcStatusCode
+get_bound_schema (VirtAdbcStatement *self, struct ArrowSchema **out,
+                  int *owned, struct ArrowSchema *out_storage,
+                  struct AdbcError *err)
+{
+    *owned = 0;
+    if (self->has_bound_batch) {
+        *out = &self->bound_schema;
+        return ADBC_STATUS_OK;
+    }
+    if (self->has_bound_stream) {
+        memset (out_storage, 0, sizeof (*out_storage));
+        if (self->bound_stream.get_schema (&self->bound_stream,
+                                           out_storage) != 0)
+            return virt_err_set (err, ADBC_STATUS_IO, NULL, 0,
+                                 "ingest: bound_stream.get_schema failed");
+        *out   = out_storage;
+        *owned = 1;
+        return ADBC_STATUS_OK;
+    }
+    return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                         "ingest: no bound data");
+}
+
+/* Top-level ingest entry. Called from virt_st_execute_query when
+ * ingest_target_table is set.                                        */
+static AdbcStatusCode
+execute_ingest (VirtAdbcStatement *self, int64_t *rows_affected,
+                struct AdbcError *err)
+{
+    struct ArrowSchema  stream_schema_storage;
+    struct ArrowSchema *bind_schema = NULL;
+    int                 owned       = 0;
+    char *qname = NULL, *ddl = NULL, *insert_sql = NULL;
+    SQLHSTMT hstmt = SQL_NULL_HSTMT;
+    SQLRETURN sr;
+    AdbcStatusCode rc;
+    int64_t affected = 0;
+
+    if (!self->cn || !self->cn->hdbc)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ingest: connection closed");
+    if (!self->ingest_target_table || !*self->ingest_target_table)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ingest: target_table is empty");
+    if (!self->has_bound_batch && !self->has_bound_stream)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ingest: nothing bound (call Bind or BindStream)");
+
+    rc = get_bound_schema (self, &bind_schema, &owned,
+                           &stream_schema_storage, err);
+    if (rc != ADBC_STATUS_OK)
+        return rc;
+
+    qname = build_qualified_table_name (self);
+    if (!qname) { rc = ADBC_STATUS_INTERNAL; goto cleanup; }
+
+    /* ----- Phase 7b/c: DDL ----- */
+    switch (self->ingest_mode) {
+    case VIRT_INGEST_REPLACE: {
+        size_t need = strlen ("DROP TABLE ") + strlen (qname) + 1;
+        char *drop = (char *) malloc (need);
+        if (!drop) { rc = ADBC_STATUS_INTERNAL; goto cleanup; }
+        snprintf (drop, need, "DROP TABLE %s", qname);
+        /* silent: Virtuoso doesn't ship a portable IF EXISTS for DROP */
+        (void) exec_ddl (self->cn, drop, /*silent*/ 1, NULL);
+        free (drop);
+    } /* fallthrough */
+    case VIRT_INGEST_CREATE: {
+        ddl = build_create_ddl (qname, bind_schema, /*if_not_exists*/ 0,
+                                self->ingest_temporary, err);
+        if (!ddl) { rc = ADBC_STATUS_INTERNAL; goto cleanup; }
+        rc = exec_ddl (self->cn, ddl, /*silent*/ 0, err);
+        if (rc != ADBC_STATUS_OK) goto cleanup;
+        break;
+    }
+    case VIRT_INGEST_CREATE_APPEND:
+        ddl = build_create_ddl (qname, bind_schema, /*if_not_exists*/ 1,
+                                self->ingest_temporary, err);
+        if (!ddl) { rc = ADBC_STATUS_INTERNAL; goto cleanup; }
+        /* CREATE TABLE IF NOT EXISTS is silent when the table is there. */
+        (void) exec_ddl (self->cn, ddl, /*silent*/ 1, NULL);
+        break;
+    case VIRT_INGEST_APPEND:
+        /* no DDL */
+        break;
+    default:
+        rc = virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                           "ingest: unknown mode");
+        goto cleanup;
+    }
+
+    /* ----- INSERT loop ----- */
+    insert_sql = build_insert_sql (qname, bind_schema);
+    if (!insert_sql) { rc = ADBC_STATUS_INTERNAL; goto cleanup; }
+
+    sr = virtodbc__SQLAllocStmt ((SQLHDBC) self->cn->hdbc, &hstmt);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        rc = virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, self->cn->hdbc,
+                                 NULL, err);
+        goto cleanup;
+    }
+    sr = SQLPrepare (hstmt, (SQLCHAR *) insert_sql, SQL_NTS);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        rc = virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, NULL, hstmt, err);
+        goto cleanup;
+    }
+
+    /* Build a fresh writer scoped to this ingest HSTMT. */
+    {
+        VirtAdbcWriter *w = NULL;
+        rc = virt_writer_create (hstmt, bind_schema, &w, err);
+        if (rc != ADBC_STATUS_OK) goto cleanup;
+
+        if (self->has_bound_batch) {
+            rc = virt_writer_execute_batch (w, &self->bound_batch, &affected,
+                                            err);
+        } else {
+            /* Pull batches from the bound stream. */
+            for (;;) {
+                struct ArrowArray batch;
+                memset (&batch, 0, sizeof (batch));
+                if (self->bound_stream.get_next (&self->bound_stream,
+                                                 &batch) != 0) {
+                    rc = virt_err_set (err, ADBC_STATUS_IO, NULL, 0,
+                                       "ingest: stream get_next failed");
+                    break;
+                }
+                if (!batch.release) break;          /* EOF */
+                rc = virt_writer_execute_batch (w, &batch, &affected, err);
+                batch.release (&batch);
+                if (rc != ADBC_STATUS_OK) break;
+            }
+        }
+        virt_writer_destroy (w);
+        if (rc != ADBC_STATUS_OK) goto cleanup;
+    }
+
+    if (rows_affected) *rows_affected = affected;
+
+cleanup:
+    if (hstmt)            virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+    free (insert_sql);
+    free (ddl);
+    free (qname);
+    /* Consume bound data so the next ExecuteQuery doesn't replay. */
+    if (self->has_bound_batch) {
+        if (self->bound_batch.release)
+            self->bound_batch.release (&self->bound_batch);
+        if (self->bound_schema.release)
+            self->bound_schema.release (&self->bound_schema);
+        memset (&self->bound_batch,  0, sizeof (self->bound_batch));
+        memset (&self->bound_schema, 0, sizeof (self->bound_schema));
+        self->has_bound_batch = 0;
+    }
+    if (self->has_bound_stream) {
+        if (self->bound_stream.release)
+            self->bound_stream.release (&self->bound_stream);
+        memset (&self->bound_stream, 0, sizeof (self->bound_stream));
+        self->has_bound_stream = 0;
+    }
+    if (owned && stream_schema_storage.release)
+        stream_schema_storage.release (&stream_schema_storage);
+    return rc;
 }
 
 /* ------------------------------------------------------------------ */
@@ -539,14 +1001,24 @@ virt_st_execute_query (struct AdbcStatement *st,
     AdbcStatusCode rc;
 
     ST_SELF (st, err);
-    if (!self->sql)
-        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
-                             "ExecuteQuery: no SQL set");
     if (!self->cn || !self->cn->hdbc)
         return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
                              "ExecuteQuery: connection is closed");
 
     if (rows_affected) *rows_affected = -1;
+
+    /* Phase-7 bulk ingest takes precedence over SetSqlQuery and over
+     * the phase-5 bound-parameter path.                               */
+    if (self->ingest_mode != VIRT_INGEST_NONE
+        && self->ingest_target_table) {
+        if (out_stream)
+            memset (out_stream, 0, sizeof (*out_stream));
+        return execute_ingest (self, rows_affected, err);
+    }
+
+    if (!self->sql)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ExecuteQuery: no SQL set");
 
     /* Bound-parameter path: prepared HSTMT + per-row execute, no
      * result-set support in this phase.                                */
