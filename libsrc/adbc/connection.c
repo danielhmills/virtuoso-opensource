@@ -56,6 +56,17 @@ extern SQLRETURN SQL_API SQLDriverConnect   (SQLHDBC, SQLHWND, SQLCHAR *,
 extern SQLRETURN SQL_API SQLSetConnectOption (SQLHDBC, SQLUSMALLINT,
                                               SQLULEN);
 
+/* From statement.c / arrow_reader.c — used by ReadPartition. */
+extern SQLRETURN SQL_API virtodbc__SQLAllocStmt    (SQLHDBC, SQLHSTMT *);
+extern SQLRETURN SQL_API virtodbc__SQLFreeStmt     (SQLHSTMT, SQLUSMALLINT);
+extern SQLRETURN SQL_API virtodbc__SQLNumResultCols (SQLHSTMT, SQLSMALLINT *);
+extern SQLRETURN SQL_API SQLExecDirect (SQLHSTMT, SQLCHAR *, SQLINTEGER);
+extern AdbcStatusCode virt_reader_create (VirtAdbcConnection *cn, void *hstmt,
+                                          int64_t batch_rows,
+                                          int sparql_dialect,
+                                          struct ArrowArrayStream *out,
+                                          struct AdbcError *err);
+
 /* ------------------------------------------------------------------ */
 /* helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -418,6 +429,133 @@ virt_cn_cancel (struct AdbcConnection *cn, struct AdbcError *err)
         if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
             return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, self->hdbc,
                                        victim, err);
+    }
+    return ADBC_STATUS_OK;
+}
+
+/* ====================================================================
+ *  Phase 9c — ConnectionReadPartition
+ *
+ *  Deserialise a partition descriptor produced by
+ *  StatementExecutePartitions, re-execute the contained SQL on a fresh
+ *  HSTMT (possibly on a different connection or in a different
+ *  process), and return an ArrowArrayStream of the result rows.
+ *
+ *  Partition descriptor format (single-partition, version 1):
+ *
+ *    Offset  Size   Content
+ *    ------  ----   -------
+ *    0       4      Magic "VIRT"
+ *    4       2      Version (uint16, little-endian) — currently 1
+ *    6       2      Flags (uint16, little-endian) — bit 0 = is_sparql
+ *    8       4      SQL length (uint32, little-endian)
+ *    12      N      SQL text (utf-8, NOT null-terminated)
+ * ==================================================================== */
+
+AdbcStatusCode
+virt_cn_read_partition (struct AdbcConnection *cn,
+                        const uint8_t *serialized, size_t length,
+                        struct ArrowArrayStream *out, struct AdbcError *err)
+{
+    SQLHSTMT hstmt = SQL_NULL_HSTMT;
+    SQLRETURN sr;
+    SQLSMALLINT ncols = 0;
+    AdbcStatusCode rc;
+    char *sql = NULL;
+    uint32_t sql_len;
+    uint16_t version, flags;
+    int is_sparql;
+
+    CN_SELF (cn, err);
+    if (!self->connected)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ReadPartition: connection is not open");
+    if (!serialized || length < VIRT_PARTITION_HDR_LEN)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "ReadPartition: invalid partition descriptor");
+    if (!out)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "ReadPartition: NULL out");
+
+    /* Validate magic and version. */
+    if (memcmp (serialized, VIRT_PARTITION_MAGIC, 4) != 0)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "ReadPartition: bad magic (not a Virtuoso partition)");
+
+    version = (uint16_t) serialized[4] | ((uint16_t) serialized[5] << 8);
+    if (version != VIRT_PARTITION_VERSION)
+        return virt_err_set (err, ADBC_STATUS_NOT_IMPLEMENTED, NULL, 0,
+                             "ReadPartition: unsupported version %u", version);
+
+    flags = (uint16_t) serialized[6] | ((uint16_t) serialized[7] << 8);
+    is_sparql = (flags & 0x01) ? 1 : 0;
+
+    sql_len  = (uint32_t) serialized[8]
+            | ((uint32_t) serialized[9] << 8)
+            | ((uint32_t) serialized[10] << 16)
+            | ((uint32_t) serialized[11] << 24);
+
+    if (VIRT_PARTITION_HDR_LEN + (size_t) sql_len > length)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "ReadPartition: truncated (declared %u bytes, have %zu)",
+                             sql_len, length - VIRT_PARTITION_HDR_LEN);
+
+    sql = (char *) malloc ((size_t) sql_len + 1);
+    if (!sql) return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                   "out of memory");
+    memcpy (sql, serialized + VIRT_PARTITION_HDR_LEN, sql_len);
+    sql[sql_len] = '\0';
+
+    /* Allocate a fresh HSTMT and execute the deserialised query. */
+    sr = virtodbc__SQLAllocStmt ((SQLHDBC) self->hdbc, &hstmt);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        free (sql);
+        return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, self->hdbc, NULL,
+                                   err);
+    }
+
+    /* Rebuild the wire SQL with sparql prefix if the original partition
+     * was flagged as SPARQL dialect.                                   */
+    {
+        const char *q = sql;
+        char *prefixed = NULL;
+        if (is_sparql) {
+            size_t need = 7 + sql_len + 1;
+            prefixed = (char *) malloc (need);
+            if (!prefixed) { free (sql); virtodbc__SQLFreeStmt (hstmt, SQL_DROP); return ADBC_STATUS_INTERNAL; }
+            memcpy (prefixed, "sparql ", 7);
+            memcpy (prefixed + 7, sql, sql_len + 1);
+            q = prefixed;
+        }
+        sr = SQLExecDirect (hstmt, (SQLCHAR *) q, SQL_NTS);
+        free (prefixed);
+    }
+    free (sql);
+
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        rc = virt_err_from_odbc (ADBC_STATUS_IO, NULL, NULL, hstmt, err);
+        virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+        return rc;
+    }
+
+    sr = virtodbc__SQLNumResultCols (hstmt, &ncols);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
+        rc = virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, NULL, hstmt, err);
+        virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+        return rc;
+    }
+
+    if (ncols == 0) {
+        memset (out, 0, sizeof (*out));
+        virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+        return ADBC_STATUS_OK;
+    }
+
+    rc = virt_reader_create (self, hstmt, 0 /*use default batch_rows*/,
+                             is_sparql, out, err);
+    if (rc != ADBC_STATUS_OK) {
+        virtodbc__SQLFreeStmt (hstmt, SQL_DROP);
+        return rc;
     }
     return ADBC_STATUS_OK;
 }

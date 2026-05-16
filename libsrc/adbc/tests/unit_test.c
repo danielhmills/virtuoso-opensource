@@ -1518,6 +1518,187 @@ test_dialect_toggle (struct AdbcDriver *drv, struct AdbcDatabase *db,
 
 /* ---------- Integration: gated on VIRT_ADBC_TEST_URI ---------- */
 
+/* ====================================================================
+ *  Phase 9 tests — ADBC 1.1.0 polish
+ * ==================================================================== */
+
+static void
+test_statistic_names (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                      struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema sch;
+    struct ArrowArray arr;
+    (void) db;
+
+    memset (&stream, 0, sizeof (stream));
+    memset (&sch, 0, sizeof (sch));
+    memset (&arr, 0, sizeof (arr));
+
+    ASSERT (drv->ConnectionGetStatisticNames (cn, &stream, &err)
+            == ADBC_STATUS_OK, "statistic_names: invoke");
+    ASSERT (stream.get_schema (&stream, &sch) == 0,
+            "statistic_names: schema");
+    ASSERT (sch.n_children == 2, "statistic_names: 2 columns");
+    if (sch.release) sch.release (&sch);
+
+    ASSERT (stream.get_next (&stream, &arr) == 0, "statistic_names: batch");
+    if (arr.release) {
+        ASSERT (arr.length >= 1, "statistic_names: at least 1 row");
+        arr.release (&arr);
+    } else {
+        ASSERT (0, "statistic_names: no batch");
+    }
+    stream.release (&stream);
+    fprintf (stdout, "[OK]  integration: GetStatisticNames\n");
+}
+
+static void
+test_statistics (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                 struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct ArrowArrayStream stream;
+    struct ArrowSchema sch;
+    struct ArrowArray arr;
+    (void) db;
+
+    memset (&stream, 0, sizeof (stream));
+    memset (&sch, 0, sizeof (sch));
+    memset (&arr, 0, sizeof (arr));
+
+    ASSERT (drv->ConnectionGetStatistics (cn, NULL, NULL, NULL, 1,
+                                          &stream, &err) == ADBC_STATUS_OK,
+            "statistics: invoke");
+    ASSERT (stream.get_schema (&stream, &sch) == 0,
+            "statistics: schema");
+    ASSERT (sch.n_children == 2, "statistics: 2 top-level columns");
+    if (sch.release) sch.release (&sch);
+
+    /* Consume the stream — it may have 0 or more rows depending on
+     * what tables exist in the test database.                          */
+    {
+        while (stream.get_next (&stream, &arr) == 0) {
+            if (arr.release) arr.release (&arr);
+            else break;
+        }
+    }
+    stream.release (&stream);
+    fprintf (stdout, "[OK]  integration: GetStatistics\n");
+}
+
+static void
+test_execute_schema (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                     struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct AdbcStatement stmt;
+    struct ArrowSchema sch;
+
+    memset (&stmt, 0, sizeof (stmt));
+    memset (&sch,  0, sizeof (sch));
+    (void) db;
+
+    ASSERT (drv->StatementNew (cn, &stmt, &err) == ADBC_STATUS_OK,
+            "exec_schema: new");
+    ASSERT (drv->StatementSetSqlQuery (&stmt,
+             "SELECT 1 AS a, 2 AS b, 'x' AS c", &err) == ADBC_STATUS_OK,
+            "exec_schema: set_sql");
+
+    ASSERT (drv->StatementExecuteSchema (&stmt, &sch, &err)
+            == ADBC_STATUS_OK, "exec_schema: invoke");
+    ASSERT (sch.n_children == 3, "exec_schema: 3 columns");
+    if (sch.release) sch.release (&sch);
+
+    drv->StatementRelease (&stmt, &err);
+    fprintf (stdout, "[OK]  integration: StatementExecuteSchema (3 cols)\n");
+}
+
+static void
+test_statement_cancel (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                       struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct AdbcStatement stmt;
+
+    memset (&stmt, 0, sizeof (stmt));
+    (void) db;
+
+    ASSERT (drv->StatementNew (cn, &stmt, &err) == ADBC_STATUS_OK,
+            "st_cancel: new");
+    ASSERT (drv->StatementSetSqlQuery (&stmt, "SELECT 1", &err)
+            == ADBC_STATUS_OK, "st_cancel: set_sql");
+
+    /* Cancel before execute — should be OK (nothing to cancel). */
+    ASSERT (drv->StatementCancel (&stmt, &err) == ADBC_STATUS_OK,
+            "st_cancel: before execute");
+
+    /* Execute and then cancel during stream consumption.
+     * The rows are already fetched so cancel may be a no-op.
+     * The important thing is that it returns OK.                        */
+    {
+        struct ArrowArrayStream stream;
+        memset (&stream, 0, sizeof (stream));
+        ASSERT (drv->StatementExecuteQuery (&stmt, &stream, NULL, &err)
+                == ADBC_STATUS_OK, "st_cancel: exec");
+        ASSERT (drv->StatementCancel (&stmt, &err) == ADBC_STATUS_OK,
+                "st_cancel: during stream");
+        if (stream.release) stream.release (&stream);
+    }
+
+    drv->StatementRelease (&stmt, &err);
+    fprintf (stdout, "[OK]  integration: StatementCancel\n");
+}
+
+static void
+test_partitions_roundtrip (struct AdbcDriver *drv, struct AdbcDatabase *db,
+                           struct AdbcConnection *cn)
+{
+    struct AdbcError err = ADBC_ERROR_INIT;
+    struct AdbcStatement stmt;
+    struct ArrowSchema sch;
+    struct AdbcPartitions parts;
+    struct ArrowArrayStream stream;
+    struct ArrowArray arr;
+    (void) db;
+
+    memset (&stmt, 0, sizeof (stmt));
+    memset (&sch,  0, sizeof (sch));
+    memset (&parts, 0, sizeof (parts));
+
+    ASSERT (drv->StatementNew (cn, &stmt, &err) == ADBC_STATUS_OK,
+            "partitions: new");
+    ASSERT (drv->StatementSetSqlQuery (&stmt, "SELECT 1 AS n", &err)
+            == ADBC_STATUS_OK, "partitions: sql");
+
+    ASSERT (drv->StatementExecutePartitions (&stmt, &sch, &parts,
+                                              NULL, &err) == ADBC_STATUS_OK,
+            "partitions: exec_partitions");
+    ASSERT (parts.num_partitions == 1, "partitions: 1 partition");
+    ASSERT (sch.n_children == 1, "partitions: 1 output column");
+    if (sch.release) sch.release (&sch);
+
+    /* Read the partition on the same connection. */
+    memset (&stream, 0, sizeof (stream));
+    ASSERT (drv->ConnectionReadPartition (cn, parts.partitions[0],
+                                          parts.partition_lengths[0],
+                                          &stream, &err) == ADBC_STATUS_OK,
+            "partitions: read_partition");
+
+    memset (&arr, 0, sizeof (arr));
+    ASSERT (stream.get_next (&stream, &arr) == 0, "partitions: get_next");
+    if (arr.release) {
+        ASSERT (arr.length >= 1, "partitions: at least 1 row");
+        arr.release (&arr);
+    }
+    if (stream.release) stream.release (&stream);
+
+    if (parts.release) parts.release (&parts);
+    drv->StatementRelease (&stmt, &err);
+    fprintf (stdout, "[OK]  integration: ExecutePartitions + ReadPartition\n");
+}
+
 static void
 test_integration (const char *uri)
 {
@@ -1620,6 +1801,13 @@ test_integration (const char *uri)
     test_sparql_via_prepare         (&drv, &db, &cn);
     test_dialect_toggle             (&drv, &db, &cn);
 
+    /* Phase 9 ADBC 1.1.0 polish tests. */
+    test_statistic_names            (&drv, &db, &cn);
+    test_statistics                 (&drv, &db, &cn);
+    test_execute_schema             (&drv, &db, &cn);
+    test_statement_cancel           (&drv, &db, &cn);
+    test_partitions_roundtrip       (&drv, &db, &cn);
+
     drv.ConnectionRelease (&cn, &err);
     drv.DatabaseRelease (&db, &err);
 }
@@ -1649,6 +1837,6 @@ main (void)
         fprintf (stderr, "%d test case(s) failed\n", g_failures);
         return EXIT_FAILURE;
     }
-    fprintf (stdout, "OK -- ADBC phase 2-8 unit tests passed\n");
+    fprintf (stdout, "OK -- ADBC phase 2-9 unit tests passed\n");
     return EXIT_SUCCESS;
 }

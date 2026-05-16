@@ -25,6 +25,7 @@
  *  Licensed under the GNU GPL v2; see COPYING in the project root.
  */
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,8 +41,14 @@
 extern SQLRETURN SQL_API virtodbc__SQLAllocStmt    (SQLHDBC, SQLHSTMT *);
 extern SQLRETURN SQL_API virtodbc__SQLFreeStmt     (SQLHSTMT, SQLUSMALLINT);
 extern SQLRETURN SQL_API virtodbc__SQLNumResultCols (SQLHSTMT, SQLSMALLINT *);
+extern SQLRETURN SQL_API virtodbc__SQLDescribeCol  (SQLHSTMT, SQLUSMALLINT,
+                                                    SQLCHAR *, SQLSMALLINT,
+                                                    SQLSMALLINT *, SQLSMALLINT *,
+                                                    SQLULEN *, SQLSMALLINT *,
+                                                    SQLSMALLINT *);
 extern SQLRETURN SQL_API virtodbc__SQLPrepare      (SQLHSTMT, SQLCHAR *,
                                                     SQLINTEGER);
+extern SQLRETURN SQL_API virtodbc__SQLCancel       (SQLHSTMT);
 extern SQLRETURN SQL_API SQLExecute      (SQLHSTMT);
 extern SQLRETURN SQL_API SQLNumParams    (SQLHSTMT, SQLSMALLINT *);
 extern SQLRETURN SQL_API SQLDescribeParam (SQLHSTMT, SQLUSMALLINT,
@@ -63,6 +70,7 @@ extern AdbcStatusCode virt_reader_create (VirtAdbcConnection *cn, void *hstmt,
                                           struct AdbcError *err);
 
 /* From type_map.c */
+extern enum ArrowType virt_sql_to_arrow_type (int sql_type, int *is_fallback);
 extern const char *virt_arrow_to_virtuoso_ddl (enum ArrowType atype);
 
 #define ST_SELF(st, err)                                                 \
@@ -404,6 +412,168 @@ sql_with_dialect_prefix (const VirtAdbcStatement *self)
     memcpy (out, prefix, plen);
     memcpy (out + plen, self->sql, slen + 1);
     return out;
+}
+
+/* Phase 9d: register an HSTMT as the currently-executing one on both
+ * the statement and the parent connection (under the connection mutex),
+ * so that StatementCancel (called from another thread) can find it.  */
+static void
+st_register_pending (VirtAdbcStatement *self, SQLHSTMT hstmt)
+{
+    pthread_mutex_t *m = (pthread_mutex_t *) self->cn->mu;
+    if (!m || !self->cn) return;
+    pthread_mutex_lock (m);
+    self->pending_hstmt        = hstmt;
+    self->cn->current_hstmt    = hstmt;
+    pthread_mutex_unlock (m);
+}
+
+static void
+st_clear_pending (VirtAdbcStatement *self)
+{
+    pthread_mutex_t *m = self->cn ? (pthread_mutex_t *) self->cn->mu : NULL;
+    if (!m) { self->pending_hstmt = NULL; return; }
+    pthread_mutex_lock (m);
+    if (self->cn->current_hstmt == self->pending_hstmt)
+        self->cn->current_hstmt = NULL;
+    self->pending_hstmt = NULL;
+    pthread_mutex_unlock (m);
+}
+
+/* ====================================================================
+ *  Phase 9d — StatementCancel
+ *
+ *  Thread-safe cancel of the statement's currently-executing HSTMT.
+ *  Reads the pending_hstmt pointer under the connection mutex; if
+ *  nothing is executing (no HSTMT registered) we return OK silently
+ *  per ADBC convention — the next API call on the statement will
+ *  return normally.
+ * ==================================================================== */
+
+AdbcStatusCode
+virt_st_cancel (struct AdbcStatement *st, struct AdbcError *err)
+{
+    pthread_mutex_t *m;
+    SQLHSTMT victim = SQL_NULL_HSTMT;
+    ST_SELF (st, err);
+
+    if (!self->cn || !self->cn->hdbc)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "StatementCancel: connection is closed");
+
+    m = (pthread_mutex_t *) self->cn->mu;
+    pthread_mutex_lock (m);
+    victim = (SQLHSTMT) self->cn->current_hstmt;
+    pthread_mutex_unlock (m);
+
+    if (victim == SQL_NULL_HSTMT)
+        return ADBC_STATUS_OK;      /* nothing to cancel; not an error */
+
+    {
+        SQLRETURN sr = virtodbc__SQLCancel (victim);
+        if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+            return virt_err_from_odbc (ADBC_STATUS_UNKNOWN, NULL, self->cn->hdbc,
+                                       victim, err);
+    }
+    return ADBC_STATUS_OK;
+}
+
+/* ====================================================================
+ *  Phase 9a — StatementExecuteSchema
+ *
+ *  Prepare (if needed), then use SQLNumResultCols + SQLDescribeCol to
+ *  build the result ArrowSchema WITHOUT executing the query. This lets
+ *  consumers discover the output shape before fetching rows.
+ * ==================================================================== */
+
+AdbcStatusCode
+virt_st_execute_schema (struct AdbcStatement *st, struct ArrowSchema *out,
+                        struct AdbcError *err)
+{
+    SQLHSTMT hstmt = SQL_NULL_HSTMT;
+    SQLSMALLINT ncols = 0;
+    SQLRETURN sr;
+    AdbcStatusCode rc;
+    int i;
+
+    ST_SELF (st, err);
+    if (!self->sql)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ExecuteSchema: no SQL set");
+    if (!self->cn || !self->cn->hdbc)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ExecuteSchema: connection closed");
+    if (!out)
+        return virt_err_set (err, ADBC_STATUS_INVALID_ARGUMENT, NULL, 0,
+                             "ExecuteSchema: NULL out");
+
+    /* Prepare if not already done. */
+    if (!self->prepared || !self->hstmt) {
+        rc = virt_st_prepare (st, err);
+        if (rc != ADBC_STATUS_OK)
+            return rc;
+    }
+    hstmt = (SQLHSTMT) self->hstmt;
+
+    sr = virtodbc__SQLNumResultCols (hstmt, &ncols);
+    if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+        return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, NULL, hstmt, err);
+
+    ArrowSchemaInit (out);
+    if (ncols > 0) {
+        if (ArrowSchemaSetTypeStruct (out, ncols) != 0)
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "ArrowSchemaSetTypeStruct failed");
+    }
+
+    for (i = 0; i < ncols; i++) {
+        SQLCHAR colname[256];
+        SQLSMALLINT cbname = 0, sqltype = 0, scale = 0, nullable = 0;
+        SQLULEN precision = 0;
+        enum ArrowType atype;
+        int fallback = 0;
+        struct ArrowSchema *child = out->children[i];
+
+        colname[0] = '\0';
+        sr = virtodbc__SQLDescribeCol (hstmt, (SQLUSMALLINT) (i + 1),
+                                       colname, (SQLSMALLINT) sizeof (colname),
+                                       &cbname, &sqltype, &precision, &scale,
+                                       &nullable);
+        if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
+            return virt_err_from_odbc (ADBC_STATUS_INTERNAL, NULL, NULL, hstmt,
+                                       err);
+
+        atype = virt_sql_to_arrow_type ((int) sqltype, &fallback);
+
+        if (atype == NANOARROW_TYPE_TIMESTAMP) {
+            if (ArrowSchemaSetTypeDateTime (child, NANOARROW_TYPE_TIMESTAMP,
+                                           NANOARROW_TIME_UNIT_MICRO, NULL) != 0)
+                return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                     "SetTypeDateTime[ts] failed");
+        } else if (atype == NANOARROW_TYPE_TIME64) {
+            if (ArrowSchemaSetTypeDateTime (child, NANOARROW_TYPE_TIME64,
+                                           NANOARROW_TIME_UNIT_MICRO, NULL) != 0)
+                return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                     "SetTypeDateTime[time] failed");
+        } else if (atype == NANOARROW_TYPE_DATE32) {
+            if (ArrowSchemaSetType (child, NANOARROW_TYPE_DATE32) != 0)
+                return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                     "SetType(date32) failed");
+        } else {
+            if (ArrowSchemaSetType (child, atype) != 0)
+                return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                     "SetType(%d) failed", (int) atype);
+        }
+
+        if (ArrowSchemaSetName (child,
+                              (const char *) (colname[0] ? colname
+                                                         : (SQLCHAR *) "")) != 0)
+            return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                                 "SetName failed");
+        (void) fallback;
+    }
+
+    return ADBC_STATUS_OK;
 }
 
 /* ====================================================================
@@ -834,7 +1004,9 @@ virt_st_prepare (struct AdbcStatement *st, struct AdbcError *err)
     {
         char *prefixed = sql_with_dialect_prefix (self);
         const char *q = prefixed ? prefixed : self->sql;
+        st_register_pending (self, hstmt);
         sr = SQLPrepare (hstmt, (SQLCHAR *) q, SQL_NTS);
+        st_clear_pending (self);
         free (prefixed);
     }
     if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
@@ -857,8 +1029,6 @@ virt_st_prepare (struct AdbcStatement *st, struct AdbcError *err)
 /* for ambiguous parameters; we surface those as utf8 so callers can */
 /* still bind something.                                              */
 /* ------------------------------------------------------------------ */
-
-extern enum ArrowType virt_sql_to_arrow_type (int sql_type, int *fallback);
 
 AdbcStatusCode
 virt_st_get_parameter_schema (struct AdbcStatement *st,
@@ -1092,7 +1262,9 @@ virt_st_execute_query (struct AdbcStatement *st,
 
     /* Prepared-without-binds path: SQLExecute on the persistent HSTMT. */
     if (self->prepared && self->hstmt) {
+        st_register_pending (self, (SQLHSTMT) self->hstmt);
         sr = SQLExecute ((SQLHSTMT) self->hstmt);
+        st_clear_pending (self);
         if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO)
             return virt_err_from_odbc (ADBC_STATUS_IO, NULL, NULL,
                                        self->hstmt, err);
@@ -1131,7 +1303,9 @@ virt_st_execute_query (struct AdbcStatement *st,
     {
         char *prefixed = sql_with_dialect_prefix (self);
         const char *q = prefixed ? prefixed : self->sql;
+        st_register_pending (self, hstmt);
         sr = SQLExecDirect (hstmt, (SQLCHAR *) q, SQL_NTS);
+        st_clear_pending (self);
         free (prefixed);
     }
     if (sr != SQL_SUCCESS && sr != SQL_SUCCESS_WITH_INFO) {
@@ -1174,5 +1348,116 @@ virt_st_execute_query (struct AdbcStatement *st,
         return rc;
     }
     /* The reader owns hstmt now. */
+    return ADBC_STATUS_OK;
+}
+
+/* ====================================================================
+ *  Phase 9c — StatementExecutePartitions
+ *
+ *  Serialise the statement's SQL (and dialect flag) into a self-
+ *  contained partition descriptor that can be re-executed elsewhere
+ *  via ConnectionReadPartition. Single-partition: one descriptor
+ *  containing the full SQL text.
+ *
+ *  Format: see VIRT_PARTITION_HDR_LEN / VIRT_PARTITION_MAGIC in
+ *  virtuoso_adbc.h.
+ * ==================================================================== */
+
+static void
+partitions_release (struct AdbcPartitions *p)
+{
+    size_t i;
+    if (!p) return;
+    if (p->partitions) {
+        for (i = 0; i < p->num_partitions; i++)
+            free ((void *) p->partitions[i]);
+        free (p->partitions);
+        p->partitions = NULL;
+    }
+    if (p->partition_lengths) {
+        free ((void *) p->partition_lengths);
+        p->partition_lengths = NULL;
+    }
+    p->num_partitions = 0;
+    p->private_data   = NULL;
+    p->release        = NULL;
+}
+
+AdbcStatusCode
+virt_st_execute_partitions (struct AdbcStatement *st,
+                            struct ArrowSchema *schema,
+                            struct AdbcPartitions *partitions,
+                            int64_t *rows_affected,
+                            struct AdbcError *err)
+{
+    AdbcStatusCode rc;
+    size_t sql_len, blob_len;
+    uint8_t *blob;
+    uint16_t flags;
+    ST_SELF (st, err);
+
+    if (!self->sql)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ExecutePartitions: no SQL set");
+    if (!self->cn || !self->cn->hdbc)
+        return virt_err_set (err, ADBC_STATUS_INVALID_STATE, NULL, 0,
+                             "ExecutePartitions: connection closed");
+
+    /* Get the result schema via ExecuteSchema. */
+    if (schema) {
+        rc = virt_st_execute_schema (st, schema, err);
+        if (rc != ADBC_STATUS_OK)
+            return rc;
+    }
+
+    if (rows_affected)
+        *rows_affected = -1;
+
+    if (!partitions)
+        return ADBC_STATUS_OK;      /* caller only wanted schema */
+
+    /* Build a single partition descriptor. */
+    sql_len = strlen (self->sql);
+    blob_len = VIRT_PARTITION_HDR_LEN + sql_len;
+    blob = (uint8_t *) malloc (blob_len);
+    if (!blob)
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "out of memory");
+
+    /* Header. */
+    memcpy (blob, VIRT_PARTITION_MAGIC, 4);
+    blob[4] = (uint8_t) (VIRT_PARTITION_VERSION & 0xFF);
+    blob[5] = (uint8_t) ((VIRT_PARTITION_VERSION >> 8) & 0xFF);
+    flags   = (uint16_t) (self->sparql_dialect ? 0x01 : 0x00);
+    blob[6] = (uint8_t) (flags & 0xFF);
+    blob[7] = (uint8_t) ((flags >> 8) & 0xFF);
+    blob[8]  = (uint8_t) (sql_len & 0xFF);
+    blob[9]  = (uint8_t) ((sql_len >> 8) & 0xFF);
+    blob[10] = (uint8_t) ((sql_len >> 16) & 0xFF);
+    blob[11] = (uint8_t) ((sql_len >> 24) & 0xFF);
+    memcpy (blob + VIRT_PARTITION_HDR_LEN, self->sql, sql_len);
+
+    /* Populate AdbcPartitions. */
+    memset (partitions, 0, sizeof (*partitions));
+    partitions->num_partitions = 1;
+    partitions->partitions = (const uint8_t **) malloc (sizeof (uint8_t *));
+    if (!partitions->partitions) {
+        free (blob);
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "out of memory");
+    }
+    partitions->partition_lengths = (const size_t *) malloc (sizeof (size_t));
+    if (!partitions->partition_lengths) {
+        free ((void *) partitions->partitions);
+        partitions->partitions = NULL;
+        free (blob);
+        return virt_err_set (err, ADBC_STATUS_INTERNAL, NULL, 0,
+                             "out of memory");
+    }
+    partitions->partitions[0]       = blob;
+    ((size_t *) partitions->partition_lengths)[0] = blob_len;
+    partitions->release             = partitions_release;
+    partitions->private_data        = NULL;
+
     return ADBC_STATUS_OK;
 }
