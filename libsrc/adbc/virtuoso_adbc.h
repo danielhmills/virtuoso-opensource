@@ -202,6 +202,30 @@ AdbcStatusCode virt_cn_rollback       (struct AdbcConnection *cn,
 AdbcStatusCode virt_cn_cancel         (struct AdbcConnection *cn,
                                        struct AdbcError *err);
 
+/* Phase 6: catalog / metadata.                                       */
+AdbcStatusCode virt_cn_get_table_types (struct AdbcConnection *cn,
+                                        struct ArrowArrayStream *out,
+                                        struct AdbcError *err);
+AdbcStatusCode virt_cn_get_info (struct AdbcConnection *cn,
+                                 const uint32_t *info_codes,
+                                 size_t info_codes_length,
+                                 struct ArrowArrayStream *out,
+                                 struct AdbcError *err);
+AdbcStatusCode virt_cn_get_table_schema (struct AdbcConnection *cn,
+                                         const char *catalog,
+                                         const char *db_schema,
+                                         const char *table_name,
+                                         struct ArrowSchema *out,
+                                         struct AdbcError *err);
+AdbcStatusCode virt_cn_get_objects (struct AdbcConnection *cn, int depth,
+                                    const char *catalog,
+                                    const char *db_schema,
+                                    const char *table_name,
+                                    const char **table_type,
+                                    const char *column_name,
+                                    struct ArrowArrayStream *out,
+                                    struct AdbcError *err);
+
 /* -------------------------------------------------------------------
  *  Statement handle and vtable (statement.c).
  * ------------------------------------------------------------------- */
