@@ -5,11 +5,8 @@ for OpenLink Virtuoso. Once complete it loads as a peer of the upstream
 `adbc_driver_postgresql` / `adbc_driver_sqlite` drivers via the
 `arrow-adbc` driver manager.
 
-**Status: phase 1 (skeleton).** The library builds, exports
-`AdbcDriverInit`, and the dispatch table validates correctly for ADBC
-1.0.0 and 1.1.0 — but no database/connection/statement functions are
-implemented yet. See [`../../plan.md`](../../plan.md) for the full
-phased plan.
+**Status.** The library builds, exports `AdbcDriverInit`, and the
+dispatch table validates correctly for ADBC 1.0.0 and 1.1.0.
 
 ## Layout
 
@@ -23,7 +20,7 @@ libsrc/adbc/
 │   ├── nanoarrow.h         -- vendored
 │   └── VENDOR.txt          -- vendoring provenance
 └── tests/
-    └── smoke_test.c        -- phase 1 sanity test
+    └── smoke_test.c        -- dispatch-table sanity test
 ```
 
 ## Building
@@ -88,13 +85,6 @@ with adbc_driver_manager.dbapi.connect(
     assert schema.metadata.get(b"virtuoso:dialect") == b"sparql"
     table = cur.fetch_arrow_table()
 ```
-
-## Future phases
-
-Phases 9–12 are sketched in [`../../plan.md`](../../plan.md) and add,
-in order: ADBC 1.1.0 polish (ExecuteSchema, statistics, partitions,
-cancel), validation test harness, packaging, and upstream submission
-to `apache/arrow-adbc`.
 
 ## Vendored sources
 
