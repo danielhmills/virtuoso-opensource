@@ -542,9 +542,41 @@ virt_reader_release (struct ArrowArrayStream *stream)
 /*  Public factory                                                     */
 /* ------------------------------------------------------------------ */
 
+/* Attach Virtuoso-specific schema metadata to the cached schema.    */
+/* Called once after reader_build_schema, before publishing.          */
+static AdbcStatusCode
+reader_apply_dialect_metadata (VirtAdbcReader *r, int sparql_dialect)
+{
+    struct ArrowBuffer buf;
+    int i;
+
+    if (!sparql_dialect)
+        return ADBC_STATUS_OK;
+
+    /* Top-level: virtuoso:dialect=sparql */
+    ArrowMetadataBuilderInit (&buf, NULL);
+    ArrowMetadataBuilderAppend (&buf,
+        ArrowCharView ("virtuoso:dialect"), ArrowCharView ("sparql"));
+    ArrowSchemaSetMetadata (&r->schema, (const char *) buf.data);
+    ArrowBufferReset (&buf);
+
+    /* Each child: virtuoso:rdf=true so downstream tools know cells
+     * are RDF-shaped (IRIs, blanks, or typed/lang literals encoded
+     * as strings).                                                  */
+    for (i = 0; i < r->ncols; i++) {
+        ArrowMetadataBuilderInit (&buf, NULL);
+        ArrowMetadataBuilderAppend (&buf,
+            ArrowCharView ("virtuoso:rdf"), ArrowCharView ("true"));
+        ArrowSchemaSetMetadata (r->schema.children[i],
+                                (const char *) buf.data);
+        ArrowBufferReset (&buf);
+    }
+    return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode
 virt_reader_create (VirtAdbcConnection *cn, void *hstmt, int64_t batch_rows,
-                    struct ArrowArrayStream *out_stream,
+                    int sparql_dialect, struct ArrowArrayStream *out_stream,
                     struct AdbcError *err)
 {
     VirtAdbcReader *r;
@@ -570,6 +602,7 @@ virt_reader_create (VirtAdbcConnection *cn, void *hstmt, int64_t batch_rows,
         free (r);
         return rc;
     }
+    reader_apply_dialect_metadata (r, sparql_dialect);
 
     /* Publish HSTMT as the connection's current statement so Cancel
      * can target it.                                                  */

@@ -265,6 +265,11 @@ typedef struct VirtAdbcStatement {
     char               *ingest_target_catalog;
     char               *ingest_target_db_schema;
     int                 ingest_temporary;
+    /* Phase 8: Virtuoso domain extras. dialect = 0 (SQL, default) or
+     * 1 (SPARQL: ExecuteQuery prepends "sparql " before sending the
+     * statement text on the wire, and the resulting Arrow schema
+     * carries virtuoso:dialect=sparql metadata).                       */
+    int                 sparql_dialect;
 } VirtAdbcStatement;
 
 AdbcStatusCode virt_st_new (struct AdbcConnection *cn,
