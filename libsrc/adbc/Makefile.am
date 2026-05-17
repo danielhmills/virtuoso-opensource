@@ -168,9 +168,10 @@ EXTRA_DIST = README.md
 
 # Shared CPPFLAGS for validation sources.
 virt_validation_cppflags  = $(GTEST_CFLAGS)
+virt_validation_cppflags += $(ADBC_CFLAGS)
+virt_validation_cppflags += $(NANOARROW_CFLAGS)
 virt_validation_cppflags += -I$(srcdir)/tests/validation/include
 virt_validation_cppflags += -I$(srcdir)/tests/validation
-virt_validation_cppflags += -I$(srcdir)/include
 virt_validation_cppflags += -I$(srcdir)
 virt_validation_cppflags += -I$(top_srcdir)/libsrc
 virt_validation_cppflags += -I$(top_srcdir)/libsrc/Dk
