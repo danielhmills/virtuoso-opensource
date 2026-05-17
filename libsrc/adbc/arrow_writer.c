@@ -25,7 +25,7 @@
 #include "sqlext.h"
 #include "sqltypes.h"
 
-#include "nanoarrow.h"
+#include <nanoarrow/nanoarrow.h>
 
 #include "virtuoso_adbc.h"
 

@@ -22,7 +22,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "adbc.h"
+#include <adbc.h>
 
 #ifdef __cplusplus
 extern "C" {

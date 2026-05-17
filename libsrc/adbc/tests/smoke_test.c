@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "adbc.h"
+#include <adbc.h>
 
 extern AdbcStatusCode AdbcDriverInit (int version, void *driver,
                                       struct AdbcError *error);

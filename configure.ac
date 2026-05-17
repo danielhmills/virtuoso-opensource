@@ -84,6 +84,38 @@ AC_SUBST(host_cpu)
 AC_SUBST(host_vendor)
 AC_SUBST(host_os)
 
+AC_ARG_WITH([adbc-prefix], [AS_HELP_STRING([--with-adbc-prefix=PREFIX],
+    [build the Virtuoso ADBC driver using Arrow ADBC and nanoarrow installed under PREFIX])],
+    [with_adbc_prefix=$withval],
+    [with_adbc_prefix=no])
+
+AS_IF([test "x$with_adbc_prefix" != "xno"], [
+    AS_CASE([$with_adbc_prefix],
+      [yes], [AC_MSG_ERROR([--with-adbc-prefix requires a prefix path])])
+    saved_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+    case "x$PKG_CONFIG_PATH" in
+      x) PKG_CONFIG_PATH="$with_adbc_prefix/lib/pkgconfig:$with_adbc_prefix/lib64/pkgconfig:$with_adbc_prefix/share/pkgconfig" ;;
+      *) PKG_CONFIG_PATH="$with_adbc_prefix/lib/pkgconfig:$with_adbc_prefix/lib64/pkgconfig:$with_adbc_prefix/share/pkgconfig:$PKG_CONFIG_PATH" ;;
+    esac
+    export PKG_CONFIG_PATH
+    PKG_CHECK_MODULES([ADBC], [adbc-driver-manager])
+    PKG_CHECK_MODULES([NANOARROW], [nanoarrow])
+    PKG_CONFIG_PATH="$saved_PKG_CONFIG_PATH"
+    export PKG_CONFIG_PATH
+    ADBC_ENABLED=yes
+], [
+    ADBC_ENABLED=no
+    ADBC_CFLAGS=""
+    ADBC_LIBS=""
+    NANOARROW_CFLAGS=""
+    NANOARROW_LIBS=""
+])
+AM_CONDITIONAL([WITH_ADBC], [test "x$ADBC_ENABLED" = "xyes"])
+AC_SUBST([ADBC_CFLAGS])
+AC_SUBST([ADBC_LIBS])
+AC_SUBST([NANOARROW_CFLAGS])
+AC_SUBST([NANOARROW_LIBS])
+
 
 ##########################################################################
 ##									##

@@ -1,6 +1,26 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 #
+#  This file is part of the OpenLink Software Virtuoso Open-Source (VOS)
+#  project.
+#
+#  Copyright (C) 1998-2026 OpenLink Software
+#
+#  This project is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; only version 2 of the License, dated June 1991.
+#
+#  This program is distributed in the hope that it will be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+#  General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+#
+#
+#
 #  Makefile.am for the Virtuoso ADBC driver.
 #
 #  Builds libvirtadbc as a shared library (loadable module) that
@@ -35,11 +55,12 @@ libvirtadbc_la_SOURCES = \
 	type_map.c \
 	options.c \
 	error.c \
-	program_info.c \
-	nanoarrow.c
+	program_info.c
 
 libvirtadbc_la_CFLAGS  = @VIRT_AM_CFLAGS@
-libvirtadbc_la_CFLAGS += -I$(srcdir)/include
+libvirtadbc_la_CFLAGS += -I$(srcdir)
+libvirtadbc_la_CFLAGS += $(ADBC_CFLAGS)
+libvirtadbc_la_CFLAGS += $(NANOARROW_CFLAGS)
 libvirtadbc_la_CFLAGS += -I$(top_srcdir)/libsrc
 libvirtadbc_la_CFLAGS += -I$(top_srcdir)/libsrc/Dk
 libvirtadbc_la_CFLAGS += -I$(top_srcdir)/libsrc/Wi
@@ -60,12 +81,11 @@ libvirtadbc_la_LIBADD = \
 	$(top_builddir)/libsrc/Dk/libdk1t.la \
 	$(top_builddir)/libsrc/Thread/libthrs.la \
 	$(top_builddir)/libsrc/util/libutil.la \
+	$(NANOARROW_LIBS) \
 	@clntlibs@ @LIBTHR@ @LIBDL@ @ZLIB_LIB@
 
 noinst_HEADERS = \
-	virtuoso_adbc.h \
-	include/adbc.h \
-	include/nanoarrow.h
+	virtuoso_adbc.h
 
 # ----------------------------------------------------------------------
 #  Tests.
@@ -81,7 +101,8 @@ check_PROGRAMS  = tests/adbc_smoke_test tests/adbc_unit_test
 TESTS           = tests/adbc_smoke_test tests/adbc_unit_test
 
 tests_adbc_smoke_test_SOURCES = tests/smoke_test.c
-tests_adbc_smoke_test_CFLAGS  = @VIRT_AM_CFLAGS@ -I$(srcdir)/include
+tests_adbc_smoke_test_CFLAGS  = @VIRT_AM_CFLAGS@ -I$(srcdir)
+tests_adbc_smoke_test_CFLAGS += $(ADBC_CFLAGS)
 tests_adbc_smoke_test_LDADD   = libvirtadbc.la @LIBDL@
 
 #
@@ -102,10 +123,11 @@ tests_adbc_unit_test_SOURCES = \
 	catalog.c \
 	type_map.c \
 	program_info.c \
-	nanoarrow.c \
 	adbc_entry.c
 tests_adbc_unit_test_CFLAGS  = @VIRT_AM_CFLAGS@
-tests_adbc_unit_test_CFLAGS += -I$(srcdir) -I$(srcdir)/include
+tests_adbc_unit_test_CFLAGS += -I$(srcdir)
+tests_adbc_unit_test_CFLAGS += $(ADBC_CFLAGS)
+tests_adbc_unit_test_CFLAGS += $(NANOARROW_CFLAGS)
 tests_adbc_unit_test_CFLAGS += -I$(top_srcdir)/libsrc
 tests_adbc_unit_test_CFLAGS += -I$(top_srcdir)/libsrc/Dk
 tests_adbc_unit_test_CFLAGS += -I$(top_srcdir)/libsrc/Wi
@@ -117,11 +139,10 @@ tests_adbc_unit_test_LDADD   = \
 	$(top_builddir)/libsrc/Dk/libdk1t.la \
 	$(top_builddir)/libsrc/Thread/libthrs.la \
 	$(top_builddir)/libsrc/util/libutil.la \
+	$(NANOARROW_LIBS) \
 	@clntlibs@ @LIBTHR@ @LIBDL@ @ZLIB_LIB@
 
-EXTRA_DIST = \
-	README.md \
-	include/VENDOR.txt
+EXTRA_DIST = README.md
 
 # ----------------------------------------------------------------------
 #  Upstream ADBC validation harness (C++, Google Test).
@@ -181,6 +202,7 @@ tests_validation_adbc_validation_runner_LDADD     = \
 	$(top_builddir)/libsrc/Dk/libdk1t.la \
 	$(top_builddir)/libsrc/Thread/libthrs.la \
 	$(top_builddir)/libsrc/util/libutil.la \
+	$(NANOARROW_LIBS) \
 	@clntlibs@ @LIBTHR@ @LIBDL@ @ZLIB_LIB@ \
 	$(GTEST_LIBS) -lstdc++
 

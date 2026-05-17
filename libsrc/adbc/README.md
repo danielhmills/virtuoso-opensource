@@ -5,11 +5,9 @@ for OpenLink Virtuoso. Once complete it loads as a peer of the upstream
 `adbc_driver_postgresql` / `adbc_driver_sqlite` drivers via the
 `arrow-adbc` driver manager.
 
-**Status: phase 1 (skeleton).** The library builds, exports
-`AdbcDriverInit`, and the dispatch table validates correctly for ADBC
-1.0.0 and 1.1.0 — but no database/connection/statement functions are
-implemented yet. See [`../../plan.md`](../../plan.md) for the full
-phased plan.
+**Status.** The driver builds when enabled with `--with-adbc-prefix=...`,
+exports `AdbcDriverInit`, and the dispatch table validates correctly for
+ADBC 1.0.0 and 1.1.0.
 
 ## Layout
 
@@ -17,21 +15,24 @@ phased plan.
 libsrc/adbc/
 ├── adbc_entry.c            -- AdbcDriverInit (dispatch table)
 ├── virtuoso_adbc.h         -- private driver header
-├── nanoarrow.c             -- vendored from apache/arrow-adbc
-├── include/
-│   ├── adbc.h              -- vendored ADBC public ABI
-│   ├── nanoarrow.h         -- vendored
-│   └── VENDOR.txt          -- vendoring provenance
 └── tests/
     └── smoke_test.c        -- phase 1 sanity test
 ```
 
 ## Building
 
-The driver is wired into the standard Virtuoso autotools build:
+The driver is optional. Build Virtuoso without it by omitting the
+`--with-adbc-prefix` flag:
 
 ```sh
-./autogen.sh && ./configure && make -C libsrc/adbc
+./autogen.sh && ./configure && make
+```
+
+To build the ADBC driver, install Arrow ADBC and nanoarrow under a
+prefix and point configure at it:
+
+```sh
+./autogen.sh && ./configure --with-adbc-prefix=/opt/arrow-adbc && make -C libsrc/adbc
 make -C libsrc/adbc check        # runs the smoke test
 ```
 
@@ -96,10 +97,7 @@ in order: ADBC 1.1.0 polish (ExecuteSchema, statistics, partitions,
 cancel), validation test harness, packaging, and upstream submission
 to `apache/arrow-adbc`.
 
-## Vendored sources
+## External sources
 
-`adbc.h`, `nanoarrow.h`, and `nanoarrow.c` are vendored verbatim from
-`apache/arrow-adbc`; see [`include/VENDOR.txt`](include/VENDOR.txt) for
-the upstream commit and refresh procedure. They are Apache 2.0
-licensed; the rest of this directory is GPL-2 in line with the parent
-project.
+The driver expects the Arrow ADBC public headers and nanoarrow to come
+from the external prefix provided to `configure`.
