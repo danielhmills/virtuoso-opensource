@@ -1,0 +1,15 @@
+# Upstream arrow-adbc validation sources vendored locally by vendor_validation.sh.
+/adbc_validation.h
+/adbc_validation.cc
+/adbc_validation_util.h
+/adbc_validation_util.cc
+/adbc_validation_connection.cc
+/adbc_validation_database.cc
+/adbc_validation_statement.cc
+/common/
+/include/nanoarrow/nanoarrow.hpp
+
+# Local build products.
+/.deps/
+/.dirstamp
+/adbc_validation_runner

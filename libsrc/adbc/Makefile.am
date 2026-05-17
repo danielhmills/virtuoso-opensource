@@ -35,6 +35,7 @@ libvirtadbc_la_SOURCES = \
 	type_map.c \
 	options.c \
 	error.c \
+	program_info.c \
 	nanoarrow.c
 
 libvirtadbc_la_CFLAGS  = @VIRT_AM_CFLAGS@
@@ -100,6 +101,7 @@ tests_adbc_unit_test_SOURCES = \
 	arrow_writer.c \
 	catalog.c \
 	type_map.c \
+	program_info.c \
 	nanoarrow.c \
 	adbc_entry.c
 tests_adbc_unit_test_CFLAGS  = @VIRT_AM_CFLAGS@
@@ -120,3 +122,128 @@ tests_adbc_unit_test_LDADD   = \
 EXTRA_DIST = \
 	README.md \
 	include/VENDOR.txt
+
+# ----------------------------------------------------------------------
+#  Upstream ADBC validation harness (C++, Google Test).
+#
+#  Requires: Google Test (libgtest + libgtest_main) and the arrow-adbc
+#            validation sources (symlinked in tests/validation/).
+#
+#  The runner is NOT built by default and not part of "make check"
+#  unless GTEST_CFLAGS + GTEST_LIBS are set.  When available:
+#
+#    GTEST_CFLAGS="$(pkg-config --cflags gtest)"    \
+#    GTEST_LIBS="$(pkg-config --libs gtest gtest_main)" \
+#    make tests/validation/adbc_validation_runner
+#
+#  Then run against a Virtuoso server:
+#
+#    VIRT_ADBC_TEST_URI=virtuoso://dba:dba@localhost:1111 \
+#    ./tests/validation/adbc_validation_runner
+#
+#  Set VIRT_VALIDATION_SERVER_CMD to have the runner start its own
+#  server fixture (e.g. VIRT_VALIDATION_SERVER_CMD="virtuoso-t +configfile virt.ini").
+# ----------------------------------------------------------------------
+
+# Shared CPPFLAGS for validation sources.
+virt_validation_cppflags  = $(GTEST_CFLAGS)
+virt_validation_cppflags += -I$(srcdir)/tests/validation/include
+virt_validation_cppflags += -I$(srcdir)/tests/validation
+virt_validation_cppflags += -I$(srcdir)/include
+virt_validation_cppflags += -I$(srcdir)
+virt_validation_cppflags += -I$(top_srcdir)/libsrc
+virt_validation_cppflags += -I$(top_srcdir)/libsrc/Dk
+virt_validation_cppflags += -I$(top_srcdir)/libsrc/Wi
+virt_validation_cppflags += -I$(top_srcdir)/libsrc/odbcsdk/include
+virt_validation_cppflags += -I$(top_srcdir)/libsrc/langfunc
+virt_validation_cppflags += -I$(top_srcdir)/libsrc/plugin
+virt_validation_cppflags += -I$(top_builddir)/libsrc
+virt_validation_cppflags += -I$(top_srcdir)
+virt_validation_cppflags += @VIRT_AM_CFLAGS@
+
+EXTRA_PROGRAMS = tests/validation/adbc_validation_runner
+
+tests_validation_adbc_validation_runner_SOURCES  = \
+	tests/validation/validation_runner.cc
+
+nodist_tests_validation_adbc_validation_runner_SOURCES = \
+	tests/validation/adbc_validation.cc \
+	tests/validation/adbc_validation_connection.cc \
+	tests/validation/adbc_validation_database.cc \
+	tests/validation/adbc_validation_statement.cc \
+	tests/validation/adbc_validation_util.cc \
+	tests/validation/common/utils.c
+
+tests_validation_adbc_validation_runner_CPPFLAGS  = $(virt_validation_cppflags)
+tests_validation_adbc_validation_runner_LDADD     = \
+	libvirtadbc.la \
+	$(top_builddir)/libsrc/Wi/libwic.la \
+	$(top_builddir)/libsrc/Dk/libdk1t.la \
+	$(top_builddir)/libsrc/Thread/libthrs.la \
+	$(top_builddir)/libsrc/util/libutil.la \
+	@clntlibs@ @LIBTHR@ @LIBDL@ @ZLIB_LIB@ \
+	$(GTEST_LIBS) -lstdc++
+
+# Hook: if the runner binary exists and GTEST is available, add it to
+# the check target.
+check-validation:
+	@if [ -z "$(GTEST_CFLAGS)$(GTEST_LIBS)" ]; then \
+	  echo "[SKIP] validation runner not built (set GTEST_CFLAGS and GTEST_LIBS)"; \
+	elif $(MAKE) tests/validation/adbc_validation_runner; then \
+	  echo "=== ADBC Validation Runner ==="; \
+	  if [ -n "$$VIRT_ADBC_TEST_URI" ]; then \
+	    ./tests/validation/adbc_validation_runner $(GTEST_ARGS); \
+	  else \
+	    echo "[SKIP] Set VIRT_ADBC_TEST_URI to run validation tests"; \
+	  fi; \
+	else \
+	  exit $$?; \
+	fi
+
+.PHONY: check-validation
+
+# ----------------------------------------------------------------------
+#  pkg-config file
+#
+#  Generates adbc-driver-virtuoso.pc from the .pc.in template, then
+#  installs it into $(libdir)/pkgconfig/ alongside the driver.
+# ----------------------------------------------------------------------
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = adbc-driver-virtuoso.pc
+
+# Rule to generate the .pc file by substituting @prefix@ / @libdir@ /
+# @PACKAGE_VERSION@ at build time (we cannot use AC_CONFIG_FILES
+# because configure.ac lives elsewhere in the parent project).
+adbc-driver-virtuoso.pc: $(top_srcdir)/adbc-driver-virtuoso.pc.in
+	@$(MKDIR_P) $(@D)
+	sed \
+	  -e 's|@prefix@|$(prefix)|g' \
+	  -e 's|@exec_prefix@|$(exec_prefix)|g' \
+	  -e 's|@libdir@|$(libdir)|g' \
+	  -e 's|@includedir@|$(includedir)|g' \
+	  -e 's|@PACKAGE_VERSION@|$(PACKAGE_VERSION)|g' \
+	  $< > $@
+
+CLEANFILES = adbc-driver-virtuoso.pc
+
+# ----------------------------------------------------------------------
+#  Python wheel
+#
+#  Builds a minimal wheel that vendors libvirtadbc.{so,dylib} and
+#  registers the entry-point adbc_driver_virtuoso so the pyarrow
+#  driver manager can find it.
+#
+#  Use:  make python-wheel
+# ----------------------------------------------------------------------
+
+python-wheel: libvirtadbc.la
+	@if [ -d python ]; then \
+	  rm -rf python/build python/dist python/adbc_driver_virtuoso.egg-info; \
+	  cp -p .libs/libvirtadbc.* python/adbc_driver_virtuoso/ 2>/dev/null || true; \
+	  cd python && $(PYTHON) -m build --wheel; \
+	else \
+	  echo "[SKIP] python/ directory not present"; \
+	fi
+
+.PHONY: python-wheel
