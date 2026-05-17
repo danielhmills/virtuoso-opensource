@@ -35,6 +35,7 @@ libvirtadbc_la_SOURCES = \
 	type_map.c \
 	options.c \
 	error.c \
+	program_info.c \
 	nanoarrow.c
 
 libvirtadbc_la_CFLAGS  = @VIRT_AM_CFLAGS@
@@ -100,6 +101,7 @@ tests_adbc_unit_test_SOURCES = \
 	arrow_writer.c \
 	catalog.c \
 	type_map.c \
+	program_info.c \
 	nanoarrow.c \
 	adbc_entry.c
 tests_adbc_unit_test_CFLAGS  = @VIRT_AM_CFLAGS@
@@ -159,8 +161,12 @@ virt_validation_cppflags += -I$(top_builddir)/libsrc
 virt_validation_cppflags += -I$(top_srcdir)
 virt_validation_cppflags += @VIRT_AM_CFLAGS@
 
+EXTRA_PROGRAMS = tests/validation/adbc_validation_runner
+
 tests_validation_adbc_validation_runner_SOURCES  = \
-	tests/validation/validation_runner.cc \
+	tests/validation/validation_runner.cc
+
+nodist_tests_validation_adbc_validation_runner_SOURCES = \
 	tests/validation/adbc_validation.cc \
 	tests/validation/adbc_validation_connection.cc \
 	tests/validation/adbc_validation_database.cc \
@@ -180,8 +186,10 @@ tests_validation_adbc_validation_runner_LDADD     = \
 
 # Hook: if the runner binary exists and GTEST is available, add it to
 # the check target.
-check-validation: tests/validation/adbc_validation_runner
-	@if [ -x tests/validation/adbc_validation_runner ]; then \
+check-validation:
+	@if [ -z "$(GTEST_CFLAGS)$(GTEST_LIBS)" ]; then \
+	  echo "[SKIP] validation runner not built (set GTEST_CFLAGS and GTEST_LIBS)"; \
+	elif $(MAKE) tests/validation/adbc_validation_runner; then \
 	  echo "=== ADBC Validation Runner ==="; \
 	  if [ -n "$$VIRT_ADBC_TEST_URI" ]; then \
 	    ./tests/validation/adbc_validation_runner $(GTEST_ARGS); \
@@ -189,7 +197,7 @@ check-validation: tests/validation/adbc_validation_runner
 	    echo "[SKIP] Set VIRT_ADBC_TEST_URI to run validation tests"; \
 	  fi; \
 	else \
-	  echo "[SKIP] validation runner not built (set GTEST_CFLAGS and GTEST_LIBS)"; \
+	  exit $$?; \
 	fi
 
 .PHONY: check-validation
@@ -207,7 +215,7 @@ pkgconfig_DATA = adbc-driver-virtuoso.pc
 # Rule to generate the .pc file by substituting @prefix@ / @libdir@ /
 # @PACKAGE_VERSION@ at build time (we cannot use AC_CONFIG_FILES
 # because configure.ac lives elsewhere in the parent project).
-adbc-driver-virtuoso.pc: adbc-driver-virtuoso.pc.in
+adbc-driver-virtuoso.pc: $(top_srcdir)/adbc-driver-virtuoso.pc.in
 	@$(MKDIR_P) $(@D)
 	sed \
 	  -e 's|@prefix@|$(prefix)|g' \
