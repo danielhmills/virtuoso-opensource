@@ -1,4 +1,4 @@
-# Upstream arrow-adbc validation sources vendored locally by vendor_validation.sh.
+# Upstream arrow-adbc validation sources linked locally by vendor_validation.sh.
 /adbc_validation.h
 /adbc_validation.cc
 /adbc_validation_util.h

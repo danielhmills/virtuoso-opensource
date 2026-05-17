@@ -59,11 +59,7 @@ with adbc_driver_manager.AdbcDatabase(driver="virtuoso") as db:
 ├── catalog.c                    -- GetInfo / GetObjects / GetTableSchema / GetStatistics
 ├── error.c                      -- AdbcError construction / SQLSTATE mapping
 ├── options.c                    -- typed Get/SetOption variants
-├── nanoarrow.c                  -- vendored from apache/arrow-adbc
 ├── virtuo_adbc.h                -- private driver header
-├── include/
-│   ├── adbc.h                   -- vendored ADBC 1.1.0 ABI
-│   └── nanoarrow.h              -- vendored
 ├── tests/
 │   ├── smoke_test.c             -- dispatch table validation
 │   ├── unit_test.c              -- driver unit + integration tests

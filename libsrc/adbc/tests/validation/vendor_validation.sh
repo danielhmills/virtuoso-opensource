@@ -67,8 +67,11 @@ for f in utils.c utils.h options.h; do
     ln -sfn "$ARROW_ADBC/c/driver/common/$f" "common/$f"
 done
 
-# C++ nanoarrow wrapper (not vendored in our tree)
+# Optional C++ nanoarrow wrapper. Prefer nanoarrow from the external
+# ADBC prefix; this symlink is only for local validation checkouts that
+# do not install nanoarrow.hpp.
 if [ -f "$ARROW_ADBC/c/vendor/nanoarrow/nanoarrow.hpp" ]; then
+    mkdir -p include/nanoarrow
     ln -sfn "$ARROW_ADBC/c/vendor/nanoarrow/nanoarrow.hpp" \
         include/nanoarrow/nanoarrow.hpp
 else

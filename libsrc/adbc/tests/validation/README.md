@@ -55,6 +55,6 @@ The test runner loads `libvirtadbc` directly via `AdbcDriverInit` (no driver man
 |------|---------|
 | `validation_runner.cc` | Virtuoso-specific `DriverQuirks` + GTest fixtures (committed) |
 | `vendor_validation.sh` | Creates local symlinks to arrow-adbc sources (committed) |
-| `include/` | Shims mapping `<arrow-adbc/adbc.h>` to our vendored header (committed symlinks) |
+| `include/` | Optional local-only helper symlinks for validation headers not installed by the external prefix |
 | `adbc_validation*.cc/h` | Upstream harness (symlinks, created by vendor script) |
 | `common/` | Upstream shared utilities (symlink, created by vendor script) |
