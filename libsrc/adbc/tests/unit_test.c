@@ -23,8 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "adbc.h"
-#include "nanoarrow.h"
+#include <adbc.h>
+#include <nanoarrow/nanoarrow.h>
 #include "virtuoso_adbc.h"
 
 static int g_failures = 0;

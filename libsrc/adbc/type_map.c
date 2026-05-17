@@ -23,7 +23,7 @@
 #include "sql.h"
 #include "sqlext.h"
 
-#include "nanoarrow.h"
+#include <nanoarrow/nanoarrow.h>
 
 #include "virtuoso_adbc.h"
 
